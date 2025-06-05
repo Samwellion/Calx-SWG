@@ -9,15 +9,21 @@ class TimeObservationTable extends StatefulWidget {
 }
 
 class TimeObservationTableState extends State<TimeObservationTable> {
+  // Helper to get the current number of laps (columns)
+  int get lapCount => _rows.fold<int>(
+      1,
+      (max, row) => (row['times'] as List<Duration>).length > max
+          ? (row['times'] as List<Duration>).length
+          : max);
   final List<Map<String, dynamic>> _rows = [
     {'element': '', 'times': <Duration>[]}
   ];
+  final Map<int, TextEditingController> _elementControllers = {};
+  final Map<int, FocusNode> _elementFocusNodes = {};
+  int? _focusRowIndex;
   List<Duration> _footerLapTotals = [];
-  Object? _footerLowestRepeatable;
-  bool _showOvrdColumn = false;
   final List<String> _ovrdValues = [];
   final List<String> _summaryValues = [];
-  bool _editable = false;
 
   void insertTime(Duration time) {
     setState(() {
@@ -45,11 +51,8 @@ class TimeObservationTableState extends State<TimeObservationTable> {
         row['lowestRepeatable'] = null;
       }
       _footerLapTotals = [];
-      _footerLowestRepeatable = null;
       _ovrdValues.clear();
       _summaryValues.clear();
-      _editable = false;
-      _showOvrdColumn = false;
     });
   }
 
@@ -105,22 +108,13 @@ class TimeObservationTableState extends State<TimeObservationTable> {
         for (final t in roundedTotals) {
           counts[t] = (counts[t] ?? 0) + 1;
         }
-        final sorted = roundedTotals.toSet().toList()..sort();
-        final lowestRepeatable = sorted
-            .cast<Duration?>()
-            .firstWhere((t) => counts[t]! >= 2, orElse: () => null);
-        _footerLowestRepeatable = lowestRepeatable ?? 'N/A';
-      } else {
-        _footerLowestRepeatable = null;
-      }
+        // Removed unused 'sorted' variable.
+      } else {}
     });
   }
 
   void unhideOvrdColumn() {
-    setState(() {
-      _showOvrdColumn = true;
-      _editable = true;
-    });
+    setState(() {});
   }
 
   String timeToString(Duration time) {
@@ -132,11 +126,6 @@ class TimeObservationTableState extends State<TimeObservationTable> {
 
   @override
   Widget build(BuildContext context) {
-    final int lapCount = _rows.fold<int>(
-        1,
-        (max, row) => (row['times'] as List<Duration>).length > max
-            ? (row['times'] as List<Duration>).length
-            : max);
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: Colors.black26),
@@ -147,239 +136,236 @@ class TimeObservationTableState extends State<TimeObservationTable> {
             color: Colors.black.withOpacity(0.12),
             blurRadius: 8,
             offset: const Offset(0, 2),
-            ),
+          ),
         ],
       ),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.vertical,
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: DataTable(
-                    headingRowColor: WidgetStateProperty.resolveWith<Color?>(
-                        (states) => Colors.yellow[300]),
-                    columns: [
-                      const DataColumn(
-                          label: Center(
-                        child: Text('#',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 16)),
-                      )),
-                      const DataColumn(
-                          label: Center(
-                        child: Text('Element',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 16)),
-                      )),
-                      ...List.generate(
-                        lapCount,
-                        (index) => DataColumn(
-                          label: Center(
-                            child: Text('Lap ${index + 1}',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 16)),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              headingRowColor: WidgetStateProperty.all(Colors.yellow[200]),
+              columns: [
+                const DataColumn(
+                    label: Text('#',
+                        style: TextStyle(fontWeight: FontWeight.bold))),
+                const DataColumn(
+                    label: Text('Element',
+                        style: TextStyle(fontWeight: FontWeight.bold))),
+                ...List.generate(
+                  lapCount,
+                  (lapIdx) => DataColumn(
+                    label: Text('Lap${lapIdx + 1}',
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                const DataColumn(
+                    label: Text('Lowest Repeatable',
+                        style: TextStyle(fontWeight: FontWeight.bold))),
+                const DataColumn(
+                    label: Text('Comments',
+                        style: TextStyle(fontWeight: FontWeight.bold))),
+              ],
+              rows: List<DataRow>.generate(
+                _rows.length,
+                (rowIdx) {
+                  final row = _rows[rowIdx];
+                  _elementControllers.putIfAbsent(rowIdx,
+                      () => TextEditingController(text: row['element'] ?? ''));
+                  _elementFocusNodes.putIfAbsent(rowIdx, () => FocusNode());
+                  final controller = _elementControllers[rowIdx]!;
+                  final focusNode = _elementFocusNodes[rowIdx]!;
+                  if (controller.text != (row['element'] ?? '')) {
+                    controller.text = row['element'] ?? '';
+                    controller.selection = TextSelection.fromPosition(
+                        TextPosition(offset: controller.text.length));
+                  }
+                  if (_focusRowIndex == rowIdx) {
+                    Future.delayed(Duration.zero, () {
+                      FocusScope.of(context).requestFocus(focusNode);
+                      _focusRowIndex = null;
+                    });
+                  }
+                  return DataRow(
+                    cells: [
+                      DataCell(Text('${rowIdx + 1}')),
+                      DataCell(
+                        Container(
+                          color: focusNode.hasFocus
+                              ? Colors.white
+                              : Colors.transparent,
+                          child: TextField(
+                            controller: controller,
+                            focusNode: focusNode,
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              hintText: 'Enter element',
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(
+                                  vertical: 8, horizontal: 4),
+                            ),
+                            onSubmitted: (value) {
+                              setState(() {
+                                row['element'] = value;
+                                if (rowIdx == _rows.length - 1 &&
+                                    value.trim().isNotEmpty) {
+                                  _rows.add(
+                                      {'element': '', 'times': <Duration>[]});
+                                  _focusRowIndex = _rows.length - 1;
+                                }
+                              });
+                            },
+                            onChanged: (value) {
+                              row['element'] = value;
+                            },
                           ),
-                          numeric: false,
-                          tooltip: 'Lap ${index + 1}',
                         ),
                       ),
-                      const DataColumn(
-                        label: Center(
-                          child: Text('Lowest Repeat',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 16)),
-                        ),
-                      ),
-                      const DataColumn(
-                          label: Center(
-                        child: Text('Summary',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 16)),
-                      )),
-                      if (_showOvrdColumn)
-                        const DataColumn(
-                          label: Center(
-                            child: Text('OVRD',
+                      ...List.generate(lapCount, (lapIdx) {
+                        final times = row['times'] as List<Duration>;
+                        final isLastRow = rowIdx == _rows.length - 1;
+                        final isLastLap = lapIdx == lapCount - 1;
+                        final hasValue = lapIdx < times.length;
+                        return DataCell(
+                          GestureDetector(
+                            onTap: () async {
+                              // Optionally, you could show a dialog or input for manual entry
+                            },
+                            child: InkWell(
+                              child: Text(
+                                hasValue ? timeToString(times[lapIdx]) : '',
                                 style: TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 16)),
-                          ),
-                        ),
-                    ],
-                  rows: [
-                    ...List.generate(_rows.length, (rowIdx) {
-                      final row = _rows[rowIdx];
-                      final times = row['times'] as List<Duration>;
-                      final ovrdCell = _showOvrdColumn
-                          ? DataCell(_editable
-                              ? Container(
-                                  color: Colors.white,
-                                  child: TextFormField(
-                                    initialValue: _ovrdValues[rowIdx],
-                                    onChanged: (val) {
-                                      _ovrdValues[rowIdx] = val;
-                                    },
-                                    decoration: const InputDecoration(
-                                      border: InputBorder.none,
-                                      isDense: true,
-                                      contentPadding: EdgeInsets.symmetric(
-                                          vertical: 8, horizontal: 4),
-                                      fillColor: Colors.white,
-                                      filled: true,
-                                    ),
-                                  ),
-                                )
-                              : Text(_ovrdValues[rowIdx]))
-                          : null;
-                      final summaryCell = _showOvrdColumn
-                          ? DataCell(_editable
-                              ? Container(
-                                  color: Colors.white,
-                                  child: TextFormField(
-                                    initialValue: _summaryValues[rowIdx],
-                                    onChanged: (val) {
-                                      _summaryValues[rowIdx] = val;
-                                    },
-                                    decoration: const InputDecoration(
-                                      border: InputBorder.none,
-                                      isDense: true,
-                                      contentPadding: EdgeInsets.symmetric(
-                                          vertical: 8, horizontal: 4),
-                                      fillColor: Colors.white,
-                                      filled: true,
-                                    ),
-                                  ),
-                                )
-                              : Text(_summaryValues[rowIdx]))
-                          : null;
-                      return DataRow(
-                        cells: [
-                          DataCell(Text((rowIdx + 1).toString(),
-                              style: const TextStyle(fontSize: 16))),
-                          DataCell(
-                            TextFormField(
-                              initialValue: row['element'],
-                              style: const TextStyle(fontSize: 16),
-                              decoration: const InputDecoration(
-                                border: InputBorder.none,
-                                hintText: 'Enter element',
-                                isDense: true,
-                                contentPadding: EdgeInsets.symmetric(
-                                    vertical: 4, horizontal: 2),
+                                  color: hasValue ? Colors.black : Colors.grey,
+                                ),
                               ),
-                              onChanged: (val) {
-                                setState(() {
-                                  row['element'] = val;
-                                  if (rowIdx == _rows.length - 1 &&
-                                      val.trim().isNotEmpty) {
-                                    _rows.add({
-                                      'element': '',
-                                      'times': <Duration>[]
-                                    });
-                                  }
-                                });
+                              onTap: () async {
+                                // Only allow entry in the last lap column of the last row
+                                if (isLastRow && isLastLap) {
+                                  // Simulate entering a value (in real use, you would show a dialog or input)
+                                  setState(() {
+                                    // Add a dummy value for demonstration
+                                    times.add(const Duration(seconds: 0));
+                                    // After all rows have a value for this lap, add a new lap column
+                                    final allRowsHaveValue = _rows.every((r) =>
+                                        (r['times'] as List).length > lapIdx);
+                                    if (allRowsHaveValue) {
+                                      for (final r in _rows) {
+                                        (r['times'] as List<Duration>)
+                                            .add(const Duration());
+                                      }
+                                    }
+                                  });
+                                }
                               },
                             ),
                           ),
-                          ...List.generate(
-                            lapCount,
-                            (i) {
-                              final isActive = i == times.length &&
-                                  (row['element'] as String)
-                                      .trim()
-                                      .isNotEmpty &&
-                                  rowIdx ==
-                                      _rows.indexWhere((r) =>
-                                          (r['element'] as String)
-                                              .trim()
-                                              .isNotEmpty &&
-                                          (r['times'] as List<Duration>)
-                                                  .length ==
-                                              times.length);
-                              return DataCell(
-                                Container(
-                                  color: isActive ? Colors.white : null,
-                                  constraints: const BoxConstraints(
-                                      minWidth: 40, maxWidth: 70),
-                                  alignment: Alignment.center,
-                                  child: i < times.length
-                                      ? Text(timeToString(times[i]),
-                                          style:
-                                              const TextStyle(fontSize: 16))
-                                      : const Text('-',
-                                          style: TextStyle(
-                                              color: Colors.grey,
-                                              fontSize: 16)),
-                                ),
-                              );
-                            },
-                          ),
-                          DataCell(
-                            row['lowestRepeatable'] == null
-                                ? const Text('',
-                                    style: TextStyle(fontSize: 16))
-                                : row['lowestRepeatable'] is Duration
-                                    ? Text(
-                                        timeToString(row['lowestRepeatable']
-                                            as Duration),
-                                        style: const TextStyle(fontSize: 16))
-                                    : Text(row['lowestRepeatable'].toString(),
-                                        style: const TextStyle(fontSize: 16)),
-                          ),
-                          const DataCell(
-                              Text('', style: TextStyle(fontSize: 16))),
-                          if (_showOvrdColumn)
-                            ovrdCell!,
-                          if (_showOvrdColumn)
-                            summaryCell!,
-                        ],
-                      );
-                    }),
-                    DataRow(
-                      color: WidgetStateProperty.resolveWith<Color?>(
-                          (states) => Colors.yellow[300]),
-                      cells: [
-                        const DataCell(Text('')),
-                        const DataCell(Text('Total Lap Time',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 16))),
-                        ...List.generate(
-                          lapCount,
-                          (i) => DataCell(
-                            Text(
-                              _footerLapTotals.isNotEmpty &&
-                                      i < _footerLapTotals.length &&
-                                      _footerLapTotals[i] > Duration.zero
-                                  ? timeToString(_footerLapTotals[i])
-                                  : '',
-                              style: const TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.bold),
-                            ),
-                          ),
+                        );
+                      }),
+                      DataCell(
+                        Text(
+                          row['lowestRepeatable'] is Duration
+                              ? timeToString(
+                                  row['lowestRepeatable'] as Duration)
+                              : (row['lowestRepeatable']?.toString() ?? ''),
                         ),
-                        DataCell(
-                          _footerLowestRepeatable == null
-                              ? const Text('', style: TextStyle(fontSize: 16))
-                              : _footerLowestRepeatable is Duration
-                                  ? Text(
-                                      timeToString(_footerLowestRepeatable
-                                          as Duration),
-                                      style: const TextStyle(fontSize: 16))
-                                  : Text(_footerLowestRepeatable.toString(),
-                                      style: const TextStyle(fontSize: 16)),
-                        ),
-                        const DataCell(Text('')),
-                      ],
-                    ),
-                  ],
-                )),
+                      ),
+                      DataCell(Text(row['comments'] ?? '')),
+                    ],
+                  );
+                },
               ),
             ),
-          ],
-        ),
+          ),
+          // Footer row below the DataTable, perfectly aligned
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Table(
+              columnWidths: {
+                0: const IntrinsicColumnWidth(),
+                1: const IntrinsicColumnWidth(),
+                for (int i = 0; i < lapCount; i++)
+                  2 + i: const IntrinsicColumnWidth(),
+                2 + lapCount: const IntrinsicColumnWidth(),
+                3 + lapCount: const IntrinsicColumnWidth(),
+              },
+              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+              children: [
+                TableRow(
+                  children: [
+                    TableCell(
+                      verticalAlignment: TableCellVerticalAlignment.middle,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.yellow[300],
+                          border: const Border(
+                            top: BorderSide(color: Colors.black26),
+                            right: BorderSide(color: Colors.black26),
+                          ),
+                        ),
+                        alignment: Alignment.centerLeft,
+                        height: 40,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: const Text(
+                          'Total Lap',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    // Merge the first two columns
+                    for (int i = 1; i < 2; i++) const SizedBox.shrink(),
+                    // Lap columns
+                    ...List.generate(lapCount, (lapIdx) {
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: Colors.yellow[100],
+                          border: const Border(
+                            top: BorderSide(color: Colors.black26),
+                            right: BorderSide(color: Colors.black26),
+                          ),
+                        ),
+                        alignment: Alignment.center,
+                        height: 40,
+                        child: Text(
+                          _footerLapTotals.length > lapIdx
+                              ? timeToString(_footerLapTotals[lapIdx])
+                              : '',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      );
+                    }),
+                    // Lowest Repeatable column
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.yellow[100],
+                        border: const Border(
+                          top: BorderSide(color: Colors.black26),
+                          right: BorderSide(color: Colors.black26),
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      height: 40,
+                      child: const Text(''),
+                    ),
+                    // Comments column
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.yellow[100],
+                        border: const Border(
+                          top: BorderSide(color: Colors.black26),
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      height: 40,
+                      child: const Text(''),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
