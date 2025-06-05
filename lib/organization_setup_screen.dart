@@ -10,6 +10,7 @@ class OrganizationSetupHeader extends StatelessWidget {
   const OrganizationSetupHeader({super.key});
   @override
   Widget build(BuildContext context) {
+    final companyName = OrganizationData.companyName;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
@@ -40,6 +41,18 @@ class OrganizationSetupHeader extends StatelessWidget {
               style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
           ),
+          if (companyName.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: 16.0),
+              child: Text(
+                companyName,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -97,7 +110,8 @@ class OrganizationSetupScreen extends StatefulWidget {
   const OrganizationSetupScreen({super.key});
 
   @override
-  State<OrganizationSetupScreen> createState() => _OrganizationSetupScreenState();
+  State<OrganizationSetupScreen> createState() =>
+      _OrganizationSetupScreenState();
 }
 
 class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
@@ -188,7 +202,8 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
                                   const Text(
                                     'Company Name',
                                     style: TextStyle(
-                                        fontSize: 18, fontWeight: FontWeight.bold),
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold),
                                   ),
                                   const SizedBox(height: 8),
                                   TextField(
@@ -197,7 +212,8 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
                                       border: OutlineInputBorder(),
                                       isDense: true,
                                       filled: true,
-                                      fillColor: Colors.white, // <-- white background
+                                      fillColor:
+                                          Colors.white, // <-- white background
                                     ),
                                   ),
                                 ],
@@ -333,8 +349,10 @@ class _CompanyPlantsTableState extends State<CompanyPlantsTable> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.yellow[300],
                       foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                      textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 32, vertical: 16),
+                      textStyle: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -354,19 +372,21 @@ class _CompanyPlantsTableState extends State<CompanyPlantsTable> {
                   },
                   children: [
                     ..._plants.asMap().entries.map(
-                      (entry) => TableRow(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
-                            child: Text(entry.value),
+                          (entry) => TableRow(
+                            children: [
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8.0),
+                                child: Text(entry.value),
+                              ),
+                              IconButton(
+                                icon:
+                                    const Icon(Icons.delete, color: Colors.red),
+                                onPressed: () => _removePlant(entry.key),
+                              ),
+                            ],
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () => _removePlant(entry.key),
-                          ),
-                        ],
-                      ),
-                    ),
+                        ),
                   ],
                 ),
               if (_plants.isEmpty)
