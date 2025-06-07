@@ -14,11 +14,7 @@ class TimerDisplay extends StatelessWidget {
           format(elapsed),
           style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
         ),
-        if (lapTime > Duration.zero)
-          Text(
-            '+${format(lapTime)}',
-            style: const TextStyle(fontSize: 24, color: Colors.black54),
-          ),
+        // Removed last lap label below the main stopwatch counter
       ],
     );
   }

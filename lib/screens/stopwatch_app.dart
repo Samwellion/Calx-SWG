@@ -56,6 +56,9 @@ class _StopwatchAppState extends State<StopwatchApp> {
       _simpleStopwatch.stop();
       _tableKey.currentState?.enterLowestRepeatedIntoTimeColumn();
       _tableKey.currentState?.unhideOvrdColumn();
+      _tableKey.currentState
+          ?.showFooterLowestRepeatables(); // Show lowest repeatable in footer
+      // Removed call to undefined showFooterTotalLapLowestRepeatable
     }
   }
 

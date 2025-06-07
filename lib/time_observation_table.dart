@@ -9,6 +9,15 @@ class TimeObservationTable extends StatefulWidget {
 }
 
 class TimeObservationTableState extends State<TimeObservationTable> {
+  static const double _columnWidth =
+      120.0; // Define uniform column width for most columns
+  static const double _lapColumnWidth =
+      _columnWidth * 0.8; // 20% reduction for Lap columns
+  static const double _firstColumnWidth =
+      _columnWidth * 0.4; // Reduced width for the first column
+  static const double _commentsColumnWidth =
+      _columnWidth * 2; // Double width for comments
+
   // Helper to get the current number of laps (columns)
   int get lapCount => _rows.fold<int>(
       1,
@@ -56,22 +65,17 @@ class TimeObservationTableState extends State<TimeObservationTable> {
     });
   }
 
-  void hideRowsWithoutElement() {
-    setState(() {
-      _rows.removeWhere((row) => (row['element'] as String).trim().isEmpty);
-      if (_rows.isEmpty) {
-        _rows.add({'element': '', 'times': <Duration>[]});
-      }
-    });
-  }
-
   void _updateFooterTotals() {
-    final int lapCount = _rows.fold<int>(
-        1,
-        (max, row) => (row['times'] as List<Duration>).length > max
+    final int currentLapCount = _rows.fold<int>(
+        0, // Start with 0 if no rows or no times
+        (maxVal, row) => (row['times'] as List<Duration>).length > maxVal
             ? (row['times'] as List<Duration>).length
-            : max);
-    _footerLapTotals = List<Duration>.generate(lapCount, (i) {
+            : maxVal);
+    if (currentLapCount == 0) {
+      _footerLapTotals = [];
+      return;
+    }
+    _footerLapTotals = List<Duration>.generate(currentLapCount, (i) {
       return _rows.fold(Duration.zero, (sum, row) {
         final times = row['times'] as List<Duration>;
         return i < times.length ? sum + times[i] : sum;
@@ -79,53 +83,57 @@ class TimeObservationTableState extends State<TimeObservationTable> {
     });
   }
 
-  void enterLowestRepeatedIntoTimeColumn() {
-    setState(() {
-      for (final row in _rows) {
-        final times = row['times'] as List<Duration>;
-        if (times.isNotEmpty) {
-          final roundedTimes = times
-              .map((t) => Duration(seconds: (t.inMilliseconds / 1000).round()))
-              .toList();
-          final counts = <Duration, int>{};
-          for (final t in roundedTimes) {
-            counts[t] = (counts[t] ?? 0) + 1;
-          }
-          final sorted = roundedTimes.toSet().toList()..sort();
-          final lowestRepeatable = sorted
-              .cast<Duration?>()
-              .firstWhere((t) => counts[t]! >= 2, orElse: () => null);
-          row['lowestRepeatable'] = lowestRepeatable ?? 'N/A';
-        } else {
-          row['lowestRepeatable'] = null;
-        }
-      }
-      if (_footerLapTotals.isNotEmpty) {
-        final roundedTotals = _footerLapTotals
+  void updateFooterLowestRepeatables() {
+    for (final row in _rows) {
+      final times = row['times'] as List<Duration>;
+      if (times.isNotEmpty) {
+        final roundedTimes = times
             .map((t) => Duration(seconds: (t.inMilliseconds / 1000).round()))
             .toList();
         final counts = <Duration, int>{};
-        for (final t in roundedTotals) {
+        for (final t in roundedTimes) {
           counts[t] = (counts[t] ?? 0) + 1;
         }
-        // Removed unused 'sorted' variable.
-      } else {}
-    });
+        final sorted = roundedTimes.toSet().toList()..sort();
+        final lowestRepeatable = sorted
+            .cast<Duration?>()
+            .firstWhere((t) => counts[t]! >= 2, orElse: () => null);
+        row['lowestRepeatable'] = lowestRepeatable ?? 'N/A';
+      } else {
+        row['lowestRepeatable'] = null;
+      }
+    }
   }
 
   void unhideOvrdColumn() {
     setState(() {});
   }
 
+  void showFooterLowestRepeatables() {
+    setState(() {
+      updateFooterLowestRepeatables();
+    });
+  }
+
   String timeToString(Duration time) {
     final h = time.inHours;
-    final m = time.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final s = time.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '$h:$m:$s';
+    final m = time.inMinutes.remainder(60);
+    final s = time.inSeconds.remainder(60);
+    return [
+      if (h > 0) h.toString().padLeft(2, '0'),
+      m.toString().padLeft(2, '0'),
+      s.toString().padLeft(2, '0')
+    ].join(':');
   }
 
   @override
   Widget build(BuildContext context) {
+    final displayLapCount = _rows.fold<int>(
+        1,
+        (max, row) => (row['times'] as List<Duration>).length > max
+            ? (row['times'] as List<Duration>).length
+            : max);
+
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: Colors.black26),
@@ -146,27 +154,60 @@ class TimeObservationTableState extends State<TimeObservationTable> {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: DataTable(
+              columnSpacing: 0.0,
+              horizontalMargin: 0.0,
+              dividerThickness: 1.0,
               headingRowColor: WidgetStateProperty.all(Colors.yellow[200]),
               columns: [
-                const DataColumn(
-                    label: Text('#',
-                        style: TextStyle(fontWeight: FontWeight.bold))),
-                const DataColumn(
-                    label: Text('Element',
-                        style: TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(
+                    label: Container(
+                        width: _firstColumnWidth, // Use reduced width
+                        alignment: Alignment.center,
+                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                        child: const Text('#',
+                            style: TextStyle(fontWeight: FontWeight.bold)))),
+                DataColumn(
+                    label: Container(
+                        width: _lapColumnWidth, // Reduced width for Lap columns
+                        alignment: Alignment.center,
+                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                        child: const Text('Element',
+                            style: TextStyle(fontWeight: FontWeight.bold)))),
                 ...List.generate(
-                  lapCount,
+                  displayLapCount, // Use calculated displayLapCount
                   (lapIdx) => DataColumn(
-                    label: Text('Lap${lapIdx + 1}',
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    label: Container(
+                        width: _lapColumnWidth,
+                        alignment: Alignment.center, // Already centered
+                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                        child: Text('Lap${lapIdx + 1}',
+                            style:
+                                const TextStyle(fontWeight: FontWeight.bold))),
                   ),
                 ),
-                const DataColumn(
-                    label: Text('Lowest Repeatable',
-                        style: TextStyle(fontWeight: FontWeight.bold))),
-                const DataColumn(
-                    label: Text('Comments',
-                        style: TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(
+                    label: Container(
+                        width: _columnWidth * 1.1, // 10% wider
+                        alignment: Alignment.center, // Already centered
+                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                        child: const Text(
+                          'Lowest Repeatable',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
+                          softWrap: true,
+                          maxLines: 2,
+                        ))),
+                DataColumn(
+                    label: Container(
+                        width: _commentsColumnWidth, // Use doubled width
+                        alignment: Alignment
+                            .center, // Changed from centerLeft to center
+                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                        child: const Text('Comments',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                            textAlign: TextAlign.center,
+                            softWrap: true,
+                            maxLines: 2))),
               ],
               rows: List<DataRow>.generate(
                 _rows.length,
@@ -190,9 +231,17 @@ class TimeObservationTableState extends State<TimeObservationTable> {
                   }
                   return DataRow(
                     cells: [
-                      DataCell(Text('${rowIdx + 1}')),
+                      DataCell(Container(
+                          width: _firstColumnWidth, // Use reduced width
+                          alignment: Alignment.center,
+                          padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                          child: Text('${rowIdx + 1}'))),
                       DataCell(
                         Container(
+                          width: _columnWidth, // Standard width
+                          alignment: Alignment.centerLeft,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 4.0), // Keep padding for TextField
                           color: focusNode.hasFocus
                               ? Colors.white
                               : Colors.transparent,
@@ -204,7 +253,7 @@ class TimeObservationTableState extends State<TimeObservationTable> {
                               hintText: 'Enter element',
                               isDense: true,
                               contentPadding: EdgeInsets.symmetric(
-                                  vertical: 8, horizontal: 4),
+                                  vertical: 8), // Removed horizontal here
                             ),
                             onSubmitted: (value) {
                               setState(() {
@@ -215,6 +264,7 @@ class TimeObservationTableState extends State<TimeObservationTable> {
                                       {'element': '', 'times': <Duration>[]});
                                   _focusRowIndex = _rows.length - 1;
                                 }
+                                _updateFooterTotals(); // Update totals when element might affect row count for laps
                               });
                             },
                             onChanged: (value) {
@@ -223,55 +273,43 @@ class TimeObservationTableState extends State<TimeObservationTable> {
                           ),
                         ),
                       ),
-                      ...List.generate(lapCount, (lapIdx) {
+                      ...List.generate(displayLapCount, (lapIdx) {
+                        // Use displayLapCount
                         final times = row['times'] as List<Duration>;
-                        final isLastRow = rowIdx == _rows.length - 1;
-                        final isLastLap = lapIdx == lapCount - 1;
                         final hasValue = lapIdx < times.length;
                         return DataCell(
-                          GestureDetector(
-                            onTap: () async {
-                              // Optionally, you could show a dialog or input for manual entry
-                            },
-                            child: InkWell(
-                              child: Text(
-                                hasValue ? timeToString(times[lapIdx]) : '',
-                                style: TextStyle(
-                                  color: hasValue ? Colors.black : Colors.grey,
-                                ),
+                          Container(
+                            width: _lapColumnWidth,
+                            alignment: Alignment.center,
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 4.0),
+                            child: Text(
+                              hasValue ? timeToString(times[lapIdx]) : '',
+                              style: TextStyle(
+                                color: hasValue ? Colors.black : Colors.grey,
                               ),
-                              onTap: () async {
-                                // Only allow entry in the last lap column of the last row
-                                if (isLastRow && isLastLap) {
-                                  // Simulate entering a value (in real use, you would show a dialog or input)
-                                  setState(() {
-                                    // Add a dummy value for demonstration
-                                    times.add(const Duration(seconds: 0));
-                                    // After all rows have a value for this lap, add a new lap column
-                                    final allRowsHaveValue = _rows.every((r) =>
-                                        (r['times'] as List).length > lapIdx);
-                                    if (allRowsHaveValue) {
-                                      for (final r in _rows) {
-                                        (r['times'] as List<Duration>)
-                                            .add(const Duration());
-                                      }
-                                    }
-                                  });
-                                }
-                              },
                             ),
                           ),
                         );
                       }),
                       DataCell(
-                        Text(
-                          row['lowestRepeatable'] is Duration
-                              ? timeToString(
-                                  row['lowestRepeatable'] as Duration)
-                              : (row['lowestRepeatable']?.toString() ?? ''),
+                        Container(
+                          width: _columnWidth,
+                          alignment: Alignment.center,
+                          padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                          child: Text(
+                            row['lowestRepeatable'] is Duration
+                                ? timeToString(
+                                    row['lowestRepeatable'] as Duration)
+                                : (row['lowestRepeatable']?.toString() ?? ''),
+                          ),
                         ),
                       ),
-                      DataCell(Text(row['comments'] ?? '')),
+                      DataCell(Container(
+                          width: _commentsColumnWidth, // Use doubled width
+                          alignment: Alignment.centerLeft,
+                          padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                          child: Text(row['comments'] ?? ''))),
                     ],
                   );
                 },
@@ -283,41 +321,77 @@ class TimeObservationTableState extends State<TimeObservationTable> {
             scrollDirection: Axis.horizontal,
             child: Table(
               columnWidths: {
-                0: const IntrinsicColumnWidth(),
-                1: const IntrinsicColumnWidth(),
-                for (int i = 0; i < lapCount; i++)
-                  2 + i: const IntrinsicColumnWidth(),
-                2 + lapCount: const IntrinsicColumnWidth(),
-                3 + lapCount: const IntrinsicColumnWidth(),
+                0: const FixedColumnWidth(_firstColumnWidth +
+                    _columnWidth), // Merged: reduced first col + standard second col
+                for (int i = 0; i < displayLapCount; i++)
+                  1 + i: const FixedColumnWidth(
+                      _lapColumnWidth), // Lap columns (index shifted)
+                1 + displayLapCount: const FixedColumnWidth(
+                    _columnWidth), // Lowest Repeatable (index shifted)
+                2 + displayLapCount: const FixedColumnWidth(
+                    _commentsColumnWidth), // Comments (index shifted, use doubled width)
               },
               defaultVerticalAlignment: TableCellVerticalAlignment.middle,
               children: [
                 TableRow(
                   children: [
+                    // Merged Cell for first two columns ('#' and 'Element')
                     TableCell(
                       verticalAlignment: TableCellVerticalAlignment.middle,
                       child: Container(
+                        width: _firstColumnWidth +
+                            _columnWidth, // Span updated first and second column widths
                         decoration: BoxDecoration(
-                          color: Colors.yellow[300],
+                          color: Colors
+                              .yellow[300], // Color for the 'Total Lap' cell
                           border: const Border(
                             top: BorderSide(color: Colors.black26),
-                            right: BorderSide(color: Colors.black26),
+                            // No right border here if it's the start of a visually merged cell group
+                            // but if it should look like one wide cell with a right border, add it.
+                            // For now, assume it's part of the continuous row look.
+                            //right: BorderSide(color: Colors.black26), // Keep right border for the merged cell
                           ),
                         ),
-                        alignment: Alignment.centerLeft,
+                        alignment:
+                            Alignment.centerRight, // Right-align the text
                         height: 40,
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16.0), // Standard padding
                         child: const Text(
                           'Total Lap',
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),
-                    // Merge the first two columns
-                    for (int i = 1; i < 2; i++) const SizedBox.shrink(),
-                    // Lap columns
-                    ...List.generate(lapCount, (lapIdx) {
-                      return Container(
+                    // Lap columns (indices are effectively shifted due to the merge)
+                    ...List.generate(displayLapCount, (lapIdx) {
+                      return TableCell(
+                        child: Container(
+                          width: _columnWidth, // Ensure width consistency
+                          decoration: BoxDecoration(
+                            color: Colors.yellow[100],
+                            border: const Border(
+                              top: BorderSide(color: Colors.black26),
+                              right: BorderSide(color: Colors.black26),
+                            ),
+                          ),
+                          alignment: Alignment.center,
+                          height: 40,
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                          child: Text(
+                            _footerLapTotals.length > lapIdx &&
+                                    _footerLapTotals[lapIdx] != Duration.zero
+                                ? timeToString(_footerLapTotals[lapIdx])
+                                : '',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      );
+                    }),
+                    // Empty cell for 'Lowest Repeatable'
+                    TableCell(
+                      child: Container(
+                        width: _columnWidth * 1.1, // Match header width
                         decoration: BoxDecoration(
                           color: Colors.yellow[100],
                           border: const Border(
@@ -325,40 +399,28 @@ class TimeObservationTableState extends State<TimeObservationTable> {
                             right: BorderSide(color: Colors.black26),
                           ),
                         ),
-                        alignment: Alignment.center,
                         height: 40,
-                        child: Text(
-                          _footerLapTotals.length > lapIdx
-                              ? timeToString(_footerLapTotals[lapIdx])
-                              : '',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      );
-                    }),
-                    // Lowest Repeatable column
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.yellow[100],
-                        border: const Border(
-                          top: BorderSide(color: Colors.black26),
-                          right: BorderSide(color: Colors.black26),
-                        ),
+                        alignment: Alignment.center,
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: const Text(''),
                       ),
-                      alignment: Alignment.center,
-                      height: 40,
-                      child: const Text(''),
                     ),
-                    // Comments column
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.yellow[100],
-                        border: const Border(
-                          top: BorderSide(color: Colors.black26),
+                    // Empty cell for 'Comments'
+                    TableCell(
+                      child: Container(
+                        width: _commentsColumnWidth, // Use doubled width
+                        decoration: BoxDecoration(
+                          color: Colors.yellow[100],
+                          border: const Border(
+                            top: BorderSide(color: Colors.black26),
+                            // No right border for the last cell in the row
+                          ),
                         ),
+                        height: 40,
+                        alignment: Alignment.centerLeft,
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: const Text(''),
                       ),
-                      alignment: Alignment.center,
-                      height: 40,
-                      child: const Text(''),
                     ),
                   ],
                 ),
@@ -368,5 +430,22 @@ class TimeObservationTableState extends State<TimeObservationTable> {
         ],
       ),
     );
+  }
+
+  void hideRowsWithoutElement() {
+    setState(() {
+      _rows.removeWhere((row) => (row['element'] as String).trim().isEmpty);
+      // Clean up controllers and focus nodes for removed rows
+      final validIndices = List.generate(_rows.length, (i) => i);
+      _elementControllers.removeWhere((key, _) => !validIndices.contains(key));
+      _elementFocusNodes.removeWhere((key, _) => !validIndices.contains(key));
+      _updateFooterTotals();
+    });
+  }
+
+  void enterLowestRepeatedIntoTimeColumn() {
+    setState(() {
+      updateFooterLowestRepeatables();
+    });
   }
 }
