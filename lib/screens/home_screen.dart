@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../widgets/home_header.dart';
 import '../widgets/home_footer.dart';
-import '../organization_setup_screen.dart';
+import 'organization_setup_screen.dart';
+import 'stopwatch_app.dart';
 
 class HomeButtonColumn extends StatelessWidget {
   final VoidCallback onSetupOrg;
@@ -26,7 +27,8 @@ class HomeButtonColumn extends StatelessWidget {
             backgroundColor: Colors.yellow[300],
             foregroundColor: Colors.black,
             padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-            textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            textStyle:
+                const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
@@ -41,7 +43,8 @@ class HomeButtonColumn extends StatelessWidget {
             backgroundColor: Colors.yellow[300],
             foregroundColor: Colors.black,
             padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-            textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            textStyle:
+                const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
@@ -56,7 +59,8 @@ class HomeButtonColumn extends StatelessWidget {
             backgroundColor: Colors.yellow[300],
             foregroundColor: Colors.black,
             padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-            textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            textStyle:
+                const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
@@ -75,7 +79,6 @@ class HomeScreen extends StatefulWidget {
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
-
 
 class _HomeScreenState extends State<HomeScreen> {
   @override
@@ -106,7 +109,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     onOpenObs: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) => const StopwatchAppScreen(),
+                          builder: (_) => const StopwatchApp(),
                         ),
                       );
                     },
@@ -118,25 +121,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const HomeFooter(),
         ],
-      ),
-    );
-  }
-}
-
-// Dummy StopwatchAppScreen for demonstration
-class StopwatchAppScreen extends StatelessWidget {
-  const StopwatchAppScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Time Observation'),
-        backgroundColor: Colors.yellow[300],
-        foregroundColor: Colors.black,
-      ),
-      body: const Center(
-        child: Text('Stopwatch functionality goes here.'),
       ),
     );
   }

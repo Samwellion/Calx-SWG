@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../organization_setup_screen.dart'; // Import to access OrganizationData
+import '../screens/organization_setup_screen.dart'; // Import to access OrganizationData
 
 class HomeHeader extends StatelessWidget {
   const HomeHeader({super.key});

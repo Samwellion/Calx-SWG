@@ -285,6 +285,12 @@ class _CompanyPlantsTableState extends State<CompanyPlantsTable> {
   final TextEditingController _controller = TextEditingController();
 
   @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   void initState() {
     super.initState();
     _plants = List<String>.from(widget.initialPlants);

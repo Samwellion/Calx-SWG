@@ -30,6 +30,25 @@ class TimeObservationTableState extends State<TimeObservationTable> {
   ];
   final Map<int, TextEditingController> _elementControllers = {};
   final Map<int, FocusNode> _elementFocusNodes = {};
+  final Map<int, TextEditingController> _commentsControllers = {};
+  final Map<int, TextEditingController> _lowestRepeatableControllers = {};
+  @override
+  void dispose() {
+    for (final controller in _elementControllers.values) {
+      controller.dispose();
+    }
+    for (final node in _elementFocusNodes.values) {
+      node.dispose();
+    }
+    for (final controller in _commentsControllers.values) {
+      controller.dispose();
+    }
+    for (final controller in _lowestRepeatableControllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
   int? _focusRowIndex;
   List<Duration> _footerLapTotals = [];
   final List<String> _ovrdValues = [];
@@ -243,12 +262,35 @@ class TimeObservationTableState extends State<TimeObservationTable> {
                   _elementControllers.putIfAbsent(rowIdx,
                       () => TextEditingController(text: row['element'] ?? ''));
                   _elementFocusNodes.putIfAbsent(rowIdx, () => FocusNode());
+                  _commentsControllers.putIfAbsent(rowIdx,
+                      () => TextEditingController(text: row['comments'] ?? ''));
+                  _lowestRepeatableControllers.putIfAbsent(
+                      rowIdx,
+                      () => TextEditingController(
+                          text: row['lowestRepeatable'] == 'N/A'
+                              ? ''
+                              : (row['lowestRepeatable']?.toString() ?? '')));
                   final controller = _elementControllers[rowIdx]!;
                   final focusNode = _elementFocusNodes[rowIdx]!;
+                  final commentsController = _commentsControllers[rowIdx]!;
+                  final lowestRepeatableController =
+                      _lowestRepeatableControllers[rowIdx]!;
                   if (controller.text != (row['element'] ?? '')) {
                     controller.text = row['element'] ?? '';
                     controller.selection = TextSelection.fromPosition(
                         TextPosition(offset: controller.text.length));
+                  }
+                  if (commentsController.text != (row['comments'] ?? '')) {
+                    commentsController.text = row['comments'] ?? '';
+                  }
+                  if (lowestRepeatableController.text !=
+                      (row['lowestRepeatable'] == 'N/A'
+                          ? ''
+                          : (row['lowestRepeatable']?.toString() ?? ''))) {
+                    lowestRepeatableController.text =
+                        row['lowestRepeatable'] == 'N/A'
+                            ? ''
+                            : (row['lowestRepeatable']?.toString() ?? '');
                   }
                   if (_focusRowIndex == rowIdx) {
                     Future.delayed(Duration.zero, () {
@@ -287,8 +329,7 @@ class TimeObservationTableState extends State<TimeObservationTable> {
                               border: InputBorder.none,
                               hintText: 'Enter element',
                               isDense: true,
-                              contentPadding: EdgeInsets.symmetric(
-                                  vertical: 8), // Removed horizontal here
+                              contentPadding: EdgeInsets.symmetric(vertical: 8),
                             ),
                             onSubmitted: (value) {
                               setState(() {
@@ -299,7 +340,7 @@ class TimeObservationTableState extends State<TimeObservationTable> {
                                       {'element': '', 'times': <Duration>[]});
                                   _focusRowIndex = _rows.length - 1;
                                 }
-                                _updateFooterTotals(); // Update totals when element might affect row count for laps
+                                _updateFooterTotals();
                               });
                             },
                             onChanged: (value) {
@@ -346,12 +387,7 @@ class TimeObservationTableState extends State<TimeObservationTable> {
                                   color: Colors.white,
                                 ),
                                 child: TextField(
-                                  controller: TextEditingController(
-                                      text: row['lowestRepeatable'] == 'N/A'
-                                          ? ''
-                                          : (row['lowestRepeatable']
-                                                  ?.toString() ??
-                                              '')),
+                                  controller: lowestRepeatableController,
                                   decoration: const InputDecoration(
                                     border: InputBorder.none,
                                     hintText: 'Enter time',
@@ -395,8 +431,7 @@ class TimeObservationTableState extends State<TimeObservationTable> {
                             color: Colors.white,
                           ),
                           child: TextField(
-                            controller: TextEditingController(
-                                text: row['comments'] ?? ''),
+                            controller: commentsController,
                             decoration: const InputDecoration(
                               border: InputBorder.none,
                               hintText: 'Enter comment',
