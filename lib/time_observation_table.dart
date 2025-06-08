@@ -1,5 +1,6 @@
 // time_observation_table.dart
 import 'package:flutter/material.dart';
+import 'global_table_data.dart';
 
 class TimeObservationTable extends StatefulWidget {
   const TimeObservationTable({super.key});
@@ -33,6 +34,7 @@ class TimeObservationTableState extends State<TimeObservationTable> {
   List<Duration> _footerLapTotals = [];
   final List<String> _ovrdValues = [];
   final List<String> _summaryValues = [];
+  Duration? _footerLowestRepeatable;
 
   void insertTime(Duration time) {
     setState(() {
@@ -112,6 +114,22 @@ class TimeObservationTableState extends State<TimeObservationTable> {
   void showFooterLowestRepeatables() {
     setState(() {
       updateFooterLowestRepeatables();
+      // Calculate lowest repeatable for total lap (footer)
+      if (_footerLapTotals.isNotEmpty) {
+        final roundedTotals = _footerLapTotals
+            .map((t) => Duration(seconds: (t.inMilliseconds / 1000).round()))
+            .toList();
+        final counts = <Duration, int>{};
+        for (final t in roundedTotals) {
+          counts[t] = (counts[t] ?? 0) + 1;
+        }
+        final sorted = roundedTotals.toSet().toList()..sort();
+        _footerLowestRepeatable = sorted
+            .cast<Duration?>()
+            .firstWhere((t) => counts[t]! >= 2, orElse: () => null);
+      } else {
+        _footerLowestRepeatable = null;
+      }
     });
   }
 
@@ -124,6 +142,15 @@ class TimeObservationTableState extends State<TimeObservationTable> {
       m.toString().padLeft(2, '0'),
       s.toString().padLeft(2, '0')
     ].join(':');
+  }
+
+  void storeTableDataGlobally() {
+    globalTableData = List<Map<String, dynamic>>.from(_rows.map((row) => {
+      'element': row['element'],
+      'times': List<Duration>.from(row['times']),
+      'comments': row['comments'],
+      'lowestRepeatable': row['lowestRepeatable'],
+    }));
   }
 
   @override
@@ -232,19 +259,25 @@ class TimeObservationTableState extends State<TimeObservationTable> {
                   return DataRow(
                     cells: [
                       DataCell(Container(
-                          width: _firstColumnWidth, // Use reduced width
-                          alignment: Alignment.center,
-                          padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                          child: Text('${rowIdx + 1}'))),
+                        width: _firstColumnWidth, // Use reduced width
+                        alignment: Alignment.center,
+                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          color: Colors.transparent,
+                        ),
+                        child: Text('${rowIdx + 1}'),
+                      )),
                       DataCell(
                         Container(
                           width: _columnWidth, // Standard width
                           alignment: Alignment.centerLeft,
                           padding: const EdgeInsets.symmetric(
                               horizontal: 4.0), // Keep padding for TextField
-                          color: focusNode.hasFocus
-                              ? Colors.white
-                              : Colors.transparent,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            color: Colors.white,
+                          ),
                           child: TextField(
                             controller: controller,
                             focusNode: focusNode,
@@ -283,6 +316,10 @@ class TimeObservationTableState extends State<TimeObservationTable> {
                             alignment: Alignment.center,
                             padding:
                                 const EdgeInsets.symmetric(horizontal: 4.0),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade300),
+                              color: Colors.transparent,
+                            ),
                             child: Text(
                               hasValue ? timeToString(times[lapIdx]) : '',
                               style: TextStyle(
@@ -293,23 +330,74 @@ class TimeObservationTableState extends State<TimeObservationTable> {
                         );
                       }),
                       DataCell(
-                        Container(
-                          width: _columnWidth,
-                          alignment: Alignment.center,
-                          padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                          child: Text(
-                            row['lowestRepeatable'] is Duration
-                                ? timeToString(
-                                    row['lowestRepeatable'] as Duration)
-                                : (row['lowestRepeatable']?.toString() ?? ''),
-                          ),
-                        ),
+                        (row['lowestRepeatable'] == null ||
+                                row['lowestRepeatable'] == '' ||
+                                row['lowestRepeatable'] == 'N/A')
+                            ? Container(
+                                width: _columnWidth,
+                                alignment: Alignment.center,
+                                padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.grey.shade300),
+                                  color: Colors.white,
+                                ),
+                                child: TextField(
+                                  controller: TextEditingController(
+                                      text: row['lowestRepeatable'] == 'N/A' ? '' : (row['lowestRepeatable']?.toString() ?? '')),
+                                  decoration: const InputDecoration(
+                                    border: InputBorder.none,
+                                    hintText: 'Enter time',
+                                    isDense: true,
+                                    contentPadding: EdgeInsets.symmetric(vertical: 8),
+                                  ),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      row['lowestRepeatable'] = value;
+                                    });
+                                  },
+                                ),
+                              )
+                            : Container(
+                                width: _columnWidth,
+                                alignment: Alignment.center,
+                                padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.grey.shade300),
+                                  color: Colors.transparent,
+                                ),
+                                child: Text(
+                                  row['lowestRepeatable'] is Duration
+                                      ? timeToString(row['lowestRepeatable'] as Duration)
+                                      : (row['lowestRepeatable']?.toString() ?? ''),
+                                ),
+                              ),
                       ),
-                      DataCell(Container(
+                      DataCell(
+                        Container(
                           width: _commentsColumnWidth, // Use doubled width
                           alignment: Alignment.centerLeft,
                           padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                          child: Text(row['comments'] ?? ''))),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            color: Colors.white,
+                          ),
+                          child: TextField(
+                            controller: TextEditingController(
+                                text: row['comments'] ?? ''),
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              hintText: 'Enter comment',
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(vertical: 8),
+                            ),
+                            onChanged: (value) {
+                              setState(() {
+                                row['comments'] = value;
+                              });
+                            },
+                          ),
+                        ),
+                      ),
                     ],
                   );
                 },
@@ -390,27 +478,58 @@ class TimeObservationTableState extends State<TimeObservationTable> {
                     }),
                     // Empty cell for 'Lowest Repeatable'
                     TableCell(
-                      child: Container(
-                        width: _columnWidth * 1.1, // Match header width
-                        decoration: BoxDecoration(
-                          color: Colors.yellow[100],
-                          border: const Border(
-                            top: BorderSide(color: Colors.black26),
-                            right: BorderSide(color: Colors.black26),
-                          ),
-                        ),
-                        height: 40,
-                        alignment: Alignment.center,
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        child: const Text(''),
-                      ),
+                      child: _footerLowestRepeatable == null
+                          ? Container(
+                              width: _columnWidth * 1.1, // Match header width
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                border: const Border(
+                                  top: BorderSide(color: Colors.black26),
+                                  right: BorderSide(color: Colors.black26),
+                                ),
+                              ),
+                              height: 40,
+                              alignment: Alignment.center,
+                              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                              child: TextField(
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  hintText: 'Enter time',
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.symmetric(vertical: 8),
+                                ),
+                                onChanged: (value) {
+                                  setState(() {
+                                    // Store as string for footer lowest repeatable if needed
+                                    // You may want to parse/validate as needed
+                                  });
+                                },
+                              ),
+                            )
+                          : Container(
+                              width: _columnWidth * 1.1, // Match header width
+                              decoration: BoxDecoration(
+                                color: Colors.yellow[100],
+                                border: const Border(
+                                  top: BorderSide(color: Colors.black26),
+                                  right: BorderSide(color: Colors.black26),
+                                ),
+                              ),
+                              height: 40,
+                              alignment: Alignment.center,
+                              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                              child: Text(
+                                timeToString(_footerLowestRepeatable!),
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
                     ),
                     // Empty cell for 'Comments'
                     TableCell(
                       child: Container(
                         width: _commentsColumnWidth, // Use doubled width
                         decoration: BoxDecoration(
-                          color: Colors.yellow[100],
+                          color: Colors.yellow[300], // Match Total Lap cell color
                           border: const Border(
                             top: BorderSide(color: Colors.black26),
                             // No right border for the last cell in the row
