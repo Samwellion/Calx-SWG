@@ -294,10 +294,9 @@ class TimeObservationTableState extends State<TimeObservationTable> {
                   }
                   if (_focusRowIndex == rowIdx) {
                     Future.delayed(Duration.zero, () {
-                      if (mounted) {
-                        FocusScope.of(context).requestFocus(focusNode);
-                        _focusRowIndex = null;
-                      }
+                      if (!mounted) return;
+                      FocusScope.of(context).requestFocus(focusNode);
+                      _focusRowIndex = null;
                     });
                   }
                   return DataRow(
