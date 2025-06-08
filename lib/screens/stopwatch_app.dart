@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../widgets/stopwatch_header.dart';
-import '../widgets/stopwatch_footer.dart';
-import '../../time_observation_table.dart';
-// import '../../organization_setup_screen.dart';
+import '../timer_display.dart';
+import '../control_buttons.dart';
+import '../time_observation_table.dart';
 import '../logic/simple_stopwatch.dart';
+import 'organization_setup_screen.dart';
 
 class StopwatchApp extends StatefulWidget {
   const StopwatchApp({super.key});
@@ -56,9 +56,6 @@ class _StopwatchAppState extends State<StopwatchApp> {
       _simpleStopwatch.stop();
       _tableKey.currentState?.enterLowestRepeatedIntoTimeColumn();
       _tableKey.currentState?.unhideOvrdColumn();
-      _tableKey.currentState
-          ?.showFooterLowestRepeatables(); // Show lowest repeatable in footer
-      // Removed call to undefined showFooterTotalLapLowestRepeatable
     }
   }
 
@@ -92,16 +89,56 @@ class _StopwatchAppState extends State<StopwatchApp> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
-              StopwatchHeader(
-                elapsed: _elapsed,
-                lapTime: _lapTime,
-                onStart: _start,
-                onStop: _stop,
-                onReset: _reset,
-                onMarkLap: _markLap,
-                running: _simpleStopwatch.isRunning,
-                isInitial: _isInitial,
+              // Persistent top container for timer and buttons
+              Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.yellow[100],
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TimerDisplay(elapsed: _elapsed, lapTime: _lapTime),
+                          const SizedBox(height: 8),
+                          ControlButtons(
+                            onStart: _start,
+                            onStop: _stop,
+                            onReset: _reset,
+                            onMarkLap: _markLap,
+                            running: _simpleStopwatch.isRunning,
+                            isInitial: _isInitial,
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (OrganizationData.companyName.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 24.0),
+                        child: Text(
+                          OrganizationData.companyName,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
               const SizedBox(height: 16),
               Expanded(
@@ -115,20 +152,67 @@ class _StopwatchAppState extends State<StopwatchApp> {
                   ],
                 ),
               ),
-              // Footer
-              StopwatchFooter(
-                onBack: () {
-                  Navigator.of(context).pop();
-                },
-                onSave: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Time observation data saved!'),
-                      duration: Duration(seconds: 2),
+              // Footer container with back and save button
+              Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.yellow[100],
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, -2),
                     ),
-                  );
-                  Navigator.of(context).popUntil((route) => route.isFirst);
-                },
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.yellow[300],
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 32, vertical: 16),
+                        textStyle: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        elevation: 6,
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text('Back to Home'),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.yellow[300],
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 32, vertical: 16),
+                        textStyle: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        elevation: 6,
+                      ),
+                      onPressed: () {
+                        // TODO: Implement save logic for time observation
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Time observation data saved!'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                      child: const Text('Save'),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
