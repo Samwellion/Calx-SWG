@@ -39,11 +39,13 @@ class ControlButtons extends StatelessWidget {
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             elevation: 6,
           ),
-          child: Text(isInitial
-              ? 'Start'
-              : running
-                  ? 'Mark Lap'
-                  : 'Reset'),
+          child: Text(
+            isInitial
+                ? 'Start'
+                : running
+                    ? 'Mark Lap'
+                    : 'Reset',
+          ),
         ),
         const SizedBox(width: 16),
         ElevatedButton(
