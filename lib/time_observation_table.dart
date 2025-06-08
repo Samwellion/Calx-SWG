@@ -146,11 +146,11 @@ class TimeObservationTableState extends State<TimeObservationTable> {
 
   void storeTableDataGlobally() {
     globalTableData = List<Map<String, dynamic>>.from(_rows.map((row) => {
-      'element': row['element'],
-      'times': List<Duration>.from(row['times']),
-      'comments': row['comments'],
-      'lowestRepeatable': row['lowestRepeatable'],
-    }));
+          'element': row['element'],
+          'times': List<Duration>.from(row['times']),
+          'comments': row['comments'],
+          'lowestRepeatable': row['lowestRepeatable'],
+        }));
   }
 
   @override
@@ -168,7 +168,7 @@ class TimeObservationTableState extends State<TimeObservationTable> {
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.12),
+            color: Colors.black.withValues(alpha: 0.12),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -252,8 +252,10 @@ class TimeObservationTableState extends State<TimeObservationTable> {
                   }
                   if (_focusRowIndex == rowIdx) {
                     Future.delayed(Duration.zero, () {
-                      FocusScope.of(context).requestFocus(focusNode);
-                      _focusRowIndex = null;
+                      if (mounted) {
+                        FocusScope.of(context).requestFocus(focusNode);
+                        _focusRowIndex = null;
+                      }
                     });
                   }
                   return DataRow(
@@ -336,19 +338,26 @@ class TimeObservationTableState extends State<TimeObservationTable> {
                             ? Container(
                                 width: _columnWidth,
                                 alignment: Alignment.center,
-                                padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 4.0),
                                 decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.grey.shade300),
+                                  border:
+                                      Border.all(color: Colors.grey.shade300),
                                   color: Colors.white,
                                 ),
                                 child: TextField(
                                   controller: TextEditingController(
-                                      text: row['lowestRepeatable'] == 'N/A' ? '' : (row['lowestRepeatable']?.toString() ?? '')),
+                                      text: row['lowestRepeatable'] == 'N/A'
+                                          ? ''
+                                          : (row['lowestRepeatable']
+                                                  ?.toString() ??
+                                              '')),
                                   decoration: const InputDecoration(
                                     border: InputBorder.none,
                                     hintText: 'Enter time',
                                     isDense: true,
-                                    contentPadding: EdgeInsets.symmetric(vertical: 8),
+                                    contentPadding:
+                                        EdgeInsets.symmetric(vertical: 8),
                                   ),
                                   onChanged: (value) {
                                     setState(() {
@@ -360,15 +369,19 @@ class TimeObservationTableState extends State<TimeObservationTable> {
                             : Container(
                                 width: _columnWidth,
                                 alignment: Alignment.center,
-                                padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 4.0),
                                 decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.grey.shade300),
+                                  border:
+                                      Border.all(color: Colors.grey.shade300),
                                   color: Colors.transparent,
                                 ),
                                 child: Text(
                                   row['lowestRepeatable'] is Duration
-                                      ? timeToString(row['lowestRepeatable'] as Duration)
-                                      : (row['lowestRepeatable']?.toString() ?? ''),
+                                      ? timeToString(
+                                          row['lowestRepeatable'] as Duration)
+                                      : (row['lowestRepeatable']?.toString() ??
+                                          ''),
                                 ),
                               ),
                       ),
@@ -481,22 +494,24 @@ class TimeObservationTableState extends State<TimeObservationTable> {
                       child: _footerLowestRepeatable == null
                           ? Container(
                               width: _columnWidth * 1.1, // Match header width
-                              decoration: BoxDecoration(
+                              decoration: const BoxDecoration(
                                 color: Colors.white,
-                                border: const Border(
+                                border: Border(
                                   top: BorderSide(color: Colors.black26),
                                   right: BorderSide(color: Colors.black26),
                                 ),
                               ),
                               height: 40,
                               alignment: Alignment.center,
-                              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16.0),
                               child: TextField(
                                 decoration: const InputDecoration(
                                   border: InputBorder.none,
                                   hintText: 'Enter time',
                                   isDense: true,
-                                  contentPadding: EdgeInsets.symmetric(vertical: 8),
+                                  contentPadding:
+                                      EdgeInsets.symmetric(vertical: 8),
                                 ),
                                 onChanged: (value) {
                                   setState(() {
@@ -517,10 +532,12 @@ class TimeObservationTableState extends State<TimeObservationTable> {
                               ),
                               height: 40,
                               alignment: Alignment.center,
-                              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16.0),
                               child: Text(
                                 timeToString(_footerLowestRepeatable!),
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
                               ),
                             ),
                     ),
@@ -529,7 +546,8 @@ class TimeObservationTableState extends State<TimeObservationTable> {
                       child: Container(
                         width: _commentsColumnWidth, // Use doubled width
                         decoration: BoxDecoration(
-                          color: Colors.yellow[300], // Match Total Lap cell color
+                          color:
+                              Colors.yellow[300], // Match Total Lap cell color
                           border: const Border(
                             top: BorderSide(color: Colors.black26),
                             // No right border for the last cell in the row

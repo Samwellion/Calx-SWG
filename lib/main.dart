@@ -27,7 +27,7 @@ class HomeHeader extends StatelessWidget {
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -83,7 +83,7 @@ class HomeFooter extends StatelessWidget {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),
@@ -197,7 +197,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
+                      color: Colors.black.withValues(alpha: 0.06),
                       blurRadius: 6,
                       offset: const Offset(0, 2),
                     ),
@@ -287,7 +287,8 @@ class _StopwatchAppState extends State<StopwatchApp> {
     if (_simpleStopwatch.isRunning) {
       _simpleStopwatch.stop();
       _tableKey.currentState?.enterLowestRepeatedIntoTimeColumn();
-      _tableKey.currentState?.unhideOvrdColumn(); // Unhide the OVRD column when stopped
+      _tableKey.currentState
+          ?.unhideOvrdColumn(); // Unhide the OVRD column when stopped
     }
   }
 
@@ -331,7 +332,7 @@ class _StopwatchAppState extends State<StopwatchApp> {
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
+                      color: Colors.black.withValues(alpha: 0.08),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -387,13 +388,14 @@ class _StopwatchAppState extends State<StopwatchApp> {
               // Footer container with back and save button
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                 decoration: BoxDecoration(
                   color: Colors.yellow[100],
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
+                      color: Colors.black.withValues(alpha: 0.08),
                       blurRadius: 8,
                       offset: const Offset(0, -2),
                     ),

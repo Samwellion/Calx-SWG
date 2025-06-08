@@ -19,7 +19,7 @@ class OrganizationSetupHeader extends StatelessWidget {
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -72,7 +72,7 @@ class OrganizationSetupFooter extends StatelessWidget {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),
@@ -168,7 +168,7 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.06),
+                        color: Colors.black.withValues(alpha: 0.06),
                         blurRadius: 6,
                         offset: const Offset(0, 2),
                       ),
