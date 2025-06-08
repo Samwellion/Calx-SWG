@@ -83,7 +83,7 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.06),
+                        color: Colors.black.withValues(alpha: 0.06),
                         blurRadius: 6,
                         offset: const Offset(0, 2),
                       ),
@@ -177,7 +177,8 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
                                           children: [
                                             Expanded(
                                               child: TextField(
-                                                controller: _controllers[selectedPlant]!,
+                                                controller: _controllers[
+                                                    selectedPlant]!,
                                                 decoration:
                                                     const InputDecoration(
                                                   labelText:
@@ -188,7 +189,8 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
                                                   fillColor: Colors.white,
                                                 ),
                                                 onSubmitted: (_) {
-                                                  _addValueStream(selectedPlant);
+                                                  _addValueStream(
+                                                      selectedPlant);
                                                 },
                                               ),
                                             ),
@@ -285,15 +287,18 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.only(right: 24.0, bottom: 24.0, top: 12.0),
+            padding:
+                const EdgeInsets.only(right: 24.0, bottom: 24.0, top: 12.0),
             child: Align(
               alignment: Alignment.bottomRight,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.yellow[300],
                   foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                  textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  textStyle: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
