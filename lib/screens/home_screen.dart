@@ -199,14 +199,21 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     // Use all available company names from OrganizationData
-    final List<String> orgCompanies = OrganizationData.companyNames ?? (OrganizationData.companyName.isNotEmpty ? [OrganizationData.companyName] : []);
-    final String? orgCompany = selectedCompany ?? (orgCompanies.isNotEmpty ? orgCompanies.first : null);
-    final List<String> orgPlants = orgCompany != null && OrganizationData.companyPlants != null && OrganizationData.companyPlants[orgCompany] != null
+    final List<String> orgCompanies = OrganizationData.companyNames ??
+        (OrganizationData.companyName.isNotEmpty
+            ? [OrganizationData.companyName]
+            : []);
+    final String? orgCompany = selectedCompany ??
+        (orgCompanies.isNotEmpty ? orgCompanies.first : null);
+    final List<String> orgPlants = orgCompany != null &&
+            OrganizationData.companyPlants != null &&
+            OrganizationData.companyPlants[orgCompany] != null
         ? OrganizationData.companyPlants[orgCompany]!
         : <String>[];
-    final List<String> valueStreams = (selectedPlant != null && plantValueStreams[selectedPlant!] != null)
-        ? plantValueStreams[selectedPlant!]!
-        : <String>[];
+    final List<String> valueStreams =
+        (selectedPlant != null && plantValueStreams[selectedPlant!] != null)
+            ? plantValueStreams[selectedPlant!]!
+            : <String>[];
     return Scaffold(
       backgroundColor: Colors.yellow[100],
       body: Column(
