@@ -65,6 +65,8 @@ class HomeButtonColumn extends StatelessWidget {
 
 class HomeDropdownsColumn extends StatelessWidget {
   final String? orgCompany;
+  final List<String> orgCompanies;
+  final ValueChanged<String?> onCompanyChanged;
   final String? selectedPlant;
   final List<String> orgPlants;
   final ValueChanged<String?> onPlantChanged;
@@ -75,6 +77,8 @@ class HomeDropdownsColumn extends StatelessWidget {
   const HomeDropdownsColumn({
     super.key,
     required this.orgCompany,
+    required this.orgCompanies,
+    required this.onCompanyChanged,
     required this.selectedPlant,
     required this.orgPlants,
     required this.onPlantChanged,
@@ -110,19 +114,14 @@ class HomeDropdownsColumn extends StatelessWidget {
                 child: DropdownButton<String>(
                   isExpanded: true,
                   value: orgCompany,
-                  hint: const Text('No company set',
+                  hint: const Text('Select Company',
                       style: TextStyle(fontSize: 18)),
-                  items: orgCompany != null
-                      ? [
-                          DropdownMenuItem(
-                              value: orgCompany,
-                              child: Text(orgCompany ?? '',
-                                  style: TextStyle(
-                                      fontSize:
-                                          18))) // Handle null orgCompany for Text widget
-                        ]
-                      : [],
-                  onChanged: null, // Not selectable, just display
+                  items: orgCompanies
+                      .map((c) => DropdownMenuItem(
+                          value: c,
+                          child: Text(c, style: TextStyle(fontSize: 18))))
+                      .toList(),
+                  onChanged: onCompanyChanged,
                 ),
               ),
             ],
@@ -199,14 +198,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final String? orgCompany = OrganizationData.companyName.isNotEmpty
-        ? OrganizationData.companyName
-        : null;
-    final List<String> orgPlants = OrganizationData.plants;
-    final List<String> valueStreams =
-        (selectedPlant != null && plantValueStreams[selectedPlant!] != null)
-            ? plantValueStreams[selectedPlant!]!
-            : <String>[];
+    // Use all available company names from OrganizationData
+    final List<String> orgCompanies = OrganizationData.companyNames ?? (OrganizationData.companyName.isNotEmpty ? [OrganizationData.companyName] : []);
+    final String? orgCompany = selectedCompany ?? (orgCompanies.isNotEmpty ? orgCompanies.first : null);
+    final List<String> orgPlants = orgCompany != null && OrganizationData.companyPlants != null && OrganizationData.companyPlants[orgCompany] != null
+        ? OrganizationData.companyPlants[orgCompany]!
+        : <String>[];
+    final List<String> valueStreams = (selectedPlant != null && plantValueStreams[selectedPlant!] != null)
+        ? plantValueStreams[selectedPlant!]!
+        : <String>[];
     return Scaffold(
       backgroundColor: Colors.yellow[100],
       body: Column(
@@ -253,13 +253,18 @@ class _HomeScreenState extends State<HomeScreen> {
                     // Right column: Dropdowns - Replaced with HomeDropdownsColumn
                     HomeDropdownsColumn(
                       orgCompany: orgCompany,
+                      orgCompanies: orgCompanies,
+                      onCompanyChanged: (val) => setState(() {
+                        selectedCompany = val;
+                        selectedPlant = null;
+                        selectedValueStream = null;
+                      }),
                       selectedPlant: selectedPlant,
                       orgPlants: orgPlants,
                       onPlantChanged: (val) {
                         setState(() {
                           selectedPlant = val;
-                          selectedValueStream =
-                              null; // Reset value stream when plant changes
+                          selectedValueStream = null;
                         });
                       },
                       selectedValueStream: selectedValueStream,
