@@ -107,169 +107,25 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Plant selectable list
-                              Container(
-                                width: 220,
-                                margin: const EdgeInsets.only(right: 32),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border:
-                                      Border.all(color: Colors.yellow[300]!),
-                                ),
-                                child: ListView.builder(
-                                  shrinkWrap: true,
-                                  itemCount: plants.length,
-                                  itemBuilder: (context, idx) {
-                                    final plant = plants[idx];
-                                    final selected = plant == selectedPlant;
-                                    return Material(
-                                      color: selected
-                                          ? Colors.yellow[200]
-                                          : Colors.transparent,
-                                      child: ListTile(
-                                        title: Text(
-                                          plant,
-                                          style: TextStyle(
-                                            fontWeight: selected
-                                                ? FontWeight.bold
-                                                : FontWeight.normal,
-                                            color: selected
-                                                ? Colors.black
-                                                : Colors.black87,
-                                          ),
-                                        ),
-                                        selected: selected,
-                                        onTap: () {
-                                          setState(() {
-                                            _selectedPlant = plant;
-                                          });
-                                        },
-                                      ),
-                                    );
-                                  },
-                                ),
+                              PlantListSelector(
+                                plants: plants,
+                                selectedPlant: selectedPlant,
+                                onPlantSelected: (plant) {
+                                  setState(() {
+                                    _selectedPlant = plant;
+                                  });
+                                },
                               ),
-                              // Value stream input and table for selected plant
                               if (selectedPlant != null)
                                 Expanded(
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                          color: Colors.yellow[300]!),
-                                    ),
-                                    padding: const EdgeInsets.all(12),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          selectedPlant,
-                                          style: const TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: TextField(
-                                                controller: _controllers[
-                                                    selectedPlant]!,
-                                                decoration:
-                                                    const InputDecoration(
-                                                  labelText:
-                                                      'Add Value Stream Name',
-                                                  border: OutlineInputBorder(),
-                                                  isDense: true,
-                                                  filled: true,
-                                                  fillColor: Colors.white,
-                                                ),
-                                                onSubmitted: (_) {
-                                                  _addValueStream(
-                                                      selectedPlant);
-                                                },
-                                              ),
-                                            ),
-                                            const SizedBox(width: 12),
-                                            ElevatedButton(
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor:
-                                                    Colors.yellow[300],
-                                                foregroundColor: Colors.black,
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 32,
-                                                        vertical: 16),
-                                                textStyle: const TextStyle(
-                                                    fontSize: 18,
-                                                    fontWeight:
-                                                        FontWeight.bold),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                ),
-                                                elevation: 6,
-                                              ),
-                                              onPressed: () => _addValueStream(
-                                                  selectedPlant),
-                                              child: const Text('Add'),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 12),
-                                        if (valueStreams.isNotEmpty)
-                                          Table(
-                                            columnWidths: const {
-                                              0: FlexColumnWidth(1),
-                                              1: IntrinsicColumnWidth(),
-                                            },
-                                            children: [
-                                              ...valueStreams
-                                                  .asMap()
-                                                  .entries
-                                                  .map(
-                                                    (entry) => TableRow(
-                                                      children: [
-                                                        Padding(
-                                                          padding:
-                                                              const EdgeInsets
-                                                                  .symmetric(
-                                                                  vertical:
-                                                                      8.0),
-                                                          child:
-                                                              Text(entry.value),
-                                                        ),
-                                                        IconButton(
-                                                          icon: const Icon(
-                                                              Icons.delete,
-                                                              color:
-                                                                  Colors.red),
-                                                          onPressed: () =>
-                                                              _removeValueStream(
-                                                                  selectedPlant,
-                                                                  entry.key),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                            ],
-                                          ),
-                                        if (valueStreams.isEmpty)
-                                          const Padding(
-                                            padding: EdgeInsets.symmetric(
-                                                vertical: 8.0),
-                                            child: Text(
-                                              'No value streams added yet.',
-                                              style: TextStyle(
-                                                  color: Colors.black54),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
+                                  child: PlantValueStreamsPanel(
+                                    plant: selectedPlant,
+                                    valueStreams:
+                                        List<String>.from(valueStreams),
+                                    controller: _controllers[selectedPlant]!,
+                                    onAdd: () => _addValueStream(selectedPlant),
+                                    onRemove: (idx) =>
+                                        _removeValueStream(selectedPlant, idx),
                                   ),
                                 ),
                             ],
@@ -319,6 +175,142 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
             ),
           ),
           OrganizationSetupFooter(onBack: _goBack),
+        ],
+      ),
+    );
+  }
+}
+
+class PlantListSelector extends StatelessWidget {
+  final List<String> plants;
+  final String? selectedPlant;
+  final ValueChanged<String> onPlantSelected;
+  const PlantListSelector({
+    super.key,
+    required this.plants,
+    required this.selectedPlant,
+    required this.onPlantSelected,
+  });
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 220,
+      margin: const EdgeInsets.only(right: 32),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.yellow[300]!),
+      ),
+      child: ListView.builder(
+        shrinkWrap: true,
+        itemCount: plants.length,
+        itemBuilder: (context, idx) {
+          final plant = plants[idx];
+          final selected = plant == selectedPlant;
+          return Material(
+            color: selected ? Colors.yellow[200] : Colors.transparent,
+            child: ListTile(
+              title: Text(
+                plant,
+                style: TextStyle(
+                  fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                  color: selected ? Colors.black : Colors.black87,
+                ),
+              ),
+              selected: selected,
+              onTap: () => onPlantSelected(plant),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class PlantValueStreamsPanel extends StatelessWidget {
+  final String plant;
+  final List<String> valueStreams;
+  final TextEditingController controller;
+  final VoidCallback onAdd;
+  final void Function(int) onRemove;
+  const PlantValueStreamsPanel({
+    super.key,
+    required this.plant,
+    required this.valueStreams,
+    required this.controller,
+    required this.onAdd,
+    required this.onRemove,
+  });
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.yellow[300]!),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            plant,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  decoration: const InputDecoration(
+                    labelText: 'Add Value Stream Name',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
+                  onSubmitted: (_) => onAdd(),
+                ),
+              ),
+              const SizedBox(width: 12),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.yellow[300],
+                  foregroundColor: Colors.black,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  textStyle: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 6,
+                ),
+                onPressed: onAdd,
+                child: const Text('Add'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 180,
+            child: Scrollbar(
+              thumbVisibility: true,
+              child: ListView.builder(
+                itemCount: valueStreams.length,
+                itemBuilder: (context, idx) {
+                  return ListTile(
+                    title: Text(valueStreams[idx]),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () => onRemove(idx),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
         ],
       ),
     );
