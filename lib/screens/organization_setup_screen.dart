@@ -62,8 +62,10 @@ class OrganizationSetupHeader extends StatelessWidget {
 }
 
 class OrganizationSetupFooter extends StatelessWidget {
-  const OrganizationSetupFooter({super.key, required this.onBack});
+  const OrganizationSetupFooter(
+      {super.key, required this.onBack, this.rightButton});
   final VoidCallback onBack;
+  final Widget? rightButton;
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -80,9 +82,9 @@ class OrganizationSetupFooter extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Row(
         children: [
+          // Home button on the left
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.yellow[300],
@@ -97,11 +99,17 @@ class OrganizationSetupFooter extends StatelessWidget {
             onPressed: onBack,
             child: const Text('Back to Home'),
           ),
-          const SizedBox(height: 8),
+          // Spacer
+          const Spacer(),
+          // Copyright centered
           const Text(
             '© 2025 Standard Work Generator App',
             style: TextStyle(fontSize: 16, color: Colors.black54),
           ),
+          // Spacer
+          const Spacer(),
+          // Save button on the right
+          if (rightButton != null) rightButton!,
         ],
       ),
     );
@@ -110,7 +118,9 @@ class OrganizationSetupFooter extends StatelessWidget {
 
 class OrganizationDetailsForm extends StatelessWidget {
   final TextEditingController companyNameController;
+  final FocusNode companyNameFocusNode;
   final TextEditingController plantController;
+  final FocusNode plantFocusNode;
   final List<String> companyNames;
   final String? selectedCompany;
   final void Function() onAddCompanyName;
@@ -127,7 +137,9 @@ class OrganizationDetailsForm extends StatelessWidget {
   const OrganizationDetailsForm({
     super.key,
     required this.companyNameController,
+    required this.companyNameFocusNode,
     required this.plantController,
+    required this.plantFocusNode,
     required this.companyNames,
     required this.selectedCompany,
     required this.onAddCompanyName,
@@ -192,6 +204,7 @@ class OrganizationDetailsForm extends StatelessWidget {
                           Expanded(
                             child: TextField(
                               controller: companyNameController,
+                              focusNode: companyNameFocusNode,
                               decoration: const InputDecoration(
                                 border: OutlineInputBorder(),
                                 isDense: true,
@@ -221,7 +234,7 @@ class OrganizationDetailsForm extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       SizedBox(
-                        height: 100,
+                        height: 180,
                         child: Scrollbar(
                           thumbVisibility: true,
                           child: ListView.builder(
@@ -273,6 +286,7 @@ class OrganizationDetailsForm extends StatelessWidget {
                         Expanded(
                           child: TextField(
                             controller: plantController,
+                            focusNode: plantFocusNode,
                             enabled: selectedCompany != null,
                             decoration: InputDecoration(
                               border: const OutlineInputBorder(),
@@ -344,24 +358,7 @@ class OrganizationDetailsForm extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          Align(
-            alignment: Alignment.bottomRight,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.yellow[300],
-                foregroundColor: Colors.black,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                textStyle:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                elevation: 6,
-              ),
-              onPressed: saveEnabled ? onSave : null,
-              child: const Text('Save and Proceed to Plant Setup'),
-            ),
-          ),
+          // ...existing code...
         ],
       ),
     );
@@ -378,10 +375,12 @@ class OrganizationSetupScreen extends StatefulWidget {
 
 class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
   final TextEditingController _companyNameController = TextEditingController();
+  final FocusNode _companyNameFocusNode = FocusNode();
   final TextEditingController _plantController = TextEditingController();
-  List<String> _companyNames = [];
+  final FocusNode _plantFocusNode = FocusNode();
+  final List<String> _companyNames = [];
   String? _selectedCompany;
-  Map<String, List<String>> _companyPlants = {};
+  final Map<String, List<String>> _companyPlants = {};
   String? _selectedPlant;
 
   @override
@@ -399,7 +398,9 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
   @override
   void dispose() {
     _companyNameController.dispose();
+    _companyNameFocusNode.dispose();
     _plantController.dispose();
+    _plantFocusNode.dispose();
     super.dispose();
   }
 
@@ -444,6 +445,7 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
         _companyNameController.clear();
       });
     }
+    FocusScope.of(context).requestFocus(_companyNameFocusNode);
   }
 
   void _removeCompanyName(int index) {
@@ -478,6 +480,7 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
         _plantController.clear();
       });
     }
+    FocusScope.of(context).requestFocus(_plantFocusNode);
   }
 
   void _removePlant(int index) {
@@ -500,29 +503,46 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(24.0),
-              child: Center(
-                child: OrganizationDetailsForm(
-                  companyNameController: _companyNameController,
-                  plantController: _plantController,
-                  companyNames: _companyNames,
-                  selectedCompany: _selectedCompany,
-                  onAddCompanyName: _addCompanyName,
-                  onRemoveCompanyName: _removeCompanyName,
-                  onSelectCompany: _selectCompany,
-                  plants: _selectedCompany != null
-                      ? _companyPlants[_selectedCompany!] ?? []
-                      : [],
-                  selectedPlant: _selectedPlant,
-                  onSelectPlant: _selectPlant,
-                  onAddPlant: _addPlant,
-                  onRemovePlant: _removePlant,
-                  onSave: _saveOrganization,
-                  saveEnabled: _selectedPlant != null,
-                ),
+              child: OrganizationDetailsForm(
+                companyNameController: _companyNameController,
+                companyNameFocusNode: _companyNameFocusNode,
+                plantController: _plantController,
+                plantFocusNode: _plantFocusNode,
+                companyNames: _companyNames,
+                selectedCompany: _selectedCompany,
+                onAddCompanyName: _addCompanyName,
+                onRemoveCompanyName: _removeCompanyName,
+                onSelectCompany: _selectCompany,
+                plants: _selectedCompany != null
+                    ? _companyPlants[_selectedCompany!] ?? []
+                    : [],
+                selectedPlant: _selectedPlant,
+                onSelectPlant: _selectPlant,
+                onAddPlant: _addPlant,
+                onRemovePlant: _removePlant,
+                onSave: _saveOrganization,
+                saveEnabled: _selectedPlant != null,
               ),
             ),
           ),
-          OrganizationSetupFooter(onBack: _goBackToHome),
+          OrganizationSetupFooter(
+            onBack: _goBackToHome,
+            rightButton: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.yellow[300],
+                foregroundColor: Colors.black,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                textStyle:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                elevation: 6,
+              ),
+              onPressed: _selectedPlant != null ? _saveOrganization : null,
+              child: const Text('Save and Proceed to Plant Setup'),
+            ),
+          ),
         ],
       ),
     );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'organization_setup_screen.dart';
+import '../logic/app_database.dart';
 
 // Global map to hold plant -> value streams (one-to-many)
 Map<String, List<String>> plantValueStreams = {};
@@ -12,6 +13,21 @@ class PlantSetupScreen extends StatefulWidget {
 }
 
 class _PlantSetupScreenState extends State<PlantSetupScreen> {
+  Future<void> _saveAllToDatabase() async {
+    final db = await AppDatabase.open();
+    // Insert organization
+    final orgId = await db.insertOrganization(OrganizationData.companyName);
+    // Insert plants and value streams
+    for (final plant in OrganizationData.plants) {
+      final plantId = await db.insertPlant(organizationId: orgId, name: plant);
+      final streams = plantValueStreams[plant] ?? [];
+      for (final vs in streams) {
+        await db.insertValueStream(plantId: plantId, name: vs);
+      }
+    }
+    await db.close();
+  }
+
   // Controllers for each plant's value stream input
   final Map<String, TextEditingController> _controllers = {};
   String? _selectedPlant;
@@ -142,39 +158,34 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
               ),
             ),
           ),
-          Padding(
-            padding:
-                const EdgeInsets.only(right: 24.0, bottom: 24.0, top: 12.0),
-            child: Align(
-              alignment: Alignment.bottomRight,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.yellow[300],
-                  foregroundColor: Colors.black,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                  textStyle: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 6,
+          OrganizationSetupFooter(
+            onBack: _goBack,
+            rightButton: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.yellow[300],
+                foregroundColor: Colors.black,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                textStyle:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                onPressed: () {
-                  // Implement save logic for plant/value stream data here if needed
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Plant and value stream data saved!'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                  Navigator.of(context).popUntil((route) => route.isFirst);
-                },
-                child: const Text('Save and Proceed to Home'),
+                elevation: 6,
               ),
+              onPressed: () async {
+                await _saveAllToDatabase();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Plant and value stream data saved!'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+                Navigator.of(context).popUntil((route) => route.isFirst);
+              },
+              child: const Text('Save and Proceed to Home'),
             ),
           ),
-          OrganizationSetupFooter(onBack: _goBack),
         ],
       ),
     );
