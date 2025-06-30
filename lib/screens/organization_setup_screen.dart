@@ -62,8 +62,10 @@ class OrganizationSetupHeader extends StatelessWidget {
 }
 
 class OrganizationSetupFooter extends StatelessWidget {
-  const OrganizationSetupFooter({super.key, required this.onBack});
+  const OrganizationSetupFooter(
+      {super.key, required this.onBack, this.rightButton});
   final VoidCallback onBack;
+  final Widget? rightButton;
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -80,9 +82,9 @@ class OrganizationSetupFooter extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Row(
         children: [
+          // Home button on the left
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.yellow[300],
@@ -97,11 +99,17 @@ class OrganizationSetupFooter extends StatelessWidget {
             onPressed: onBack,
             child: const Text('Back to Home'),
           ),
-          const SizedBox(height: 8),
+          // Spacer
+          const Spacer(),
+          // Copyright centered
           const Text(
             '© 2025 Standard Work Generator App',
             style: TextStyle(fontSize: 16, color: Colors.black54),
           ),
+          // Spacer
+          const Spacer(),
+          // Save button on the right
+          if (rightButton != null) rightButton!,
         ],
       ),
     );
@@ -110,7 +118,9 @@ class OrganizationSetupFooter extends StatelessWidget {
 
 class OrganizationDetailsForm extends StatelessWidget {
   final TextEditingController companyNameController;
+  final FocusNode companyNameFocusNode;
   final TextEditingController plantController;
+  final FocusNode plantFocusNode;
   final List<String> companyNames;
   final String? selectedCompany;
   final void Function() onAddCompanyName;
@@ -127,7 +137,9 @@ class OrganizationDetailsForm extends StatelessWidget {
   const OrganizationDetailsForm({
     super.key,
     required this.companyNameController,
+    required this.companyNameFocusNode,
     required this.plantController,
+    required this.plantFocusNode,
     required this.companyNames,
     required this.selectedCompany,
     required this.onAddCompanyName,
@@ -183,7 +195,8 @@ class OrganizationDetailsForm extends StatelessWidget {
                     children: [
                       const Text(
                         'Company Name',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 8),
                       Row(
@@ -191,6 +204,7 @@ class OrganizationDetailsForm extends StatelessWidget {
                           Expanded(
                             child: TextField(
                               controller: companyNameController,
+                              focusNode: companyNameFocusNode,
                               decoration: const InputDecoration(
                                 border: OutlineInputBorder(),
                                 isDense: true,
@@ -205,9 +219,12 @@ class OrganizationDetailsForm extends StatelessWidget {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.yellow[300],
                               foregroundColor: Colors.black,
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                              textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 24, vertical: 14),
+                              textStyle: const TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
                               elevation: 6,
                             ),
                             onPressed: onAddCompanyName,
@@ -217,7 +234,7 @@ class OrganizationDetailsForm extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       SizedBox(
-                        height: 100,
+                        height: 180,
                         child: Scrollbar(
                           thumbVisibility: true,
                           child: ListView.builder(
@@ -226,13 +243,20 @@ class OrganizationDetailsForm extends StatelessWidget {
                               final name = companyNames[idx];
                               final selected = name == selectedCompany;
                               return Material(
-                                color: selected ? Colors.yellow[200] : Colors.transparent,
+                                color: selected
+                                    ? Colors.yellow[200]
+                                    : Colors.transparent,
                                 child: ListTile(
-                                  title: Text(name, style: TextStyle(fontWeight: selected ? FontWeight.bold : FontWeight.normal)),
+                                  title: Text(name,
+                                      style: TextStyle(
+                                          fontWeight: selected
+                                              ? FontWeight.bold
+                                              : FontWeight.normal)),
                                   selected: selected,
                                   onTap: () => onSelectCompany(name),
                                   trailing: IconButton(
-                                    icon: const Icon(Icons.delete, color: Colors.red),
+                                    icon: const Icon(Icons.delete,
+                                        color: Colors.red),
                                     onPressed: () => onRemoveCompanyName(idx),
                                   ),
                                 ),
@@ -253,7 +277,8 @@ class OrganizationDetailsForm extends StatelessWidget {
                   children: [
                     const Text(
                       'Plant Name',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
                     Row(
@@ -261,13 +286,16 @@ class OrganizationDetailsForm extends StatelessWidget {
                         Expanded(
                           child: TextField(
                             controller: plantController,
+                            focusNode: plantFocusNode,
                             enabled: selectedCompany != null,
                             decoration: InputDecoration(
                               border: const OutlineInputBorder(),
                               isDense: true,
                               filled: true,
                               fillColor: Colors.white,
-                              hintText: selectedCompany == null ? 'Select a company first' : 'Add Plant Name',
+                              hintText: selectedCompany == null
+                                  ? 'Select a company first'
+                                  : 'Add Plant Name',
                             ),
                             onSubmitted: (_) => onAddPlant(),
                           ),
@@ -277,12 +305,16 @@ class OrganizationDetailsForm extends StatelessWidget {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.yellow[300],
                             foregroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                            textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 14),
+                            textStyle: const TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
                             elevation: 6,
                           ),
-                          onPressed: selectedCompany != null ? onAddPlant : null,
+                          onPressed:
+                              selectedCompany != null ? onAddPlant : null,
                           child: const Text('Add'),
                         ),
                       ],
@@ -298,13 +330,20 @@ class OrganizationDetailsForm extends StatelessWidget {
                             final plant = plants[idx];
                             final selected = plant == selectedPlant;
                             return Material(
-                              color: selected ? Colors.yellow[200] : Colors.transparent,
+                              color: selected
+                                  ? Colors.yellow[200]
+                                  : Colors.transparent,
                               child: ListTile(
-                                title: Text(plant, style: TextStyle(fontWeight: selected ? FontWeight.bold : FontWeight.normal)),
+                                title: Text(plant,
+                                    style: TextStyle(
+                                        fontWeight: selected
+                                            ? FontWeight.bold
+                                            : FontWeight.normal)),
                                 selected: selected,
                                 onTap: () => onSelectPlant(plant),
                                 trailing: IconButton(
-                                  icon: const Icon(Icons.delete, color: Colors.red),
+                                  icon: const Icon(Icons.delete,
+                                      color: Colors.red),
                                   onPressed: () => onRemovePlant(idx),
                                 ),
                               ),
@@ -319,21 +358,7 @@ class OrganizationDetailsForm extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          Align(
-            alignment: Alignment.bottomRight,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.yellow[300],
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                elevation: 6,
-              ),
-              onPressed: saveEnabled ? onSave : null,
-              child: const Text('Save and Proceed to Plant Setup'),
-            ),
-          ),
+          // ...existing code...
         ],
       ),
     );
@@ -350,10 +375,12 @@ class OrganizationSetupScreen extends StatefulWidget {
 
 class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
   final TextEditingController _companyNameController = TextEditingController();
+  final FocusNode _companyNameFocusNode = FocusNode();
   final TextEditingController _plantController = TextEditingController();
-  List<String> _companyNames = [];
+  final FocusNode _plantFocusNode = FocusNode();
+  final List<String> _companyNames = [];
   String? _selectedCompany;
-  Map<String, List<String>> _companyPlants = {};
+  final Map<String, List<String>> _companyPlants = {};
   String? _selectedPlant;
 
   @override
@@ -363,14 +390,17 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
     if (OrganizationData.companyName.isNotEmpty) {
       _companyNames.add(OrganizationData.companyName);
       _selectedCompany = OrganizationData.companyName;
-      _companyPlants[OrganizationData.companyName] = List<String>.from(OrganizationData.plants);
+      _companyPlants[OrganizationData.companyName] =
+          List<String>.from(OrganizationData.plants);
     }
   }
 
   @override
   void dispose() {
     _companyNameController.dispose();
+    _companyNameFocusNode.dispose();
     _plantController.dispose();
+    _plantFocusNode.dispose();
     super.dispose();
   }
 
@@ -387,7 +417,8 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
   void _saveOrganization() {
     if (_selectedCompany != null && _selectedPlant != null) {
       OrganizationData.companyName = _selectedCompany!;
-      OrganizationData.plants = List<String>.from(_companyPlants[_selectedCompany!] ?? []);
+      OrganizationData.plants =
+          List<String>.from(_companyPlants[_selectedCompany!] ?? []);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Organization details saved!'),
@@ -409,10 +440,12 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
         OrganizationData.companyNames = List<String>.from(_companyNames);
         _selectedCompany = name;
         _companyPlants[name] = [];
-        OrganizationData.companyPlants = Map<String, List<String>>.from(_companyPlants);
+        OrganizationData.companyPlants =
+            Map<String, List<String>>.from(_companyPlants);
         _companyNameController.clear();
       });
     }
+    FocusScope.of(context).requestFocus(_companyNameFocusNode);
   }
 
   void _removeCompanyName(int index) {
@@ -420,9 +453,11 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
       String removed = _companyNames.removeAt(index);
       OrganizationData.companyNames = List<String>.from(_companyNames);
       _companyPlants.remove(removed);
-      OrganizationData.companyPlants = Map<String, List<String>>.from(_companyPlants);
+      OrganizationData.companyPlants =
+          Map<String, List<String>>.from(_companyPlants);
       if (_selectedCompany == removed) {
-        _selectedCompany = _companyNames.isNotEmpty ? _companyNames.first : null;
+        _selectedCompany =
+            _companyNames.isNotEmpty ? _companyNames.first : null;
       }
     });
   }
@@ -435,20 +470,25 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
 
   void _addPlant() {
     final plant = _plantController.text.trim();
-    if (_selectedCompany != null && plant.isNotEmpty && !_companyPlants[_selectedCompany]!.contains(plant)) {
+    if (_selectedCompany != null &&
+        plant.isNotEmpty &&
+        !_companyPlants[_selectedCompany]!.contains(plant)) {
       setState(() {
         _companyPlants[_selectedCompany]!.add(plant);
-        OrganizationData.companyPlants = Map<String, List<String>>.from(_companyPlants);
+        OrganizationData.companyPlants =
+            Map<String, List<String>>.from(_companyPlants);
         _plantController.clear();
       });
     }
+    FocusScope.of(context).requestFocus(_plantFocusNode);
   }
 
   void _removePlant(int index) {
     if (_selectedCompany != null) {
       setState(() {
         _companyPlants[_selectedCompany]!.removeAt(index);
-        OrganizationData.companyPlants = Map<String, List<String>>.from(_companyPlants);
+        OrganizationData.companyPlants =
+            Map<String, List<String>>.from(_companyPlants);
       });
     }
   }
@@ -463,27 +503,46 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(24.0),
-              child: Center(
-                child: OrganizationDetailsForm(
-                  companyNameController: _companyNameController,
-                  plantController: _plantController,
-                  companyNames: _companyNames,
-                  selectedCompany: _selectedCompany,
-                  onAddCompanyName: _addCompanyName,
-                  onRemoveCompanyName: _removeCompanyName,
-                  onSelectCompany: _selectCompany,
-                  plants: _selectedCompany != null ? _companyPlants[_selectedCompany!] ?? [] : [],
-                  selectedPlant: _selectedPlant,
-                  onSelectPlant: _selectPlant,
-                  onAddPlant: _addPlant,
-                  onRemovePlant: _removePlant,
-                  onSave: _saveOrganization,
-                  saveEnabled: _selectedPlant != null,
-                ),
+              child: OrganizationDetailsForm(
+                companyNameController: _companyNameController,
+                companyNameFocusNode: _companyNameFocusNode,
+                plantController: _plantController,
+                plantFocusNode: _plantFocusNode,
+                companyNames: _companyNames,
+                selectedCompany: _selectedCompany,
+                onAddCompanyName: _addCompanyName,
+                onRemoveCompanyName: _removeCompanyName,
+                onSelectCompany: _selectCompany,
+                plants: _selectedCompany != null
+                    ? _companyPlants[_selectedCompany!] ?? []
+                    : [],
+                selectedPlant: _selectedPlant,
+                onSelectPlant: _selectPlant,
+                onAddPlant: _addPlant,
+                onRemovePlant: _removePlant,
+                onSave: _saveOrganization,
+                saveEnabled: _selectedPlant != null,
               ),
             ),
           ),
-          OrganizationSetupFooter(onBack: _goBackToHome),
+          OrganizationSetupFooter(
+            onBack: _goBackToHome,
+            rightButton: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.yellow[300],
+                foregroundColor: Colors.black,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                textStyle:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                elevation: 6,
+              ),
+              onPressed: _selectedPlant != null ? _saveOrganization : null,
+              child: const Text('Save and Proceed to Plant Setup'),
+            ),
+          ),
         ],
       ),
     );
