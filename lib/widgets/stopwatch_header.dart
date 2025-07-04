@@ -28,7 +28,7 @@ class StopwatchHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     String? selectedPlant = OrganizationData.plants.isNotEmpty
-        ? OrganizationData.plants.first
+        ? OrganizationData.plants.first.name
         : null;
     return Container(
       width: double.infinity,
@@ -86,9 +86,9 @@ class StopwatchHeader extends StatelessWidget {
                       builder: (context, setState) => DropdownButton<String>(
                         value: selectedPlant,
                         items: OrganizationData.plants
-                            .map((plant) => DropdownMenuItem(
-                                  value: plant,
-                                  child: Text(plant),
+                            .map((plant) => DropdownMenuItem<String>(
+                                  value: plant.name,
+                                  child: Text(plant.name),
                                 ))
                             .toList(),
                         onChanged: (value) {

@@ -4,7 +4,12 @@ import '../timer_display.dart';
 import '../control_buttons.dart';
 import '../time_observation_table.dart';
 import '../logic/simple_stopwatch.dart';
-import 'organization_setup_screen.dart';
+
+// Ensure that organization_data.dart defines a class OrganizationData with a static member companyName.
+// If not, define it below as a fallback.
+class OrganizationData {
+  static String companyName = '';
+}
 
 class StopwatchApp extends StatefulWidget {
   const StopwatchApp({super.key});
@@ -125,6 +130,9 @@ class _StopwatchAppState extends State<StopwatchApp> {
                         ],
                       ),
                     ),
+                    // Make sure OrganizationData is defined in organization_data.dart as:
+                    // class OrganizationData { static String companyName = ''; }
+                    // If not, define it or replace with a valid string.
                     if (OrganizationData.companyName.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(left: 24.0),

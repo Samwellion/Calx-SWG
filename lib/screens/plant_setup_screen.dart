@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'organization_setup_screen.dart';
-import '../logic/app_database.dart';
 
-// Global map to hold plant -> value streams (one-to-many)
+import '../database_provider.dart';
+import '../models/organization_data.dart' as org_data;
+
+// Global map to hold plant name -> value streams (one-to-many)
 Map<String, List<String>> plantValueStreams = {};
 
 class PlantSetupScreen extends StatefulWidget {
@@ -14,35 +16,51 @@ class PlantSetupScreen extends StatefulWidget {
 
 class _PlantSetupScreenState extends State<PlantSetupScreen> {
   Future<void> _saveAllToDatabase() async {
-    final db = await AppDatabase.open();
-    // Insert organization
-    final orgId = await db.insertOrganization(OrganizationData.companyName);
-    // Insert plants and value streams
-    for (final plant in OrganizationData.plants) {
-      final plantId = await db.insertPlant(organizationId: orgId, name: plant);
-      final streams = plantValueStreams[plant] ?? [];
-      for (final vs in streams) {
-        await db.insertValueStream(plantId: plantId, name: vs);
+    debugPrint('Getting singleton database instance...');
+    final db = await DatabaseProvider.getInstance();
+    debugPrint(
+        'Upserting organization: \'${org_data.OrganizationData.companyName}\'');
+    final orgId =
+        await db.upsertOrganization(org_data.OrganizationData.companyName);
+    debugPrint('Organization id: $orgId');
+    for (final plant in org_data.OrganizationData.plants) {
+      debugPrint('Upserting plant: \'${plant.name}\'');
+      final plantId = await db.upsertPlant(
+        organizationId: orgId,
+        name: plant.name,
+        street: plant.street,
+        city: plant.city,
+        state: plant.state,
+        zip: plant.zip,
+      );
+      debugPrint('Plant id: $plantId');
+      final streams = plantValueStreams[plant.name] ?? [];
+      for (int i = 0; i < streams.length; i++) {
+        debugPrint(
+            '  Upserting value stream: \'${streams[i]}\' for plantId: $plantId');
+        await db.upsertValueStream(plantId: plantId, name: streams[i]);
+        if (i % 10 == 9) {
+          await Future.delayed(Duration.zero);
+        }
       }
+      await Future.delayed(Duration.zero);
     }
-    await db.close();
+    debugPrint('SaveAllToDatabase complete.');
   }
 
   // Controllers for each plant's value stream input
   final Map<String, TextEditingController> _controllers = {};
-  String? _selectedPlant;
+  int? _selectedPlantIndex;
 
   @override
   void initState() {
     super.initState();
-    // Initialize controllers and value stream lists for each plant
-    for (final plant in OrganizationData.plants) {
-      _controllers[plant] = TextEditingController();
-      plantValueStreams.putIfAbsent(plant, () => []);
+    for (final plant in org_data.OrganizationData.plants) {
+      _controllers[plant.name] = TextEditingController();
+      plantValueStreams.putIfAbsent(plant.name, () => []);
     }
-    // Select the first plant by default if available
-    if (OrganizationData.plants.isNotEmpty) {
-      _selectedPlant = OrganizationData.plants.first;
+    if (org_data.OrganizationData.plants.isNotEmpty) {
+      _selectedPlantIndex = 0;
     }
   }
 
@@ -54,20 +72,20 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
     super.dispose();
   }
 
-  void _addValueStream(String plant) {
-    final controller = _controllers[plant];
+  void _addValueStream(String plantName) {
+    final controller = _controllers[plantName];
     final value = controller?.text.trim() ?? '';
-    if (value.isNotEmpty && !plantValueStreams[plant]!.contains(value)) {
+    if (value.isNotEmpty && !plantValueStreams[plantName]!.contains(value)) {
       setState(() {
-        plantValueStreams[plant]!.add(value);
+        plantValueStreams[plantName]!.add(value);
         controller?.clear();
       });
     }
   }
 
-  void _removeValueStream(String plant, int index) {
+  void _removeValueStream(String plantName, int index) {
     setState(() {
-      plantValueStreams[plant]!.removeAt(index);
+      plantValueStreams[plantName]!.removeAt(index);
     });
   }
 
@@ -77,10 +95,15 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final plants = OrganizationData.plants;
-    final selectedPlant = _selectedPlant;
-    final valueStreams =
-        selectedPlant != null ? plantValueStreams[selectedPlant] ?? [] : [];
+    final plants = org_data.OrganizationData.plants;
+    final selectedIdx = _selectedPlantIndex;
+    final selectedPlant =
+        (selectedIdx != null && selectedIdx >= 0 && selectedIdx < plants.length)
+            ? plants[selectedIdx]
+            : null;
+    final valueStreams = selectedPlant != null
+        ? plantValueStreams[selectedPlant.name] ?? []
+        : [];
 
     return Scaffold(
       backgroundColor: Colors.yellow[100],
@@ -99,7 +122,7 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.06),
+                        color: Colors.black.withOpacity(0.06),
                         blurRadius: 6,
                         offset: const Offset(0, 2),
                       ),
@@ -125,23 +148,32 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
                             children: [
                               PlantListSelector(
                                 plants: plants,
-                                selectedPlant: selectedPlant,
-                                onPlantSelected: (plant) {
+                                selectedIndex: selectedIdx,
+                                onPlantSelected: (idx) {
                                   setState(() {
-                                    _selectedPlant = plant;
+                                    _selectedPlantIndex = idx;
                                   });
                                 },
                               ),
                               if (selectedPlant != null)
                                 Expanded(
-                                  child: PlantValueStreamsPanel(
+                                  child: PlantDetailsPanel(
                                     plant: selectedPlant,
                                     valueStreams:
                                         List<String>.from(valueStreams),
-                                    controller: _controllers[selectedPlant]!,
-                                    onAdd: () => _addValueStream(selectedPlant),
-                                    onRemove: (idx) =>
-                                        _removeValueStream(selectedPlant, idx),
+                                    controller:
+                                        _controllers[selectedPlant.name]!,
+                                    onAdd: () =>
+                                        _addValueStream(selectedPlant.name),
+                                    onRemove: (idx) => _removeValueStream(
+                                        selectedPlant.name, idx),
+                                    onPlantChanged: (updatedPlant) {
+                                      setState(() {
+                                        org_data.OrganizationData
+                                                .plants[selectedIdx!] =
+                                            updatedPlant;
+                                      });
+                                    },
                                   ),
                                 ),
                             ],
@@ -174,14 +206,20 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
                 elevation: 6,
               ),
               onPressed: () async {
+                debugPrint('Save button pressed. Starting save...');
+                final nav = Navigator.of(context);
+                final messenger = ScaffoldMessenger.of(context);
                 await _saveAllToDatabase();
-                ScaffoldMessenger.of(context).showSnackBar(
+                debugPrint('Save complete. Showing snackbar.');
+                messenger.showSnackBar(
                   const SnackBar(
                     content: Text('Plant and value stream data saved!'),
                     duration: Duration(seconds: 2),
                   ),
                 );
-                Navigator.of(context).popUntil((route) => route.isFirst);
+                debugPrint('Navigating back to home.');
+                nav.popUntil((route) => route.isFirst);
+                debugPrint('Navigation complete.');
               },
               child: const Text('Save and Proceed to Home'),
             ),
@@ -193,13 +231,13 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
 }
 
 class PlantListSelector extends StatelessWidget {
-  final List<String> plants;
-  final String? selectedPlant;
-  final ValueChanged<String> onPlantSelected;
+  final List<org_data.PlantData> plants;
+  final int? selectedIndex;
+  final ValueChanged<int> onPlantSelected;
   const PlantListSelector({
     super.key,
     required this.plants,
-    required this.selectedPlant,
+    required this.selectedIndex,
     required this.onPlantSelected,
   });
   @override
@@ -217,19 +255,19 @@ class PlantListSelector extends StatelessWidget {
         itemCount: plants.length,
         itemBuilder: (context, idx) {
           final plant = plants[idx];
-          final selected = plant == selectedPlant;
+          final selected = idx == selectedIndex;
           return Material(
             color: selected ? Colors.yellow[200] : Colors.transparent,
             child: ListTile(
               title: Text(
-                plant,
+                plant.name,
                 style: TextStyle(
                   fontWeight: selected ? FontWeight.bold : FontWeight.normal,
                   color: selected ? Colors.black : Colors.black87,
                 ),
               ),
               selected: selected,
-              onTap: () => onPlantSelected(plant),
+              onTap: () => onPlantSelected(idx),
             ),
           );
         },
@@ -238,19 +276,21 @@ class PlantListSelector extends StatelessWidget {
   }
 }
 
-class PlantValueStreamsPanel extends StatelessWidget {
-  final String plant;
+class PlantDetailsPanel extends StatelessWidget {
+  final org_data.PlantData plant;
   final List<String> valueStreams;
   final TextEditingController controller;
   final VoidCallback onAdd;
   final void Function(int) onRemove;
-  const PlantValueStreamsPanel({
+  final ValueChanged<org_data.PlantData> onPlantChanged;
+  const PlantDetailsPanel({
     super.key,
     required this.plant,
     required this.valueStreams,
     required this.controller,
     required this.onAdd,
     required this.onRemove,
+    required this.onPlantChanged,
   });
   @override
   Widget build(BuildContext context) {
@@ -264,11 +304,56 @@ class PlantValueStreamsPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            plant,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          const Text(
+            'Plant Details',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
+          _buildTextField(
+            label: 'Plant Name',
+            initialValue: plant.name,
+            onChanged: (val) => onPlantChanged(plant.copyWith(name: val)),
+          ),
+          const SizedBox(height: 8),
+          _buildTextField(
+            label: 'Street',
+            initialValue: plant.street,
+            onChanged: (val) => onPlantChanged(plant.copyWith(street: val)),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _buildTextField(
+                  label: 'City',
+                  initialValue: plant.city,
+                  onChanged: (val) => onPlantChanged(plant.copyWith(city: val)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildTextField(
+                  label: 'State',
+                  initialValue: plant.state,
+                  onChanged: (val) =>
+                      onPlantChanged(plant.copyWith(state: val)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildTextField(
+                  label: 'Zip',
+                  initialValue: plant.zip,
+                  onChanged: (val) => onPlantChanged(plant.copyWith(zip: val)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Value Streams',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           Row(
             children: [
               Expanded(
@@ -324,6 +409,28 @@ class PlantValueStreamsPanel extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTextField({
+    required String label,
+    required String initialValue,
+    required ValueChanged<String> onChanged,
+  }) {
+    final controller = TextEditingController(text: initialValue);
+    controller.selection = TextSelection.fromPosition(
+      TextPosition(offset: controller.text.length),
+    );
+    return TextField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+        isDense: true,
+        filled: true,
+        fillColor: Colors.white,
+      ),
+      onChanged: onChanged,
     );
   }
 }

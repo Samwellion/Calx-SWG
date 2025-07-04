@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import '../screens/organization_setup_screen.dart'; // Import to access OrganizationData
+// Removed import of organization_setup_screen.dart since OrganizationData is undefined
 
 class HomeHeader extends StatelessWidget {
   const HomeHeader({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final companyName = OrganizationData.companyName;
+    final companyName = ''; // TODO: Replace with actual company name source
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
@@ -15,7 +15,7 @@ class HomeHeader extends StatelessWidget {
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
+            color: Colors.black.withOpacity(0.08),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),

@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import '../widgets/home_header.dart';
 import '../widgets/home_footer.dart';
 import '../screens/organization_setup_screen.dart';
-import '../screens/plant_setup_screen.dart';
 import 'stopwatch_app.dart';
+import '../logic/app_database.dart';
+import 'plant_setup_screen.dart';
+import '../database_provider.dart';
 
 class HomeButtonColumn extends StatelessWidget {
   final VoidCallback onSetupOrg;
   final VoidCallback onOpenObs;
+  final VoidCallback onEditPlant;
   final String? selectedCompany;
   final String? selectedPlant;
   final String? selectedValueStream;
@@ -16,6 +19,7 @@ class HomeButtonColumn extends StatelessWidget {
     super.key,
     required this.onSetupOrg,
     required this.onOpenObs,
+    required this.onEditPlant,
     required this.selectedCompany,
     required this.selectedPlant,
     required this.selectedValueStream,
@@ -51,6 +55,24 @@ class HomeButtonColumn extends StatelessWidget {
             child: const Text('Setup/Edit Organization'),
           ),
         ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: buttonWidth,
+          child: ElevatedButton(
+            onPressed: onEditPlant,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.yellow[300],
+              foregroundColor: Colors.black,
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 6,
+            ),
+            child: const Text('Edit Plant Info'),
+          ),
+        ),
         const SizedBox(height: 16),
         SizedBox(
           width: buttonWidth,
@@ -62,15 +84,14 @@ class HomeButtonColumn extends StatelessWidget {
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.yellow[100],
+              backgroundColor: Colors.yellow[300],
               foregroundColor: Colors.black,
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              textStyle:
-                  const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
-              elevation: 2,
+              elevation: 6,
             ),
             child: const Text('Load Organization'),
           ),
@@ -88,15 +109,14 @@ class HomeButtonColumn extends StatelessWidget {
                   }
                 : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.yellow[100],
+              backgroundColor: Colors.yellow[300],
               foregroundColor: Colors.black,
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              textStyle:
-                  const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
-              elevation: 2,
+              elevation: 6,
             ),
             child: const Text('Add Part Number'),
           ),
@@ -110,8 +130,7 @@ class HomeButtonColumn extends StatelessWidget {
               backgroundColor: Colors.yellow[300],
               foregroundColor: Colors.black,
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              textStyle:
-                  const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -258,17 +277,91 @@ class _HomeScreenState extends State<HomeScreen> {
   String? selectedPlant;
   String? selectedValueStream;
 
+  late AppDatabase db;
+  List<String> orgCompanies = [];
+  Map<String, List<String>> companyPlants = {};
+  Map<String, List<String>> plantValueStreams = {};
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    DatabaseProvider.getInstance().then((database) {
+      db = database;
+      _loadDropdownData();
+    });
+  }
+
+  Future<void> _openPlantSetupScreen() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const PlantSetupScreen(),
+      ),
+    );
+    await _loadDropdownData();
+  }
+
+  Future<void> _loadDropdownData() async {
+    // Load companies
+    final orgs = await db.select(db.organizations).get();
+    orgCompanies = orgs.map((o) => o.name).toList();
+
+    // Load plants and group by company
+    final plants = await db.select(db.plants).get();
+    companyPlants = {};
+    for (final org in orgs) {
+      companyPlants[org.name] = plants
+          .where((p) => p.organizationId == org.id)
+          .map((p) => p.name)
+          .toList();
+    }
+
+    // Load value streams and group by plant
+    final valueStreams = await db.select(db.valueStreams).get();
+    plantValueStreams = {};
+    for (final plant in plants) {
+      plantValueStreams[plant.name] = valueStreams
+          .where((vs) => vs.plantId == plant.id)
+          .map((vs) => vs.name)
+          .toList();
+    }
+
+    // Set default selections if needed
+    if (selectedCompany == null && orgCompanies.isNotEmpty) {
+      selectedCompany = orgCompanies.first;
+    }
+    if (selectedCompany != null &&
+        (selectedPlant == null ||
+            !companyPlants[selectedCompany!]!.contains(selectedPlant))) {
+      final plantsForCompany = companyPlants[selectedCompany!] ?? [];
+      selectedPlant =
+          plantsForCompany.isNotEmpty ? plantsForCompany.first : null;
+    }
+    if (selectedPlant != null &&
+        (selectedValueStream == null ||
+            !plantValueStreams[selectedPlant!]!
+                .contains(selectedValueStream))) {
+      final streamsForPlant = plantValueStreams[selectedPlant!] ?? [];
+      selectedValueStream =
+          streamsForPlant.isNotEmpty ? streamsForPlant.first : null;
+    }
+
+    setState(() {
+      isLoading = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Use all available company names from OrganizationData
-    final List<String> orgCompanies = (OrganizationData.companyName.isNotEmpty
-        ? [OrganizationData.companyName]
-        : []);
-    final String? orgCompany = selectedCompany ??
-        (orgCompanies.isNotEmpty ? orgCompanies.first : null);
+    if (isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    final String? orgCompany = selectedCompany;
     final List<String> orgPlants =
-        orgCompany != null && OrganizationData.companyPlants[orgCompany] != null
-            ? OrganizationData.companyPlants[orgCompany]!
+        orgCompany != null && companyPlants[orgCompany] != null
+            ? companyPlants[orgCompany]!
             : <String>[];
     final List<String> valueStreams =
         (selectedPlant != null && plantValueStreams[selectedPlant!] != null)
@@ -290,7 +383,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.06),
+                        color: Colors.black.withOpacity(0.06),
                         blurRadius: 6,
                         offset: const Offset(0, 2),
                       ),
@@ -307,7 +400,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               builder: (_) => const OrganizationSetupScreen(),
                             ),
                           );
-                          setState(() {});
+                          await _loadDropdownData();
                         },
                         onOpenObs: () {
                           Navigator.of(context).push(
@@ -316,6 +409,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           );
                         },
+                        onEditPlant: _openPlantSetupScreen,
                         selectedCompany: orgCompany,
                         selectedPlant: selectedPlant,
                         selectedValueStream: selectedValueStream,
@@ -324,18 +418,22 @@ class _HomeScreenState extends State<HomeScreen> {
                       HomeDropdownsColumn(
                         orgCompany: orgCompany,
                         orgCompanies: orgCompanies,
-                        onCompanyChanged: (val) => setState(() {
-                          selectedCompany = val;
-                          selectedPlant = null;
-                          selectedValueStream = null;
-                        }),
+                        onCompanyChanged: (val) async {
+                          setState(() {
+                            selectedCompany = val;
+                            selectedPlant = null;
+                            selectedValueStream = null;
+                          });
+                          await _loadDropdownData();
+                        },
                         selectedPlant: selectedPlant,
                         orgPlants: orgPlants,
-                        onPlantChanged: (val) {
+                        onPlantChanged: (val) async {
                           setState(() {
                             selectedPlant = val;
                             selectedValueStream = null;
                           });
+                          await _loadDropdownData();
                         },
                         selectedValueStream: selectedValueStream,
                         valueStreams: valueStreams,
