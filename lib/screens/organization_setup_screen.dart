@@ -1,18 +1,12 @@
 import 'package:flutter/material.dart';
 import 'plant_setup_screen.dart';
-
-class OrganizationData {
-  static String companyName = '';
-  static List<String> plants = [];
-  static List<String> companyNames = [];
-  static Map<String, List<String>> companyPlants = {};
-}
+import '../models/organization_data.dart' as org_data;
 
 class OrganizationSetupHeader extends StatelessWidget {
   const OrganizationSetupHeader({super.key});
   @override
   Widget build(BuildContext context) {
-    final companyName = OrganizationData.companyName;
+    final companyName = org_data.OrganizationData.companyName;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
@@ -386,12 +380,12 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
   @override
   void initState() {
     super.initState();
-    _companyNameController.text = OrganizationData.companyName;
-    if (OrganizationData.companyName.isNotEmpty) {
-      _companyNames.add(OrganizationData.companyName);
-      _selectedCompany = OrganizationData.companyName;
-      _companyPlants[OrganizationData.companyName] =
-          List<String>.from(OrganizationData.plants);
+    _companyNameController.text = org_data.OrganizationData.companyName;
+    if (org_data.OrganizationData.companyName.isNotEmpty) {
+      _companyNames.add(org_data.OrganizationData.companyName);
+      _selectedCompany = org_data.OrganizationData.companyName;
+      _companyPlants[org_data.OrganizationData.companyName] = List<String>.from(
+          org_data.OrganizationData.plants.map((p) => p.name));
     }
   }
 
@@ -416,9 +410,17 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
 
   void _saveOrganization() {
     if (_selectedCompany != null && _selectedPlant != null) {
-      OrganizationData.companyName = _selectedCompany!;
-      OrganizationData.plants =
-          List<String>.from(_companyPlants[_selectedCompany!] ?? []);
+      org_data.OrganizationData.companyName = _selectedCompany!;
+      org_data.OrganizationData.plants =
+          List<String>.from(_companyPlants[_selectedCompany!] ?? [])
+              .map((name) => org_data.PlantData(
+                    name: name,
+                    street: '',
+                    city: '',
+                    state: '',
+                    zip: '',
+                  ))
+              .toList();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Organization details saved!'),
@@ -437,11 +439,10 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
     if (name.isNotEmpty && !_companyNames.contains(name)) {
       setState(() {
         _companyNames.add(name);
-        OrganizationData.companyNames = List<String>.from(_companyNames);
+        // org_data.OrganizationData.companyNames = List<String>.from(_companyNames); // No such field in model
         _selectedCompany = name;
         _companyPlants[name] = [];
-        OrganizationData.companyPlants =
-            Map<String, List<String>>.from(_companyPlants);
+        // org_data.OrganizationData.companyPlants = Map<String, List<String>>.from(_companyPlants); // No such field in model
         _companyNameController.clear();
       });
     }
@@ -451,10 +452,9 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
   void _removeCompanyName(int index) {
     setState(() {
       String removed = _companyNames.removeAt(index);
-      OrganizationData.companyNames = List<String>.from(_companyNames);
+      // org_data.OrganizationData.companyNames = List<String>.from(_companyNames); // No such field in model
       _companyPlants.remove(removed);
-      OrganizationData.companyPlants =
-          Map<String, List<String>>.from(_companyPlants);
+      // org_data.OrganizationData.companyPlants = Map<String, List<String>>.from(_companyPlants); // No such field in model
       if (_selectedCompany == removed) {
         _selectedCompany =
             _companyNames.isNotEmpty ? _companyNames.first : null;
@@ -475,8 +475,7 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
         !_companyPlants[_selectedCompany]!.contains(plant)) {
       setState(() {
         _companyPlants[_selectedCompany]!.add(plant);
-        OrganizationData.companyPlants =
-            Map<String, List<String>>.from(_companyPlants);
+        // org_data.OrganizationData.companyPlants = Map<String, List<String>>.from(_companyPlants); // No such field in model
         _plantController.clear();
       });
     }
@@ -487,8 +486,7 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
     if (_selectedCompany != null) {
       setState(() {
         _companyPlants[_selectedCompany]!.removeAt(index);
-        OrganizationData.companyPlants =
-            Map<String, List<String>>.from(_companyPlants);
+        // org_data.OrganizationData.companyPlants = Map<String, List<String>>.from(_companyPlants); // No such field in model
       });
     }
   }

@@ -29,7 +29,7 @@ class ValueStreams extends Table {
 
 @DriftDatabase(tables: [Organizations, Plants, ValueStreams])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase._(QueryExecutor e) : super(e);
+  AppDatabase._(super.e);
 
   static Future<AppDatabase> open() async {
     final executor = await openConnection();
@@ -40,22 +40,48 @@ class AppDatabase extends _$AppDatabase {
   int get schemaVersion => 1;
 
   // CRUD methods can be added here
-  // Insert an organization and return its id
-  Future<int> insertOrganization(String name) {
+
+  // Insert or get an organization by name and return its id
+  Future<int> upsertOrganization(String name) async {
+    final existing = await (select(organizations)
+          ..where((o) => o.name.equals(name)))
+        .getSingleOrNull();
+    if (existing != null) return existing.id;
     return into(organizations)
         .insert(OrganizationsCompanion(name: Value(name)));
   }
 
-  // Insert a plant and return its id
-  Future<int> insertPlant({required int organizationId, required String name}) {
+  // Insert or get a plant by orgId+name and return its id
+  Future<int> upsertPlant({
+    required int organizationId,
+    required String name,
+    required String street,
+    required String city,
+    required String state,
+    required String zip,
+  }) async {
+    final existing = await (select(plants)
+          ..where((p) =>
+              p.organizationId.equals(organizationId) & p.name.equals(name)))
+        .getSingleOrNull();
+    if (existing != null) return existing.id;
     return into(plants).insert(PlantsCompanion(
       organizationId: Value(organizationId),
       name: Value(name),
+      street: Value(street),
+      city: Value(city),
+      state: Value(state),
+      zip: Value(zip),
     ));
   }
 
-  // Insert a value stream and return its id
-  Future<int> insertValueStream({required int plantId, required String name}) {
+  // Insert or get a value stream by plantId+name and return its id
+  Future<int> upsertValueStream(
+      {required int plantId, required String name}) async {
+    final existing = await (select(valueStreams)
+          ..where((vs) => vs.plantId.equals(plantId) & vs.name.equals(name)))
+        .getSingleOrNull();
+    if (existing != null) return existing.id;
     return into(valueStreams).insert(ValueStreamsCompanion(
       plantId: Value(plantId),
       name: Value(name),

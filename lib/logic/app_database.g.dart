@@ -21,7 +21,7 @@ class $OrganizationsTable extends Organizations
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
-      'name', aliasedName, false,
+      'Org_Name', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
   @override
   List<GeneratedColumn> get $columns => [id, name];
@@ -38,9 +38,9 @@ class $OrganizationsTable extends Organizations
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     }
-    if (data.containsKey('name')) {
+    if (data.containsKey('Org_Name')) {
       context.handle(
-          _nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
+          _nameMeta, name.isAcceptableOrUnknown(data['Org_Name']!, _nameMeta));
     } else if (isInserting) {
       context.missing(_nameMeta);
     }
@@ -56,7 +56,7 @@ class $OrganizationsTable extends Organizations
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
       name: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
+          .read(DriftSqlType.string, data['${effectivePrefix}Org_Name'])!,
     );
   }
 
@@ -74,7 +74,7 @@ class Organization extends DataClass implements Insertable<Organization> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
-    map['name'] = Variable<String>(name);
+    map['Org_Name'] = Variable<String>(name);
     return map;
   }
 
@@ -147,7 +147,7 @@ class OrganizationsCompanion extends UpdateCompanion<Organization> {
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (name != null) 'name': name,
+      if (name != null) 'Org_Name': name,
     });
   }
 
@@ -165,7 +165,7 @@ class OrganizationsCompanion extends UpdateCompanion<Organization> {
       map['id'] = Variable<int>(id.value);
     }
     if (name.present) {
-      map['name'] = Variable<String>(name.value);
+      map['Org_Name'] = Variable<String>(name.value);
     }
     return map;
   }
@@ -206,10 +206,43 @@ class $PlantsTable extends Plants with TableInfo<$PlantsTable, Plant> {
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
-      'name', aliasedName, false,
+      'Plant_Name', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _streetMeta = const VerificationMeta('street');
   @override
-  List<GeneratedColumn> get $columns => [id, organizationId, name];
+  late final GeneratedColumn<String> street = GeneratedColumn<String>(
+      'Street', aliasedName, false,
+      additionalChecks:
+          GeneratedColumn.checkTextLength(minTextLength: 1, maxTextLength: 255),
+      type: DriftSqlType.string,
+      requiredDuringInsert: true);
+  static const VerificationMeta _cityMeta = const VerificationMeta('city');
+  @override
+  late final GeneratedColumn<String> city = GeneratedColumn<String>(
+      'City', aliasedName, false,
+      additionalChecks:
+          GeneratedColumn.checkTextLength(minTextLength: 1, maxTextLength: 255),
+      type: DriftSqlType.string,
+      requiredDuringInsert: true);
+  static const VerificationMeta _stateMeta = const VerificationMeta('state');
+  @override
+  late final GeneratedColumn<String> state = GeneratedColumn<String>(
+      'State', aliasedName, false,
+      additionalChecks:
+          GeneratedColumn.checkTextLength(minTextLength: 1, maxTextLength: 255),
+      type: DriftSqlType.string,
+      requiredDuringInsert: true);
+  static const VerificationMeta _zipMeta = const VerificationMeta('zip');
+  @override
+  late final GeneratedColumn<String> zip = GeneratedColumn<String>(
+      'Zip', aliasedName, false,
+      additionalChecks:
+          GeneratedColumn.checkTextLength(minTextLength: 1, maxTextLength: 20),
+      type: DriftSqlType.string,
+      requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, organizationId, name, street, city, state, zip];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -231,11 +264,35 @@ class $PlantsTable extends Plants with TableInfo<$PlantsTable, Plant> {
     } else if (isInserting) {
       context.missing(_organizationIdMeta);
     }
-    if (data.containsKey('name')) {
-      context.handle(
-          _nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
+    if (data.containsKey('Plant_Name')) {
+      context.handle(_nameMeta,
+          name.isAcceptableOrUnknown(data['Plant_Name']!, _nameMeta));
     } else if (isInserting) {
       context.missing(_nameMeta);
+    }
+    if (data.containsKey('Street')) {
+      context.handle(_streetMeta,
+          street.isAcceptableOrUnknown(data['Street']!, _streetMeta));
+    } else if (isInserting) {
+      context.missing(_streetMeta);
+    }
+    if (data.containsKey('City')) {
+      context.handle(
+          _cityMeta, city.isAcceptableOrUnknown(data['City']!, _cityMeta));
+    } else if (isInserting) {
+      context.missing(_cityMeta);
+    }
+    if (data.containsKey('State')) {
+      context.handle(
+          _stateMeta, state.isAcceptableOrUnknown(data['State']!, _stateMeta));
+    } else if (isInserting) {
+      context.missing(_stateMeta);
+    }
+    if (data.containsKey('Zip')) {
+      context.handle(
+          _zipMeta, zip.isAcceptableOrUnknown(data['Zip']!, _zipMeta));
+    } else if (isInserting) {
+      context.missing(_zipMeta);
     }
     return context;
   }
@@ -251,7 +308,15 @@ class $PlantsTable extends Plants with TableInfo<$PlantsTable, Plant> {
       organizationId: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}organization_id'])!,
       name: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
+          .read(DriftSqlType.string, data['${effectivePrefix}Plant_Name'])!,
+      street: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}Street'])!,
+      city: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}City'])!,
+      state: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}State'])!,
+      zip: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}Zip'])!,
     );
   }
 
@@ -265,14 +330,28 @@ class Plant extends DataClass implements Insertable<Plant> {
   final int id;
   final int organizationId;
   final String name;
+  final String street;
+  final String city;
+  final String state;
+  final String zip;
   const Plant(
-      {required this.id, required this.organizationId, required this.name});
+      {required this.id,
+      required this.organizationId,
+      required this.name,
+      required this.street,
+      required this.city,
+      required this.state,
+      required this.zip});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['organization_id'] = Variable<int>(organizationId);
-    map['name'] = Variable<String>(name);
+    map['Plant_Name'] = Variable<String>(name);
+    map['Street'] = Variable<String>(street);
+    map['City'] = Variable<String>(city);
+    map['State'] = Variable<String>(state);
+    map['Zip'] = Variable<String>(zip);
     return map;
   }
 
@@ -281,6 +360,10 @@ class Plant extends DataClass implements Insertable<Plant> {
       id: Value(id),
       organizationId: Value(organizationId),
       name: Value(name),
+      street: Value(street),
+      city: Value(city),
+      state: Value(state),
+      zip: Value(zip),
     );
   }
 
@@ -291,6 +374,10 @@ class Plant extends DataClass implements Insertable<Plant> {
       id: serializer.fromJson<int>(json['id']),
       organizationId: serializer.fromJson<int>(json['organizationId']),
       name: serializer.fromJson<String>(json['name']),
+      street: serializer.fromJson<String>(json['street']),
+      city: serializer.fromJson<String>(json['city']),
+      state: serializer.fromJson<String>(json['state']),
+      zip: serializer.fromJson<String>(json['zip']),
     );
   }
   @override
@@ -300,13 +387,29 @@ class Plant extends DataClass implements Insertable<Plant> {
       'id': serializer.toJson<int>(id),
       'organizationId': serializer.toJson<int>(organizationId),
       'name': serializer.toJson<String>(name),
+      'street': serializer.toJson<String>(street),
+      'city': serializer.toJson<String>(city),
+      'state': serializer.toJson<String>(state),
+      'zip': serializer.toJson<String>(zip),
     };
   }
 
-  Plant copyWith({int? id, int? organizationId, String? name}) => Plant(
+  Plant copyWith(
+          {int? id,
+          int? organizationId,
+          String? name,
+          String? street,
+          String? city,
+          String? state,
+          String? zip}) =>
+      Plant(
         id: id ?? this.id,
         organizationId: organizationId ?? this.organizationId,
         name: name ?? this.name,
+        street: street ?? this.street,
+        city: city ?? this.city,
+        state: state ?? this.state,
+        zip: zip ?? this.zip,
       );
   Plant copyWithCompanion(PlantsCompanion data) {
     return Plant(
@@ -315,6 +418,10 @@ class Plant extends DataClass implements Insertable<Plant> {
           ? data.organizationId.value
           : this.organizationId,
       name: data.name.present ? data.name.value : this.name,
+      street: data.street.present ? data.street.value : this.street,
+      city: data.city.present ? data.city.value : this.city,
+      state: data.state.present ? data.state.value : this.state,
+      zip: data.zip.present ? data.zip.value : this.zip,
     );
   }
 
@@ -323,55 +430,98 @@ class Plant extends DataClass implements Insertable<Plant> {
     return (StringBuffer('Plant(')
           ..write('id: $id, ')
           ..write('organizationId: $organizationId, ')
-          ..write('name: $name')
+          ..write('name: $name, ')
+          ..write('street: $street, ')
+          ..write('city: $city, ')
+          ..write('state: $state, ')
+          ..write('zip: $zip')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, organizationId, name);
+  int get hashCode =>
+      Object.hash(id, organizationId, name, street, city, state, zip);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Plant &&
           other.id == this.id &&
           other.organizationId == this.organizationId &&
-          other.name == this.name);
+          other.name == this.name &&
+          other.street == this.street &&
+          other.city == this.city &&
+          other.state == this.state &&
+          other.zip == this.zip);
 }
 
 class PlantsCompanion extends UpdateCompanion<Plant> {
   final Value<int> id;
   final Value<int> organizationId;
   final Value<String> name;
+  final Value<String> street;
+  final Value<String> city;
+  final Value<String> state;
+  final Value<String> zip;
   const PlantsCompanion({
     this.id = const Value.absent(),
     this.organizationId = const Value.absent(),
     this.name = const Value.absent(),
+    this.street = const Value.absent(),
+    this.city = const Value.absent(),
+    this.state = const Value.absent(),
+    this.zip = const Value.absent(),
   });
   PlantsCompanion.insert({
     this.id = const Value.absent(),
     required int organizationId,
     required String name,
+    required String street,
+    required String city,
+    required String state,
+    required String zip,
   })  : organizationId = Value(organizationId),
-        name = Value(name);
+        name = Value(name),
+        street = Value(street),
+        city = Value(city),
+        state = Value(state),
+        zip = Value(zip);
   static Insertable<Plant> custom({
     Expression<int>? id,
     Expression<int>? organizationId,
     Expression<String>? name,
+    Expression<String>? street,
+    Expression<String>? city,
+    Expression<String>? state,
+    Expression<String>? zip,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (organizationId != null) 'organization_id': organizationId,
-      if (name != null) 'name': name,
+      if (name != null) 'Plant_Name': name,
+      if (street != null) 'Street': street,
+      if (city != null) 'City': city,
+      if (state != null) 'State': state,
+      if (zip != null) 'Zip': zip,
     });
   }
 
   PlantsCompanion copyWith(
-      {Value<int>? id, Value<int>? organizationId, Value<String>? name}) {
+      {Value<int>? id,
+      Value<int>? organizationId,
+      Value<String>? name,
+      Value<String>? street,
+      Value<String>? city,
+      Value<String>? state,
+      Value<String>? zip}) {
     return PlantsCompanion(
       id: id ?? this.id,
       organizationId: organizationId ?? this.organizationId,
       name: name ?? this.name,
+      street: street ?? this.street,
+      city: city ?? this.city,
+      state: state ?? this.state,
+      zip: zip ?? this.zip,
     );
   }
 
@@ -385,7 +535,19 @@ class PlantsCompanion extends UpdateCompanion<Plant> {
       map['organization_id'] = Variable<int>(organizationId.value);
     }
     if (name.present) {
-      map['name'] = Variable<String>(name.value);
+      map['Plant_Name'] = Variable<String>(name.value);
+    }
+    if (street.present) {
+      map['Street'] = Variable<String>(street.value);
+    }
+    if (city.present) {
+      map['City'] = Variable<String>(city.value);
+    }
+    if (state.present) {
+      map['State'] = Variable<String>(state.value);
+    }
+    if (zip.present) {
+      map['Zip'] = Variable<String>(zip.value);
     }
     return map;
   }
@@ -395,7 +557,11 @@ class PlantsCompanion extends UpdateCompanion<Plant> {
     return (StringBuffer('PlantsCompanion(')
           ..write('id: $id, ')
           ..write('organizationId: $organizationId, ')
-          ..write('name: $name')
+          ..write('name: $name, ')
+          ..write('street: $street, ')
+          ..write('city: $city, ')
+          ..write('state: $state, ')
+          ..write('zip: $zip')
           ..write(')'))
         .toString();
   }
@@ -428,7 +594,7 @@ class $ValueStreamsTable extends ValueStreams
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
-      'name', aliasedName, false,
+      'VS_Name', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
   @override
   List<GeneratedColumn> get $columns => [id, plantId, name];
@@ -451,9 +617,9 @@ class $ValueStreamsTable extends ValueStreams
     } else if (isInserting) {
       context.missing(_plantIdMeta);
     }
-    if (data.containsKey('name')) {
+    if (data.containsKey('VS_Name')) {
       context.handle(
-          _nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
+          _nameMeta, name.isAcceptableOrUnknown(data['VS_Name']!, _nameMeta));
     } else if (isInserting) {
       context.missing(_nameMeta);
     }
@@ -471,7 +637,7 @@ class $ValueStreamsTable extends ValueStreams
       plantId: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}plant_id'])!,
       name: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
+          .read(DriftSqlType.string, data['${effectivePrefix}VS_Name'])!,
     );
   }
 
@@ -492,7 +658,7 @@ class ValueStream extends DataClass implements Insertable<ValueStream> {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['plant_id'] = Variable<int>(plantId);
-    map['name'] = Variable<String>(name);
+    map['VS_Name'] = Variable<String>(name);
     return map;
   }
 
@@ -580,7 +746,7 @@ class ValueStreamsCompanion extends UpdateCompanion<ValueStream> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (plantId != null) 'plant_id': plantId,
-      if (name != null) 'name': name,
+      if (name != null) 'VS_Name': name,
     });
   }
 
@@ -603,7 +769,7 @@ class ValueStreamsCompanion extends UpdateCompanion<ValueStream> {
       map['plant_id'] = Variable<int>(plantId.value);
     }
     if (name.present) {
-      map['name'] = Variable<String>(name.value);
+      map['VS_Name'] = Variable<String>(name.value);
     }
     return map;
   }
@@ -842,11 +1008,19 @@ typedef $$PlantsTableCreateCompanionBuilder = PlantsCompanion Function({
   Value<int> id,
   required int organizationId,
   required String name,
+  required String street,
+  required String city,
+  required String state,
+  required String zip,
 });
 typedef $$PlantsTableUpdateCompanionBuilder = PlantsCompanion Function({
   Value<int> id,
   Value<int> organizationId,
   Value<String> name,
+  Value<String> street,
+  Value<String> city,
+  Value<String> state,
+  Value<String> zip,
 });
 
 final class $$PlantsTableReferences
@@ -898,6 +1072,18 @@ class $$PlantsTableFilterComposer
 
   ColumnFilters<String> get name => $composableBuilder(
       column: $table.name, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get street => $composableBuilder(
+      column: $table.street, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get city => $composableBuilder(
+      column: $table.city, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get state => $composableBuilder(
+      column: $table.state, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get zip => $composableBuilder(
+      column: $table.zip, builder: (column) => ColumnFilters(column));
 
   $$OrganizationsTableFilterComposer get organizationId {
     final $$OrganizationsTableFilterComposer composer = $composerBuilder(
@@ -956,6 +1142,18 @@ class $$PlantsTableOrderingComposer
   ColumnOrderings<String> get name => $composableBuilder(
       column: $table.name, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get street => $composableBuilder(
+      column: $table.street, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get city => $composableBuilder(
+      column: $table.city, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get state => $composableBuilder(
+      column: $table.state, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get zip => $composableBuilder(
+      column: $table.zip, builder: (column) => ColumnOrderings(column));
+
   $$OrganizationsTableOrderingComposer get organizationId {
     final $$OrganizationsTableOrderingComposer composer = $composerBuilder(
         composer: this,
@@ -991,6 +1189,18 @@ class $$PlantsTableAnnotationComposer
 
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get street =>
+      $composableBuilder(column: $table.street, builder: (column) => column);
+
+  GeneratedColumn<String> get city =>
+      $composableBuilder(column: $table.city, builder: (column) => column);
+
+  GeneratedColumn<String> get state =>
+      $composableBuilder(column: $table.state, builder: (column) => column);
+
+  GeneratedColumn<String> get zip =>
+      $composableBuilder(column: $table.zip, builder: (column) => column);
 
   $$OrganizationsTableAnnotationComposer get organizationId {
     final $$OrganizationsTableAnnotationComposer composer = $composerBuilder(
@@ -1060,21 +1270,37 @@ class $$PlantsTableTableManager extends RootTableManager<
             Value<int> id = const Value.absent(),
             Value<int> organizationId = const Value.absent(),
             Value<String> name = const Value.absent(),
+            Value<String> street = const Value.absent(),
+            Value<String> city = const Value.absent(),
+            Value<String> state = const Value.absent(),
+            Value<String> zip = const Value.absent(),
           }) =>
               PlantsCompanion(
             id: id,
             organizationId: organizationId,
             name: name,
+            street: street,
+            city: city,
+            state: state,
+            zip: zip,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
             required int organizationId,
             required String name,
+            required String street,
+            required String city,
+            required String state,
+            required String zip,
           }) =>
               PlantsCompanion.insert(
             id: id,
             organizationId: organizationId,
             name: name,
+            street: street,
+            city: city,
+            state: state,
+            zip: zip,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) =>
