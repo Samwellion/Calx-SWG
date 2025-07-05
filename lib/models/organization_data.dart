@@ -1,4 +1,3 @@
-
 class PlantData {
   String name;
   String street;

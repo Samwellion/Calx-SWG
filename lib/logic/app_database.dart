@@ -1,6 +1,22 @@
 import 'package:drift/drift.dart';
-import 'database_connection.dart';
 part 'app_database.g.dart';
+
+// Process table: associates a process with a value stream
+class Processes extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get valueStreamId => integer().references(ValueStreams, #id)();
+  TextColumn get processName => text().named('process_name')();
+  TextColumn get processDescription =>
+      text().named('process_description').nullable()();
+}
+
+// Part table: associates a part with a value stream
+class Parts extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get valueStreamId => integer().references(ValueStreams, #id)();
+  TextColumn get partNumber => text()();
+  TextColumn get partDescription => text().nullable()();
+}
 
 @DataClassName('Organization')
 class Organizations extends Table {
@@ -27,17 +43,25 @@ class ValueStreams extends Table {
   TextColumn get name => text().named('VS_Name')();
 }
 
-@DriftDatabase(tables: [Organizations, Plants, ValueStreams])
+@DriftDatabase(tables: [Organizations, Plants, ValueStreams, Parts, Processes])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase._(super.e);
-
-  static Future<AppDatabase> open() async {
-    final executor = await openConnection();
-    return AppDatabase._(executor);
+  // Insert a new part associated with a value stream
+  Future<int> insertPart({
+    required int valueStreamId,
+    required String partNumber,
+    String? partDescription,
+  }) {
+    return into(parts).insert(PartsCompanion(
+      valueStreamId: Value(valueStreamId),
+      partNumber: Value(partNumber),
+      partDescription: Value(partDescription),
+    ));
   }
 
+  AppDatabase(super.e);
+
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   // CRUD methods can be added here
 

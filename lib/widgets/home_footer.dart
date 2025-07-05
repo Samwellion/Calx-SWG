@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 class HomeFooter extends StatelessWidget {
-  const HomeFooter({super.key});
+  final bool showHomeButton;
+  const HomeFooter({super.key, this.showHomeButton = false});
 
   @override
   Widget build(BuildContext context) {
@@ -19,11 +20,38 @@ class HomeFooter extends StatelessWidget {
           ),
         ],
       ),
-      child: const Center(
-        child: Text(
-          '© 2025 Standard Work Generator App',
-          style: TextStyle(fontSize: 16, color: Colors.black54),
-        ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          if (showHomeButton)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.yellow[300],
+                  foregroundColor: Colors.black,
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  textStyle: const TextStyle(
+                      fontSize: 20, fontWeight: FontWeight.bold),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                ),
+                onPressed: () {
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                },
+                child: const Text('Home'),
+              ),
+            ),
+          const Center(
+            child: Text(
+              '© 2025 Standard Work Generator App',
+              style: TextStyle(fontSize: 16, color: Colors.black54),
+            ),
+          ),
+        ],
       ),
     );
   }

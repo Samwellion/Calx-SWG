@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 // Removed import of organization_setup_screen.dart since OrganizationData is undefined
 
 class HomeHeader extends StatelessWidget {
-  const HomeHeader({super.key});
+  final String? companyName;
+  final String? plantName;
+  final String? valueStreamName;
+  const HomeHeader(
+      {super.key, this.companyName, this.plantName, this.valueStreamName});
 
   @override
   Widget build(BuildContext context) {
-    final companyName = ''; // TODO: Replace with actual company name source
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
@@ -15,7 +18,7 @@ class HomeHeader extends StatelessWidget {
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -37,18 +40,52 @@ class HomeHeader extends StatelessWidget {
               style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
           ),
-          if (companyName.isNotEmpty)
+          // Text boxes for company, plant, value stream
+          if ((companyName?.isNotEmpty ?? false) ||
+              (plantName?.isNotEmpty ?? false) ||
+              (valueStreamName?.isNotEmpty ?? false))
             Padding(
               padding: const EdgeInsets.only(left: 16.0),
-              child: Text(
-                companyName,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _HeaderTextBox(label: 'Company', value: companyName),
+                  const SizedBox(width: 8),
+                  _HeaderTextBox(label: 'Plant', value: plantName),
+                  const SizedBox(width: 8),
+                  _HeaderTextBox(label: 'Value Stream', value: valueStreamName),
+                ],
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeaderTextBox extends StatelessWidget {
+  final String label;
+  final String? value;
+  const _HeaderTextBox({required this.label, required this.value});
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 80, maxWidth: 160),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.yellow[100],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.yellow[700]!, width: 1.5),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: const TextStyle(fontSize: 12, color: Colors.black54)),
+          Text(value ?? '',
+              style:
+                  const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ],
       ),
     );

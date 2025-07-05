@@ -50,7 +50,7 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
 
   // Controllers for each plant's value stream input
   final Map<String, TextEditingController> _controllers = {};
-  int? _selectedPlantIndex;
+  late final ValueNotifier<int?> _selectedPlantIndex;
 
   @override
   void initState() {
@@ -59,9 +59,9 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
       _controllers[plant.name] = TextEditingController();
       plantValueStreams.putIfAbsent(plant.name, () => []);
     }
-    if (org_data.OrganizationData.plants.isNotEmpty) {
-      _selectedPlantIndex = 0;
-    }
+    _selectedPlantIndex = ValueNotifier<int?>(
+      org_data.OrganizationData.plants.isNotEmpty ? 0 : null,
+    );
   }
 
   @override
@@ -69,6 +69,7 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
     for (final controller in _controllers.values) {
       controller.dispose();
     }
+    _selectedPlantIndex.dispose();
     super.dispose();
   }
 
@@ -96,15 +97,6 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
   @override
   Widget build(BuildContext context) {
     final plants = org_data.OrganizationData.plants;
-    final selectedIdx = _selectedPlantIndex;
-    final selectedPlant =
-        (selectedIdx != null && selectedIdx >= 0 && selectedIdx < plants.length)
-            ? plants[selectedIdx]
-            : null;
-    final valueStreams = selectedPlant != null
-        ? plantValueStreams[selectedPlant.name] ?? []
-        : [];
-
     return Scaffold(
       backgroundColor: Colors.yellow[100],
       body: Column(
@@ -128,63 +120,72 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
                       ),
                     ],
                   ),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Padding(
-                          padding: EdgeInsets.only(bottom: 16.0),
-                          child: Text(
-                            'Plant Setup',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        if (plants.isNotEmpty)
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              PlantListSelector(
-                                plants: plants,
-                                selectedIndex: selectedIdx,
-                                onPlantSelected: (idx) {
-                                  setState(() {
-                                    _selectedPlantIndex = idx;
-                                  });
-                                },
+                  child: ValueListenableBuilder<int?>(
+                    valueListenable: _selectedPlantIndex,
+                    builder: (context, selectedIdx, _) {
+                      final selectedPlant = (selectedIdx != null &&
+                              selectedIdx >= 0 &&
+                              selectedIdx < plants.length)
+                          ? plants[selectedIdx]
+                          : null;
+                      final valueStreams = selectedPlant != null
+                          ? plantValueStreams[selectedPlant.name] ?? []
+                          : [];
+                      return SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Padding(
+                              padding: EdgeInsets.only(bottom: 16.0),
+                              child: Text(
+                                'Plant Setup',
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                              if (selectedPlant != null)
-                                Expanded(
-                                  child: PlantDetailsPanel(
-                                    plant: selectedPlant,
-                                    valueStreams:
-                                        List<String>.from(valueStreams),
-                                    controller:
-                                        _controllers[selectedPlant.name]!,
-                                    onAdd: () =>
-                                        _addValueStream(selectedPlant.name),
-                                    onRemove: (idx) => _removeValueStream(
-                                        selectedPlant.name, idx),
-                                    onPlantChanged: (updatedPlant) {
-                                      setState(() {
-                                        org_data.OrganizationData
-                                                .plants[selectedIdx!] =
-                                            updatedPlant;
-                                      });
+                            ),
+                            if (plants.isNotEmpty)
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  PlantListSelector(
+                                    plants: plants,
+                                    selectedIndex: selectedIdx,
+                                    onPlantSelected: (idx) {
+                                      _selectedPlantIndex.value = idx;
                                     },
                                   ),
-                                ),
-                            ],
-                          )
-                        else
-                          const Text(
-                            'No plants found for this company.',
-                            style: TextStyle(color: Colors.black54),
-                          ),
-                      ],
-                    ),
+                                  if (selectedPlant != null)
+                                    Expanded(
+                                      child: PlantDetailsPanel(
+                                        plant: selectedPlant,
+                                        valueStreams:
+                                            List<String>.from(valueStreams),
+                                        controller:
+                                            _controllers[selectedPlant.name]!,
+                                        onAdd: () =>
+                                            _addValueStream(selectedPlant.name),
+                                        onRemove: (idx) => _removeValueStream(
+                                            selectedPlant.name, idx),
+                                        onPlantChanged: (updatedPlant) {
+                                          org_data.OrganizationData
+                                                  .plants[selectedIdx!] =
+                                              updatedPlant;
+                                        },
+                                      ),
+                                    ),
+                                ],
+                              )
+                            else
+                              const Text(
+                                'No plants found for this company.',
+                                style: TextStyle(color: Colors.black54),
+                              ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),
@@ -417,12 +418,13 @@ class PlantDetailsPanel extends StatelessWidget {
     required String initialValue,
     required ValueChanged<String> onChanged,
   }) {
-    final controller = TextEditingController(text: initialValue);
-    controller.selection = TextSelection.fromPosition(
-      TextPosition(offset: controller.text.length),
-    );
     return TextField(
-      controller: controller,
+      controller: TextEditingController.fromValue(
+        TextEditingValue(
+          text: initialValue,
+          selection: TextSelection.collapsed(offset: initialValue.length),
+        ),
+      ),
       decoration: InputDecoration(
         labelText: label,
         border: const OutlineInputBorder(),
