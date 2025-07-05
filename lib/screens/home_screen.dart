@@ -170,11 +170,6 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     });
     await _loadProcessesForValueStream();
-    void _onProcessChanged(String? value) {
-      setState(() {
-        selectedProcess = value;
-      });
-    }
   }
 
   void _openPartInputScreen() async {
@@ -202,6 +197,7 @@ class _HomeScreenState extends State<HomeScreen> {
           companyName: selectedCompany ?? '',
           plantName: selectedPlant ?? '',
           valueStreamName: selectedValueStream ?? '',
+          processName: selectedProcess ?? '',
         ),
       ),
     );
@@ -272,6 +268,14 @@ class _HomeScreenState extends State<HomeScreen> {
                             selectedPlant!.isNotEmpty &&
                             selectedValueStream != null &&
                             selectedValueStream!.isNotEmpty),
+                        enableOpenObs: (selectedCompany != null &&
+                            selectedCompany!.isNotEmpty &&
+                            selectedPlant != null &&
+                            selectedPlant!.isNotEmpty &&
+                            selectedValueStream != null &&
+                            selectedValueStream!.isNotEmpty &&
+                            selectedProcess != null &&
+                            selectedProcess!.isNotEmpty),
                       ),
                       const SizedBox(width: 32),
                       HomeDropdownsColumn(

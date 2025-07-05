@@ -83,19 +83,22 @@ class OrganizationSetupFooter extends StatelessWidget {
       child: Row(
         children: [
           // Home button on the left
-          ElevatedButton(
+          ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.yellow[300],
               foregroundColor: Colors.black,
+              elevation: 6,
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
               textStyle:
-                  const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              elevation: 6,
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
+            icon: const Icon(Icons.home, size: 28),
+            label: const Text('Home',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             onPressed: onBack,
-            child: const Text('Back to Home'),
           ),
           // Spacer
           const Spacer(),
@@ -385,6 +388,9 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FocusScope.of(context).requestFocus(_companyNameFocusNode);
+    });
     _loadFromDatabase();
   }
 
@@ -462,7 +468,11 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
         _selectedCompany = name;
       });
       _companyNameController.clear();
+      // Move focus to plant name input after adding company
+      FocusScope.of(context).requestFocus(_plantFocusNode);
+      return;
     }
+    // If not added, keep focus on company name
     FocusScope.of(context).requestFocus(_companyNameFocusNode);
   }
 
@@ -593,7 +603,7 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
                 elevation: 6,
               ),
               onPressed: _selectedPlant != null ? _saveOrganization : null,
-              child: const Text('Save and Proceed to Plant Setup'),
+              child: const Text('Plant Setup'),
             ),
           ),
         ],

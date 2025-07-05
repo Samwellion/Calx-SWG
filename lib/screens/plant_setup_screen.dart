@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'organization_setup_screen.dart';
 
-import '../database_provider.dart';
 import '../models/organization_data.dart' as org_data;
+import '../logic/app_database.dart';
+import '../database_provider.dart';
+import '../widgets/home_header.dart';
+import '../screens/home_screen.dart';
 
 // Global map to hold plant name -> value streams (one-to-many)
 Map<String, List<String>> plantValueStreams = {};
@@ -15,37 +17,187 @@ class PlantSetupScreen extends StatefulWidget {
 }
 
 class _PlantSetupScreenState extends State<PlantSetupScreen> {
-  Future<void> _saveAllToDatabase() async {
-    debugPrint('Getting singleton database instance...');
-    final db = await DatabaseProvider.getInstance();
-    debugPrint(
-        'Upserting organization: \'${org_data.OrganizationData.companyName}\'');
-    final orgId =
-        await db.upsertOrganization(org_data.OrganizationData.companyName);
-    debugPrint('Organization id: $orgId');
-    for (final plant in org_data.OrganizationData.plants) {
-      debugPrint('Upserting plant: \'${plant.name}\'');
-      final plantId = await db.upsertPlant(
-        organizationId: orgId,
-        name: plant.name,
-        street: plant.street,
-        city: plant.city,
-        state: plant.state,
-        zip: plant.zip,
-      );
-      debugPrint('Plant id: $plantId');
-      final streams = plantValueStreams[plant.name] ?? [];
-      for (int i = 0; i < streams.length; i++) {
-        debugPrint(
-            '  Upserting value stream: \'${streams[i]}\' for plantId: $plantId');
-        await db.upsertValueStream(plantId: plantId, name: streams[i]);
-        if (i % 10 == 9) {
-          await Future.delayed(Duration.zero);
-        }
-      }
-      await Future.delayed(Duration.zero);
-    }
-    debugPrint('SaveAllToDatabase complete.');
+  int? _selectedPlantIdx;
+
+  @override
+  Widget build(BuildContext context) {
+    final plants = org_data.OrganizationData.plants;
+    _selectedPlantIdx ??= plants.isNotEmpty ? 0 : null;
+    final selectedPlant = (_selectedPlantIdx != null && plants.isNotEmpty)
+        ? plants[_selectedPlantIdx!]
+        : null;
+    return Scaffold(
+      backgroundColor: Colors.yellow[50],
+      body: Column(
+        children: [
+          // Standard HomeHeader
+          HomeHeader(
+            companyName: org_data.OrganizationData.companyName,
+            plantName: selectedPlant?.name,
+            valueStreamName: null,
+          ),
+          const SizedBox(height: 24),
+          // Main body: left = plant list, right = details
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Plant name selectable list
+                  Container(
+                    width: 220,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.yellow[300]!),
+                    ),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: plants.length,
+                      itemBuilder: (context, idx) {
+                        final isSelected = idx == _selectedPlantIdx;
+                        return Material(
+                          color: isSelected
+                              ? Colors.yellow[100]
+                              : Colors.transparent,
+                          child: ListTile(
+                            title: Text(plants[idx].name,
+                                style: TextStyle(
+                                    fontWeight: isSelected
+                                        ? FontWeight.bold
+                                        : FontWeight.normal)),
+                            selected: isSelected,
+                            onTap: () {
+                              setState(() {
+                                _selectedPlantIdx = idx;
+                              });
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 32),
+                  // Plant details panel
+                  if (selectedPlant != null)
+                    Expanded(
+                      child: PlantDetailsPanel(
+                        plant: selectedPlant,
+                        valueStreams: plantValueStreams[selectedPlant.name]!,
+                        controller: _controllers[selectedPlant.name]!,
+                        onAdd: () {
+                          final value =
+                              _controllers[selectedPlant.name]!.text.trim();
+                          if (value.isNotEmpty &&
+                              !plantValueStreams[selectedPlant.name]!
+                                  .contains(value)) {
+                            setState(() {
+                              plantValueStreams[selectedPlant.name]!.add(value);
+                              _controllers[selectedPlant.name]!.clear();
+                            });
+                          }
+                        },
+                        onRemove: (idx) {
+                          setState(() {
+                            plantValueStreams[selectedPlant.name]!
+                                .removeAt(idx);
+                          });
+                        },
+                        onPlantChanged: (updated) {
+                          setState(() {
+                            final i = org_data.OrganizationData.plants
+                                .indexWhere(
+                                    (p) => p.name == selectedPlant.name);
+                            if (i != -1)
+                              org_data.OrganizationData.plants[i] = updated;
+                          });
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          // Footer
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+            decoration: BoxDecoration(
+              color: Colors.yellow[200],
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(24)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 8,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 180,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.yellow[300],
+                      foregroundColor: Colors.black,
+                      elevation: 6,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 32, vertical: 16),
+                      textStyle: const TextStyle(
+                          fontSize: 20, fontWeight: FontWeight.bold),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon: const Icon(Icons.home, size: 28),
+                    label: const Text('Home',
+                        style: TextStyle(
+                            fontSize: 20, fontWeight: FontWeight.bold)),
+                    onPressed: () async {
+                      // Save all plants and value streams to the database
+                      final db = await DatabaseProvider.getInstance();
+                      // Save organization (assuming single org for now)
+                      final orgName = org_data.OrganizationData.companyName;
+                      final orgId = await db.upsertOrganization(orgName);
+                      for (final plant in org_data.OrganizationData.plants) {
+                        final plantId = await db.upsertPlant(
+                          organizationId: orgId,
+                          name: plant.name,
+                          street: plant.street,
+                          city: plant.city,
+                          state: plant.state,
+                          zip: plant.zip,
+                        );
+                        final valueStreams =
+                            plantValueStreams[plant.name] ?? [];
+                        for (final vs in valueStreams) {
+                          await db.upsertValueStream(
+                              plantId: plantId, name: vs);
+                        }
+                      }
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (context) => const HomeScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const Spacer(),
+                const Text(
+                  '© 2025 Standard Work Generator App',
+                  style: TextStyle(fontSize: 16, color: Colors.black54),
+                ),
+                const Spacer(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // Controllers for each plant's value stream input
@@ -72,211 +224,9 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
     _selectedPlantIndex.dispose();
     super.dispose();
   }
-
-  void _addValueStream(String plantName) {
-    final controller = _controllers[plantName];
-    final value = controller?.text.trim() ?? '';
-    if (value.isNotEmpty && !plantValueStreams[plantName]!.contains(value)) {
-      setState(() {
-        plantValueStreams[plantName]!.add(value);
-        controller?.clear();
-      });
-    }
-  }
-
-  void _removeValueStream(String plantName, int index) {
-    setState(() {
-      plantValueStreams[plantName]!.removeAt(index);
-    });
-  }
-
-  void _goBack() {
-    Navigator.of(context).pop();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final plants = org_data.OrganizationData.plants;
-    return Scaffold(
-      backgroundColor: Colors.yellow[100],
-      body: Column(
-        children: [
-          const OrganizationSetupHeader(),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Center(
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.yellow[50],
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.06),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: ValueListenableBuilder<int?>(
-                    valueListenable: _selectedPlantIndex,
-                    builder: (context, selectedIdx, _) {
-                      final selectedPlant = (selectedIdx != null &&
-                              selectedIdx >= 0 &&
-                              selectedIdx < plants.length)
-                          ? plants[selectedIdx]
-                          : null;
-                      final valueStreams = selectedPlant != null
-                          ? plantValueStreams[selectedPlant.name] ?? []
-                          : [];
-                      return SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Padding(
-                              padding: EdgeInsets.only(bottom: 16.0),
-                              child: Text(
-                                'Plant Setup',
-                                style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            if (plants.isNotEmpty)
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  PlantListSelector(
-                                    plants: plants,
-                                    selectedIndex: selectedIdx,
-                                    onPlantSelected: (idx) {
-                                      _selectedPlantIndex.value = idx;
-                                    },
-                                  ),
-                                  if (selectedPlant != null)
-                                    Expanded(
-                                      child: PlantDetailsPanel(
-                                        plant: selectedPlant,
-                                        valueStreams:
-                                            List<String>.from(valueStreams),
-                                        controller:
-                                            _controllers[selectedPlant.name]!,
-                                        onAdd: () =>
-                                            _addValueStream(selectedPlant.name),
-                                        onRemove: (idx) => _removeValueStream(
-                                            selectedPlant.name, idx),
-                                        onPlantChanged: (updatedPlant) {
-                                          org_data.OrganizationData
-                                                  .plants[selectedIdx!] =
-                                              updatedPlant;
-                                        },
-                                      ),
-                                    ),
-                                ],
-                              )
-                            else
-                              const Text(
-                                'No plants found for this company.',
-                                style: TextStyle(color: Colors.black54),
-                              ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ),
-          ),
-          OrganizationSetupFooter(
-            onBack: _goBack,
-            rightButton: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.yellow[300],
-                foregroundColor: Colors.black,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                textStyle:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 6,
-              ),
-              onPressed: () async {
-                debugPrint('Save button pressed. Starting save...');
-                final nav = Navigator.of(context);
-                final messenger = ScaffoldMessenger.of(context);
-                await _saveAllToDatabase();
-                debugPrint('Save complete. Showing snackbar.');
-                messenger.showSnackBar(
-                  const SnackBar(
-                    content: Text('Plant and value stream data saved!'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-                debugPrint('Navigating back to home.');
-                nav.popUntil((route) => route.isFirst);
-                debugPrint('Navigation complete.');
-              },
-              child: const Text('Save and Proceed to Home'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
-class PlantListSelector extends StatelessWidget {
-  final List<org_data.PlantData> plants;
-  final int? selectedIndex;
-  final ValueChanged<int> onPlantSelected;
-  const PlantListSelector({
-    super.key,
-    required this.plants,
-    required this.selectedIndex,
-    required this.onPlantSelected,
-  });
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 220,
-      margin: const EdgeInsets.only(right: 32),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.yellow[300]!),
-      ),
-      child: ListView.builder(
-        shrinkWrap: true,
-        itemCount: plants.length,
-        itemBuilder: (context, idx) {
-          final plant = plants[idx];
-          final selected = idx == selectedIndex;
-          return Material(
-            color: selected ? Colors.yellow[200] : Colors.transparent,
-            child: ListTile(
-              title: Text(
-                plant.name,
-                style: TextStyle(
-                  fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-                  color: selected ? Colors.black : Colors.black87,
-                ),
-              ),
-              selected: selected,
-              onTap: () => onPlantSelected(idx),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
+// PlantDetailsPanel widget (stateless)
 class PlantDetailsPanel extends StatelessWidget {
   final org_data.PlantData plant;
   final List<String> valueStreams;
@@ -293,6 +243,7 @@ class PlantDetailsPanel extends StatelessWidget {
     required this.onRemove,
     required this.onPlantChanged,
   });
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -390,8 +341,7 @@ class PlantDetailsPanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            height: 180,
+          Expanded(
             child: Scrollbar(
               thumbVisibility: true,
               child: ListView.builder(
@@ -435,4 +385,6 @@ class PlantDetailsPanel extends StatelessWidget {
       onChanged: onChanged,
     );
   }
+
+// Move PlantDetailsPanel to top-level (outside of _PlantSetupScreenState)
 }

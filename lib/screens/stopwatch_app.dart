@@ -59,11 +59,14 @@ class StopwatchApp extends StatefulWidget {
   final String companyName;
   final String plantName;
   final String valueStreamName;
-  const StopwatchApp(
-      {super.key,
-      required this.companyName,
-      required this.plantName,
-      required this.valueStreamName});
+  final String processName;
+  const StopwatchApp({
+    super.key,
+    required this.companyName,
+    required this.plantName,
+    required this.valueStreamName,
+    required this.processName,
+  });
 
   @override
   State<StopwatchApp> createState() => _StopwatchAppState();
@@ -73,6 +76,7 @@ class _StopwatchAppState extends State<StopwatchApp> {
   String get companyName => widget.companyName;
   String get plantName => widget.plantName;
   String get valueStreamName => widget.valueStreamName;
+  String get processName => widget.processName;
   final SimpleStopwatch _simpleStopwatch = SimpleStopwatch();
   Timer? _timer;
   Duration _elapsed = Duration.zero;
@@ -247,6 +251,9 @@ class _StopwatchAppState extends State<StopwatchApp> {
                               HeaderTextBox(
                                   label: 'Value Stream',
                                   value: valueStreamName),
+                              const SizedBox(width: 8),
+                              HeaderTextBox(
+                                  label: 'Process', value: processName),
                             ],
                           ),
                           const SizedBox(height: 12),

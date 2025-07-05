@@ -295,6 +295,7 @@ class TimeObservationTableState extends State<TimeObservationTable> {
                   if (_focusRowIndex == rowIdx) {
                     Future.delayed(Duration.zero, () {
                       if (!mounted) return;
+                      // ignore: use_build_context_synchronously
                       FocusScope.of(context).requestFocus(focusNode);
                       _focusRowIndex = null;
                     });
