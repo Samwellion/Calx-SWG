@@ -3,7 +3,6 @@ import '../logic/app_database.dart';
 import 'package:drift/drift.dart' as drift;
 import '../database_provider.dart';
 import '../widgets/home_header.dart';
-import '../widgets/home_footer.dart';
 
 class ProcessInputScreen extends StatefulWidget {
   final int valueStreamId;

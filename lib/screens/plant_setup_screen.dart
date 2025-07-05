@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../models/organization_data.dart' as org_data;
-import '../logic/app_database.dart';
 import '../database_provider.dart';
 import '../widgets/home_header.dart';
 import '../screens/home_screen.dart';
@@ -109,8 +108,9 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
                             final i = org_data.OrganizationData.plants
                                 .indexWhere(
                                     (p) => p.name == selectedPlant.name);
-                            if (i != -1)
+                            if (i != -1) {
                               org_data.OrganizationData.plants[i] = updated;
+                            }
                           });
                         },
                       ),
@@ -178,6 +178,7 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
                               plantId: plantId, name: vs);
                         }
                       }
+                      // ignore: use_build_context_synchronously
                       Navigator.of(context).pushReplacement(
                         MaterialPageRoute(
                           builder: (context) => const HomeScreen(),
