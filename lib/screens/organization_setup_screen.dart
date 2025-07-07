@@ -1,6 +1,9 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'plant_setup_screen.dart';
 import '../models/organization_data.dart' as org_data;
+import '../database_provider.dart';
 
 class OrganizationSetupHeader extends StatelessWidget {
   const OrganizationSetupHeader({super.key});
@@ -79,19 +82,22 @@ class OrganizationSetupFooter extends StatelessWidget {
       child: Row(
         children: [
           // Home button on the left
-          ElevatedButton(
+          ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.yellow[300],
               foregroundColor: Colors.black,
+              elevation: 6,
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
               textStyle:
-                  const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              elevation: 6,
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
+            icon: const Icon(Icons.home, size: 28),
+            label: const Text('Home',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             onPressed: onBack,
-            child: const Text('Back to Home'),
           ),
           // Spacer
           const Spacer(),
@@ -372,21 +378,43 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
   final FocusNode _companyNameFocusNode = FocusNode();
   final TextEditingController _plantController = TextEditingController();
   final FocusNode _plantFocusNode = FocusNode();
-  final List<String> _companyNames = [];
+  List<String> _companyNames = [];
   String? _selectedCompany;
-  final Map<String, List<String>> _companyPlants = {};
+  Map<String, List<String>> _companyPlants = {};
   String? _selectedPlant;
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _companyNameController.text = org_data.OrganizationData.companyName;
-    if (org_data.OrganizationData.companyName.isNotEmpty) {
-      _companyNames.add(org_data.OrganizationData.companyName);
-      _selectedCompany = org_data.OrganizationData.companyName;
-      _companyPlants[org_data.OrganizationData.companyName] = List<String>.from(
-          org_data.OrganizationData.plants.map((p) => p.name));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FocusScope.of(context).requestFocus(_companyNameFocusNode);
+    });
+    _loadFromDatabase();
+  }
+
+  Future<void> _loadFromDatabase() async {
+    setState(() {
+      _loading = true;
+    });
+    final db = await DatabaseProvider.getInstance();
+    final orgs = await db.select(db.organizations).get();
+    final plants = await db.select(db.plants).get();
+    _companyNames = orgs.map((o) => o.name).toList();
+    _companyPlants = {};
+    for (final org in orgs) {
+      _companyPlants[org.name] = plants
+          .where((p) => p.organizationId == org.id)
+          .map((p) => p.name)
+          .toList();
     }
+    // Only set the controller if a company is selected (e.g., from the list), not on every DB load
+    if (_selectedCompany != null && _selectedCompany!.isNotEmpty) {
+      _companyNameController.text = _selectedCompany!;
+    }
+    setState(() {
+      _loading = false;
+    });
   }
 
   @override
@@ -402,25 +430,20 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
     Navigator.of(context).pop();
   }
 
-  void _selectPlant(String plant) {
-    setState(() {
-      _selectedPlant = plant;
-    });
-  }
-
   void _saveOrganization() {
     if (_selectedCompany != null && _selectedPlant != null) {
       org_data.OrganizationData.companyName = _selectedCompany!;
-      org_data.OrganizationData.plants =
-          List<String>.from(_companyPlants[_selectedCompany!] ?? [])
-              .map((name) => org_data.PlantData(
-                    name: name,
-                    street: '',
-                    city: '',
-                    state: '',
-                    zip: '',
-                  ))
-              .toList();
+      final plantNames =
+          List<String>.from(_companyPlants[_selectedCompany!] ?? []);
+      org_data.OrganizationData.plants = plantNames
+          .map((name) => org_data.PlantData(
+                name: name,
+                street: '',
+                city: '',
+                state: '',
+                zip: '',
+              ))
+          .toList();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Organization details saved!'),
@@ -434,73 +457,111 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
     }
   }
 
-  void _addCompanyName() {
+  void _addCompanyName() async {
     final name = _companyNameController.text.trim();
     if (name.isNotEmpty && !_companyNames.contains(name)) {
+      final db = await DatabaseProvider.getInstance();
+      await db.upsertOrganization(name);
+      await _loadFromDatabase();
       setState(() {
-        _companyNames.add(name);
-        // org_data.OrganizationData.companyNames = List<String>.from(_companyNames); // No such field in model
         _selectedCompany = name;
-        _companyPlants[name] = [];
-        // org_data.OrganizationData.companyPlants = Map<String, List<String>>.from(_companyPlants); // No such field in model
-        _companyNameController.clear();
       });
+      _companyNameController.clear();
+      // Move focus to plant name input after adding company
+      FocusScope.of(context).requestFocus(_plantFocusNode);
+      return;
     }
+    // If not added, keep focus on company name
     FocusScope.of(context).requestFocus(_companyNameFocusNode);
   }
 
-  void _removeCompanyName(int index) {
+  void _removeCompanyName(int index) async {
+    final name = _companyNames[index];
+    final db = await DatabaseProvider.getInstance();
+    // Remove all plants for this org
+    final orgs = await db.select(db.organizations).get();
+    final org = orgs.firstWhere(
+      (o) => o.name == name,
+      orElse: () => throw Exception('Organization not found'),
+    );
+    await (db.delete(db.plants)..where((p) => p.organizationId.equals(org.id)))
+        .go();
+    await (db.delete(db.organizations)..where((o) => o.id.equals(org.id))).go();
+    await _loadFromDatabase();
     setState(() {
-      String removed = _companyNames.removeAt(index);
-      // org_data.OrganizationData.companyNames = List<String>.from(_companyNames); // No such field in model
-      _companyPlants.remove(removed);
-      // org_data.OrganizationData.companyPlants = Map<String, List<String>>.from(_companyPlants); // No such field in model
-      if (_selectedCompany == removed) {
+      if (_selectedCompany == name) {
         _selectedCompany =
             _companyNames.isNotEmpty ? _companyNames.first : null;
       }
     });
   }
 
-  void _selectCompany(String name) {
-    setState(() {
-      _selectedCompany = name;
-    });
-  }
-
-  void _addPlant() {
+  void _addPlant() async {
     final plant = _plantController.text.trim();
-    if (_selectedCompany != null &&
-        plant.isNotEmpty &&
-        !_companyPlants[_selectedCompany]!.contains(plant)) {
+    if (_selectedCompany != null && plant.isNotEmpty) {
+      final db = await DatabaseProvider.getInstance();
+      final orgs = await db.select(db.organizations).get();
+      final org = orgs.firstWhere(
+        (o) => o.name == _selectedCompany,
+        orElse: () => throw Exception('Organization not found'),
+      );
+      await db.upsertPlant(
+        organizationId: org.id,
+        name: plant,
+        street: 'N/A',
+        city: 'N/A',
+        state: 'N/A',
+        zip: 'N/A',
+      );
+      await _loadFromDatabase();
       setState(() {
-        _companyPlants[_selectedCompany]!.add(plant);
-        // org_data.OrganizationData.companyPlants = Map<String, List<String>>.from(_companyPlants); // No such field in model
         _plantController.clear();
       });
     }
     FocusScope.of(context).requestFocus(_plantFocusNode);
   }
 
-  void _removePlant(int index) {
+  void _removePlant(int index) async {
     if (_selectedCompany != null) {
-      setState(() {
-        _companyPlants[_selectedCompany]!.removeAt(index);
-        // org_data.OrganizationData.companyPlants = Map<String, List<String>>.from(_companyPlants); // No such field in model
-      });
+      final db = await DatabaseProvider.getInstance();
+      final orgs = await db.select(db.organizations).get();
+      final org = orgs.firstWhere(
+        (o) => o.name == _selectedCompany,
+        orElse: () => throw Exception('Organization not found'),
+      );
+      final plantName = _companyPlants[_selectedCompany!]![index];
+      final plants = await db.select(db.plants).get();
+      final plant = plants.firstWhere(
+        (p) => p.name == plantName && p.organizationId == org.id,
+        orElse: () => throw Exception('Plant not found'),
+      );
+      await (db.delete(db.plants)..where((p) => p.id.equals(plant.id))).go();
+      await _loadFromDatabase();
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(
+        backgroundColor: Colors.yellow,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     return Scaffold(
       backgroundColor: Colors.yellow[100],
+      resizeToAvoidBottomInset: true,
       body: Column(
         children: [
           const OrganizationSetupHeader(),
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
+            child: SingleChildScrollView(
+              padding: EdgeInsets.only(
+                left: 24.0,
+                right: 24.0,
+                top: 24.0,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24.0,
+              ),
               child: OrganizationDetailsForm(
                 companyNameController: _companyNameController,
                 companyNameFocusNode: _companyNameFocusNode,
@@ -510,12 +571,21 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
                 selectedCompany: _selectedCompany,
                 onAddCompanyName: _addCompanyName,
                 onRemoveCompanyName: _removeCompanyName,
-                onSelectCompany: _selectCompany,
+                onSelectCompany: (name) {
+                  setState(() {
+                    _selectedCompany = name;
+                    _selectedPlant = null;
+                  });
+                },
                 plants: _selectedCompany != null
                     ? _companyPlants[_selectedCompany!] ?? []
                     : [],
                 selectedPlant: _selectedPlant,
-                onSelectPlant: _selectPlant,
+                onSelectPlant: (plant) {
+                  setState(() {
+                    _selectedPlant = plant;
+                  });
+                },
                 onAddPlant: _addPlant,
                 onRemovePlant: _removePlant,
                 onSave: _saveOrganization,
@@ -538,7 +608,7 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
                 elevation: 6,
               ),
               onPressed: _selectedPlant != null ? _saveOrganization : null,
-              child: const Text('Save and Proceed to Plant Setup'),
+              child: const Text('Plant Setup'),
             ),
           ),
         ],

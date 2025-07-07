@@ -1,269 +1,19 @@
+import 'package:drift/drift.dart' as drift;
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import '../widgets/home_header.dart';
-import '../widgets/home_footer.dart';
+import '../widgets/home_dropdowns_column.dart';
+import '../widgets/home_button_column.dart';
+import 'part_input_screen.dart';
+import 'process_input_screen.dart';
 import '../screens/organization_setup_screen.dart';
 import 'stopwatch_app.dart';
 import '../logic/app_database.dart';
 import 'plant_setup_screen.dart';
 import '../database_provider.dart';
-
-class HomeButtonColumn extends StatelessWidget {
-  final VoidCallback onSetupOrg;
-  final VoidCallback onOpenObs;
-  final VoidCallback onEditPlant;
-  final String? selectedCompany;
-  final String? selectedPlant;
-  final String? selectedValueStream;
-
-  const HomeButtonColumn({
-    super.key,
-    required this.onSetupOrg,
-    required this.onOpenObs,
-    required this.onEditPlant,
-    required this.selectedCompany,
-    required this.selectedPlant,
-    required this.selectedValueStream,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    const double buttonWidth = 260;
-    final bool enableOpenObs = selectedCompany != null &&
-        selectedCompany!.isNotEmpty &&
-        selectedPlant != null &&
-        selectedPlant!.isNotEmpty &&
-        selectedValueStream != null &&
-        selectedValueStream!.isNotEmpty;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          width: buttonWidth,
-          child: ElevatedButton(
-            onPressed: onSetupOrg,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.yellow[300],
-              foregroundColor: Colors.black,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              textStyle:
-                  const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 6,
-            ),
-            child: const Text('Setup/Edit Organization'),
-          ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: buttonWidth,
-          child: ElevatedButton(
-            onPressed: onEditPlant,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.yellow[300],
-              foregroundColor: Colors.black,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 6,
-            ),
-            child: const Text('Edit Plant Info'),
-          ),
-        ),
-        const SizedBox(height: 16),
-        SizedBox(
-          width: buttonWidth,
-          child: ElevatedButton(
-            onPressed: () {
-              // TODO: Implement load organization logic
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Load Organization pressed')),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.yellow[300],
-              foregroundColor: Colors.black,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 6,
-            ),
-            child: const Text('Load Organization'),
-          ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: buttonWidth,
-          child: ElevatedButton(
-            onPressed: enableOpenObs
-                ? () {
-                    // TODO: Implement add part number logic
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Add Part Number pressed')),
-                    );
-                  }
-                : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.yellow[300],
-              foregroundColor: Colors.black,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 6,
-            ),
-            child: const Text('Add Part Number'),
-          ),
-        ),
-        const SizedBox(height: 20),
-        SizedBox(
-          width: buttonWidth,
-          child: ElevatedButton(
-            onPressed: enableOpenObs ? onOpenObs : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.yellow[300],
-              foregroundColor: Colors.black,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 6,
-            ),
-            child: const Text('Open Time Observation'),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class HomeDropdownsColumn extends StatelessWidget {
-  final String? orgCompany;
-  final List<String> orgCompanies;
-  final ValueChanged<String?> onCompanyChanged;
-  final String? selectedPlant;
-  final List<String> orgPlants;
-  final ValueChanged<String?> onPlantChanged;
-  final String? selectedValueStream;
-  final List<String> valueStreams;
-  final ValueChanged<String?> onValueStreamChanged;
-
-  const HomeDropdownsColumn({
-    super.key,
-    required this.orgCompany,
-    required this.orgCompanies,
-    required this.onCompanyChanged,
-    required this.selectedPlant,
-    required this.orgPlants,
-    required this.onPlantChanged,
-    required this.selectedValueStream,
-    required this.valueStreams,
-    required this.onValueStreamChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 400, // Width for the dropdowns container
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.yellow[300]!, width: 2),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const SizedBox(
-                width: 100, // Adjust width as needed for labels
-                child: Text('Company',
-                    style:
-                        TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              ),
-              const SizedBox(width: 16), // Increased spacing from 8
-              Expanded(
-                child: DropdownButton<String>(
-                  isExpanded: true,
-                  value: orgCompany,
-                  hint: const Text('Select Company',
-                      style: TextStyle(fontSize: 18)),
-                  items: orgCompanies
-                      .map((c) => DropdownMenuItem(
-                          value: c,
-                          child: Text(c, style: const TextStyle(fontSize: 18))))
-                      .toList(),
-                  onChanged: onCompanyChanged,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              const SizedBox(
-                width: 100, // Adjust width as needed for labels
-                child: Text('Plant',
-                    style:
-                        TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              ),
-              const SizedBox(width: 16), // Increased spacing from 8
-              Expanded(
-                child: DropdownButton<String>(
-                  isExpanded: true,
-                  value: selectedPlant,
-                  hint: const Text('Select Plant',
-                      style: TextStyle(fontSize: 18)),
-                  items: orgPlants
-                      .map((p) => DropdownMenuItem(
-                          value: p,
-                          child: Text(p, style: const TextStyle(fontSize: 18))))
-                      .toList(),
-                  onChanged: onPlantChanged,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              const SizedBox(
-                width: 100, // Adjust width as needed for labels
-                child: Text('Value Stream',
-                    style:
-                        TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              ),
-              const SizedBox(width: 16), // Increased spacing from 8
-              Expanded(
-                child: DropdownButton<String>(
-                  isExpanded: true,
-                  value: selectedValueStream,
-                  hint: const Text('Select Value Stream',
-                      style: TextStyle(fontSize: 18)),
-                  items: valueStreams
-                      .map((v) => DropdownMenuItem(
-                          value: v,
-                          child: Text(v, style: const TextStyle(fontSize: 18))))
-                      .toList(),
-                  onChanged: onValueStreamChanged,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
+import 'package:shared_preferences/shared_preferences.dart';
+import '../widgets/home_footer.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -273,23 +23,107 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  static const _kCompanyKey = 'selectedCompany';
+  static const _kPlantKey = 'selectedPlant';
+  static const _kValueStreamKey = 'selectedValueStream';
+  static const _kValueStreamIdKey = 'selectedValueStreamId';
+  static const _kProcessKey = 'selectedProcess';
+  void _onProcessChanged(String? value) {
+    setState(() {
+      selectedProcess = value;
+    });
+    _saveSelections();
+  }
+
+  void _onAddVSProcess() async {
+    if (selectedValueStreamId != null &&
+        selectedValueStream != null &&
+        selectedCompany != null &&
+        selectedPlant != null) {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ProcessInputScreen(
+            valueStreamId: selectedValueStreamId!,
+            valueStreamName: selectedValueStream!,
+            companyName: selectedCompany!,
+            plantName: selectedPlant!,
+          ),
+        ),
+      );
+      // Reload process dropdown after returning from process input
+      await _loadProcessesForValueStream();
+    }
+  }
+
   String? selectedCompany;
   String? selectedPlant;
   String? selectedValueStream;
-
+  int? selectedValueStreamId;
+  String? selectedProcess;
   late AppDatabase db;
-  List<String> orgCompanies = [];
+  List<ValueStream> _allValueStreams = [];
+  List<Plant> _allPlants = [];
+  List<String> companyNames = [];
   Map<String, List<String>> companyPlants = {};
   Map<String, List<String>> plantValueStreams = {};
+  List<String> processNames = [];
   bool isLoading = true;
+  Future<void> _loadProcessesForValueStream() async {
+    if (selectedValueStreamId == null) {
+      setState(() {
+        processNames = [];
+        selectedProcess = null;
+      });
+      return;
+    }
+    final result = await db.customSelect(
+      'SELECT process_name FROM processes WHERE value_stream_id = ?',
+      variables: [drift.Variable.withInt(selectedValueStreamId!)],
+    ).get();
+    final names =
+        result.map((row) => row.data['process_name'] as String).toList();
+    setState(() {
+      processNames = names;
+      if (!processNames.contains(selectedProcess)) {
+        selectedProcess = null;
+      }
+    });
+  }
 
   @override
   void initState() {
     super.initState();
-    DatabaseProvider.getInstance().then((database) {
-      db = database;
-      _loadDropdownData();
+    _loadSelections().then((_) {
+      DatabaseProvider.getInstance().then((database) {
+        db = database;
+        _loadDropdownData();
+      });
     });
+  }
+
+  Future<void> _loadSelections() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      final c = prefs.getString(_kCompanyKey);
+      selectedCompany = (c != null && c.isNotEmpty) ? c : null;
+      final p = prefs.getString(_kPlantKey);
+      selectedPlant = (p != null && p.isNotEmpty) ? p : null;
+      final vs = prefs.getString(_kValueStreamKey);
+      selectedValueStream = (vs != null && vs.isNotEmpty) ? vs : null;
+      final vsid = prefs.getInt(_kValueStreamIdKey);
+      selectedValueStreamId = (vsid != null && vsid != -1) ? vsid : null;
+      final proc = prefs.getString(_kProcessKey);
+      selectedProcess = (proc != null && proc.isNotEmpty) ? proc : null;
+    });
+  }
+
+  Future<void> _saveSelections() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kCompanyKey, selectedCompany ?? '');
+    await prefs.setString(_kPlantKey, selectedPlant ?? '');
+    await prefs.setString(_kValueStreamKey, selectedValueStream ?? '');
+    await prefs.setInt(_kValueStreamIdKey, selectedValueStreamId ?? -1);
+    await prefs.setString(_kProcessKey, selectedProcess ?? '');
   }
 
   Future<void> _openPlantSetupScreen() async {
@@ -302,11 +136,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadDropdownData() async {
-    // Load companies
     final orgs = await db.select(db.organizations).get();
-    orgCompanies = orgs.map((o) => o.name).toList();
-
-    // Load plants and group by company
+    companyNames = orgs.map((o) => o.name).toList();
     final plants = await db.select(db.plants).get();
     companyPlants = {};
     for (final org in orgs) {
@@ -315,8 +146,6 @@ class _HomeScreenState extends State<HomeScreen> {
           .map((p) => p.name)
           .toList();
     }
-
-    // Load value streams and group by plant
     final valueStreams = await db.select(db.valueStreams).get();
     plantValueStreams = {};
     for (final plant in plants) {
@@ -325,30 +154,95 @@ class _HomeScreenState extends State<HomeScreen> {
           .map((vs) => vs.name)
           .toList();
     }
-
-    // Set default selections if needed
-    if (selectedCompany == null && orgCompanies.isNotEmpty) {
-      selectedCompany = orgCompanies.first;
-    }
-    if (selectedCompany != null &&
-        (selectedPlant == null ||
-            !companyPlants[selectedCompany!]!.contains(selectedPlant))) {
-      final plantsForCompany = companyPlants[selectedCompany!] ?? [];
-      selectedPlant =
-          plantsForCompany.isNotEmpty ? plantsForCompany.first : null;
-    }
-    if (selectedPlant != null &&
-        (selectedValueStream == null ||
-            !plantValueStreams[selectedPlant!]!
-                .contains(selectedValueStream))) {
-      final streamsForPlant = plantValueStreams[selectedPlant!] ?? [];
-      selectedValueStream =
-          streamsForPlant.isNotEmpty ? streamsForPlant.first : null;
-    }
+    _allPlants = plants;
+    _allValueStreams = valueStreams;
 
     setState(() {
       isLoading = false;
     });
+  }
+
+  void _onCompanyChanged(String? value) {
+    setState(() {
+      selectedCompany = value;
+      selectedPlant = null;
+      selectedValueStream = null;
+      selectedValueStreamId = null;
+      selectedProcess = null;
+    });
+    _saveSelections();
+  }
+
+  void _onPlantChanged(String? value) {
+    setState(() {
+      selectedPlant = value;
+      selectedValueStream = null;
+      selectedValueStreamId = null;
+      selectedProcess = null;
+    });
+    _saveSelections();
+  }
+
+  // Removed duplicate declaration of _allValueStreams
+  Future<void> _onValueStreamChanged(String? value) async {
+    setState(() {
+      selectedValueStream = value;
+      if (value != null && value.isNotEmpty && selectedPlant != null) {
+        final plant = _allPlants.firstWhere(
+          (p) => p.name == selectedPlant,
+          orElse: () => Plant(
+              id: -1,
+              organizationId: -1,
+              name: '',
+              street: '',
+              city: '',
+              state: '',
+              zip: ''),
+        );
+        final vs = _allValueStreams.firstWhere(
+          (v) => v.name == value && v.plantId == plant.id,
+          orElse: () => ValueStream(id: -1, plantId: -1, name: ''),
+        );
+        selectedValueStreamId = vs.id > 0 ? vs.id : null;
+      } else {
+        selectedValueStreamId = null;
+      }
+      selectedProcess = null;
+    });
+    _saveSelections();
+    await _loadProcessesForValueStream();
+  }
+
+  void _openPartInputScreen() async {
+    if (selectedValueStreamId != null &&
+        selectedValueStream != null &&
+        selectedCompany != null &&
+        selectedPlant != null) {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => PartInputScreen(
+            valueStreamId: selectedValueStreamId!,
+            valueStreamName: selectedValueStream!,
+            companyName: selectedCompany!,
+            plantName: selectedPlant!,
+          ),
+        ),
+      );
+      await _loadSelections();
+    }
+  }
+
+  void _openStopwatchApp() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => StopwatchApp(
+          companyName: selectedCompany ?? '',
+          plantName: selectedPlant ?? '',
+          valueStreamName: selectedValueStream ?? '',
+          processName: selectedProcess ?? '',
+        ),
+      ),
+    );
   }
 
   @override
@@ -371,7 +265,11 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: Colors.yellow[100],
       body: Column(
         children: [
-          const HomeHeader(),
+          HomeHeader(
+            companyName: orgCompany,
+            plantName: selectedPlant,
+            valueStreamName: selectedValueStream,
+          ),
           Expanded(
             child: Center(
               child: ConstrainedBox(
@@ -389,66 +287,69 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ],
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      HomeButtonColumn(
-                        onSetupOrg: () async {
-                          await Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const OrganizationSetupScreen(),
+                  child: SingleChildScrollView(
+                    child: IntrinsicHeight(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Flexible(
+                            child: HomeButtonColumn(
+                              onSetupOrg: () async {
+                                await Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const OrganizationSetupScreen(),
+                                  ),
+                                );
+                                await _loadDropdownData();
+                              },
+                              onLoadOrg: _openPlantSetupScreen,
+                              onOpenObs: _openStopwatchApp,
+                              onAddPartNumber: _openPartInputScreen,
+                              onAddVSProcess: _onAddVSProcess,
+                              enableAddPartNumber: (selectedCompany != null &&
+                                  selectedCompany!.isNotEmpty &&
+                                  selectedPlant != null &&
+                                  selectedPlant!.isNotEmpty &&
+                                  selectedValueStream != null &&
+                                  selectedValueStream!.isNotEmpty),
+                              enableOpenObs: (selectedCompany != null &&
+                                  selectedCompany!.isNotEmpty &&
+                                  selectedPlant != null &&
+                                  selectedPlant!.isNotEmpty &&
+                                  selectedValueStream != null &&
+                                  selectedValueStream!.isNotEmpty &&
+                                  selectedProcess != null &&
+                                  selectedProcess!.isNotEmpty),
                             ),
-                          );
-                          await _loadDropdownData();
-                        },
-                        onOpenObs: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const StopwatchApp(),
+                          ),
+                          const SizedBox(width: 32),
+                          Flexible(
+                            child: HomeDropdownsColumn(
+                              companyNames: companyNames,
+                              selectedCompany: selectedCompany,
+                              onCompanyChanged: _onCompanyChanged,
+                              plantNames: orgPlants,
+                              selectedPlant: selectedPlant,
+                              onPlantChanged: _onPlantChanged,
+                              valueStreams: valueStreams,
+                              selectedValueStream: selectedValueStream,
+                              onValueStreamChanged: _onValueStreamChanged,
+                              processes: processNames,
+                              selectedProcess: selectedProcess,
+                              onProcessChanged: _onProcessChanged,
                             ),
-                          );
-                        },
-                        onEditPlant: _openPlantSetupScreen,
-                        selectedCompany: orgCompany,
-                        selectedPlant: selectedPlant,
-                        selectedValueStream: selectedValueStream,
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 32),
-                      HomeDropdownsColumn(
-                        orgCompany: orgCompany,
-                        orgCompanies: orgCompanies,
-                        onCompanyChanged: (val) async {
-                          setState(() {
-                            selectedCompany = val;
-                            selectedPlant = null;
-                            selectedValueStream = null;
-                          });
-                          await _loadDropdownData();
-                        },
-                        selectedPlant: selectedPlant,
-                        orgPlants: orgPlants,
-                        onPlantChanged: (val) async {
-                          setState(() {
-                            selectedPlant = val;
-                            selectedValueStream = null;
-                          });
-                          await _loadDropdownData();
-                        },
-                        selectedValueStream: selectedValueStream,
-                        valueStreams: valueStreams,
-                        onValueStreamChanged: (val) {
-                          setState(() {
-                            selectedValueStream = val;
-                          });
-                        },
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
             ),
           ),
+          const SizedBox(height: 8),
           const HomeFooter(),
         ],
       ),

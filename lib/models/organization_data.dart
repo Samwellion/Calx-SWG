@@ -1,4 +1,3 @@
-
 class PlantData {
   String name;
   String street;
@@ -13,6 +12,8 @@ class PlantData {
     required this.state,
     required this.zip,
   });
+
+  int? get id => null;
 
   PlantData copyWith({
     String? name,

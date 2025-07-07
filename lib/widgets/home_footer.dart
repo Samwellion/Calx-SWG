@@ -13,17 +13,16 @@ class HomeFooter extends StatelessWidget {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
+            color: Colors.black.withOpacity(0.08),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),
         ],
       ),
-      child: const Center(
-        child: Text(
-          '© 2025 Standard Work Generator App',
-          style: TextStyle(fontSize: 16, color: Colors.black54),
-        ),
+      child: const Text(
+        '© 2025 Calx SWG',
+        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        textAlign: TextAlign.center,
       ),
     );
   }

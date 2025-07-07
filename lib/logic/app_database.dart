@@ -1,46 +1,21 @@
 import 'package:drift/drift.dart';
-import 'database_connection.dart';
 part 'app_database.g.dart';
 
-@DataClassName('Organization')
-class Organizations extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  TextColumn get name => text().named('Org_Name')();
-}
-
-@DataClassName('Plant')
-class Plants extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  IntColumn get organizationId => integer().references(Organizations, #id)();
-  TextColumn get name => text().named('Plant_Name')();
-  TextColumn get street =>
-      text().named('Street').withLength(min: 1, max: 255)();
-  TextColumn get city => text().named('City').withLength(min: 1, max: 255)();
-  TextColumn get state => text().named('State').withLength(min: 1, max: 255)();
-  TextColumn get zip => text().named('Zip').withLength(min: 1, max: 20)();
-}
-
-@DataClassName('ValueStream')
 class ValueStreams extends Table {
   IntColumn get id => integer().autoIncrement()();
-  IntColumn get plantId => integer().references(Plants, #id)();
-  TextColumn get name => text().named('VS_Name')();
+  IntColumn get plantId => integer()();
+  TextColumn get name => text()();
 }
 
-@DriftDatabase(tables: [Organizations, Plants, ValueStreams])
+@DriftDatabase(tables: [
+  ProcessParts,
+  Processes,
+  Parts,
+  Organizations,
+  Plants,
+  ValueStreams
+])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase._(super.e);
-
-  static Future<AppDatabase> open() async {
-    final executor = await openConnection();
-    return AppDatabase._(executor);
-  }
-
-  @override
-  int get schemaVersion => 1;
-
-  // CRUD methods can be added here
-
   // Insert or get an organization by name and return its id
   Future<int> upsertOrganization(String name) async {
     final existing = await (select(organizations)
@@ -51,8 +26,18 @@ class AppDatabase extends _$AppDatabase {
         .insert(OrganizationsCompanion(name: Value(name)));
   }
 
-  // Insert or get a plant by orgId+name and return its id
-  Future<int> upsertPlant({
+  AppDatabase(super.e);
+
+  @override
+  int get schemaVersion => 1;
+
+  Future<int> insertPart(PartsCompanion part) => into(parts).insert(part);
+  Future<int> upsertValueStream(ValueStreamsCompanion entry) async {
+    return into(valueStreams).insertOnConflictUpdate(entry);
+  }
+
+  // Add the method here:
+  Future<void> upsertPlant({
     required int organizationId,
     required String name,
     required String street,
@@ -61,30 +46,73 @@ class AppDatabase extends _$AppDatabase {
     required String zip,
   }) async {
     final existing = await (select(plants)
-          ..where((p) =>
-              p.organizationId.equals(organizationId) & p.name.equals(name)))
+          ..where((tbl) =>
+              tbl.organizationId.equals(organizationId) &
+              tbl.name.equals(name)))
         .getSingleOrNull();
-    if (existing != null) return existing.id;
-    return into(plants).insert(PlantsCompanion(
-      organizationId: Value(organizationId),
-      name: Value(name),
-      street: Value(street),
-      city: Value(city),
-      state: Value(state),
-      zip: Value(zip),
-    ));
+    if (existing != null) {
+      await (update(plants)..where((tbl) => tbl.id.equals(existing.id))).write(
+        PlantsCompanion(
+          street: Value(street),
+          city: Value(city),
+          state: Value(state),
+          zip: Value(zip),
+        ),
+      );
+    } else {
+      await into(plants).insert(
+        PlantsCompanion.insert(
+          organizationId: organizationId,
+          name: name,
+          street: street,
+          city: city,
+          state: state,
+          zip: zip,
+        ),
+      );
+    }
   }
+}
 
-  // Insert or get a value stream by plantId+name and return its id
-  Future<int> upsertValueStream(
-      {required int plantId, required String name}) async {
-    final existing = await (select(valueStreams)
-          ..where((vs) => vs.plantId.equals(plantId) & vs.name.equals(name)))
-        .getSingleOrNull();
-    if (existing != null) return existing.id;
-    return into(valueStreams).insert(ValueStreamsCompanion(
-      plantId: Value(plantId),
-      name: Value(name),
-    ));
-  }
+// ProcessPart table: associates a part number with a process
+class ProcessParts extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get partNumber => text()();
+  IntColumn get processId => integer().references(Processes, #id)();
+}
+
+// Process table: associates a process with a value stream
+class Processes extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get valueStreamId => integer().references(ValueStreams, #id)();
+  TextColumn get processName => text().named('process_name')();
+  TextColumn get processDescription =>
+      text().named('process_description').nullable()();
+}
+
+// Part table: associates a part with a value stream
+class Parts extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get valueStreamId => integer().references(ValueStreams, #id)();
+  TextColumn get partNumber => text()();
+  TextColumn get partDescription => text().nullable()();
+}
+
+@DataClassName('Organization')
+class Organizations extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text().named('Org_Name')();
+}
+
+// Removed duplicate Plants table definition to resolve naming conflict.
+
+@DataClassName('PlantData')
+class Plants extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get organizationId => integer()();
+  TextColumn get name => text()();
+  TextColumn get street => text()();
+  TextColumn get city => text()();
+  TextColumn get state => text()();
+  TextColumn get zip => text()();
 }
