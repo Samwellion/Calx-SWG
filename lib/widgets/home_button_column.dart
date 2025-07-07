@@ -46,7 +46,7 @@ class HomeButtonColumn extends StatelessWidget {
   Widget _buildHomeButton(
       {required String label, required VoidCallback? onPressed}) {
     return SizedBox(
-      width: 320,
+      width: double.infinity,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.yellow[300],

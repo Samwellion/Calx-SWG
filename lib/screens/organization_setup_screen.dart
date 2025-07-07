@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'plant_setup_screen.dart';
 import '../models/organization_data.dart' as org_data;
 import '../database_provider.dart';
-import 'package:collection/collection.dart';
 
 class OrganizationSetupHeader extends StatelessWidget {
   const OrganizationSetupHeader({super.key});
@@ -481,14 +480,13 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
     final db = await DatabaseProvider.getInstance();
     // Remove all plants for this org
     final orgs = await db.select(db.organizations).get();
-    final org = orgs.firstWhereOrNull((o) => o.name == name);
-    if (org != null) {
-      await (db.delete(db.plants)
-            ..where((p) => p.organizationId.equals(org.id)))
-          .go();
-      await (db.delete(db.organizations)..where((o) => o.id.equals(org.id)))
-          .go();
-    }
+    final org = orgs.firstWhere(
+      (o) => o.name == name,
+      orElse: () => throw Exception('Organization not found'),
+    );
+    await (db.delete(db.plants)..where((p) => p.organizationId.equals(org.id)))
+        .go();
+    await (db.delete(db.organizations)..where((o) => o.id.equals(org.id))).go();
     await _loadFromDatabase();
     setState(() {
       if (_selectedCompany == name) {
@@ -503,21 +501,22 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
     if (_selectedCompany != null && plant.isNotEmpty) {
       final db = await DatabaseProvider.getInstance();
       final orgs = await db.select(db.organizations).get();
-      final org = orgs.firstWhereOrNull((o) => o.name == _selectedCompany);
-      if (org != null) {
-        await db.upsertPlant(
-          organizationId: org.id,
-          name: plant,
-          street: 'N/A',
-          city: 'N/A',
-          state: 'N/A',
-          zip: 'N/A',
-        );
-        await _loadFromDatabase();
-        setState(() {
-          _plantController.clear();
-        });
-      }
+      final org = orgs.firstWhere(
+        (o) => o.name == _selectedCompany,
+        orElse: () => throw Exception('Organization not found'),
+      );
+      await db.upsertPlant(
+        organizationId: org.id,
+        name: plant,
+        street: 'N/A',
+        city: 'N/A',
+        state: 'N/A',
+        zip: 'N/A',
+      );
+      await _loadFromDatabase();
+      setState(() {
+        _plantController.clear();
+      });
     }
     FocusScope.of(context).requestFocus(_plantFocusNode);
   }
@@ -526,18 +525,18 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
     if (_selectedCompany != null) {
       final db = await DatabaseProvider.getInstance();
       final orgs = await db.select(db.organizations).get();
-      final org = orgs.firstWhereOrNull((o) => o.name == _selectedCompany);
-      if (org != null) {
-        final plantName = _companyPlants[_selectedCompany!]![index];
-        final plants = await db.select(db.plants).get();
-        final plant = plants.firstWhereOrNull(
-            (p) => p.name == plantName && p.organizationId == org.id);
-        if (plant != null) {
-          await (db.delete(db.plants)..where((p) => p.id.equals(plant.id)))
-              .go();
-        }
-        await _loadFromDatabase();
-      }
+      final org = orgs.firstWhere(
+        (o) => o.name == _selectedCompany,
+        orElse: () => throw Exception('Organization not found'),
+      );
+      final plantName = _companyPlants[_selectedCompany!]![index];
+      final plants = await db.select(db.plants).get();
+      final plant = plants.firstWhere(
+        (p) => p.name == plantName && p.organizationId == org.id,
+        orElse: () => throw Exception('Plant not found'),
+      );
+      await (db.delete(db.plants)..where((p) => p.id.equals(plant.id))).go();
+      await _loadFromDatabase();
     }
   }
 
@@ -551,12 +550,18 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
     }
     return Scaffold(
       backgroundColor: Colors.yellow[100],
+      resizeToAvoidBottomInset: true,
       body: Column(
         children: [
           const OrganizationSetupHeader(),
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
+            child: SingleChildScrollView(
+              padding: EdgeInsets.only(
+                left: 24.0,
+                right: 24.0,
+                top: 24.0,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24.0,
+              ),
               child: OrganizationDetailsForm(
                 companyNameController: _companyNameController,
                 companyNameFocusNode: _companyNameFocusNode,

@@ -73,6 +73,7 @@ class StopwatchApp extends StatefulWidget {
 }
 
 class _StopwatchAppState extends State<StopwatchApp> {
+  final TextEditingController _observerNameController = TextEditingController();
   String get companyName => widget.companyName;
   String get plantName => widget.plantName;
   String get valueStreamName => widget.valueStreamName;
@@ -311,9 +312,42 @@ class _StopwatchAppState extends State<StopwatchApp> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Left side: Observer Name above the table
                     Expanded(
                       flex: 3,
-                      child: TimeObservationTable(key: _tableKey),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Observer Name',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                SizedBox(
+                                  width: 240,
+                                  child: TextField(
+                                    controller: _observerNameController,
+                                    decoration: const InputDecoration(
+                                      border: OutlineInputBorder(),
+                                      isDense: true,
+                                      contentPadding: EdgeInsets.symmetric(
+                                          vertical: 10, horizontal: 12),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Expanded(child: TimeObservationTable(key: _tableKey)),
+                        ],
+                      ),
                     ),
                   ],
                 ),

@@ -87,9 +87,13 @@ class _PartInputScreenState extends State<PartInputScreen> {
     setState(() => _saving = true);
     try {
       await db.insertPart(
-        valueStreamId: widget.valueStreamId,
-        partNumber: partNumber,
-        partDescription: partDescription.isEmpty ? null : partDescription,
+        PartsCompanion.insert(
+          valueStreamId: widget.valueStreamId,
+          partNumber: partNumber,
+          partDescription: partDescription.isEmpty
+              ? drift.Value.absent()
+              : drift.Value(partDescription),
+        ),
       );
       await _loadParts();
       _partNumberController.clear();

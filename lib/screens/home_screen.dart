@@ -3,7 +3,6 @@ import 'package:drift/drift.dart' as drift;
 
 import 'package:flutter/material.dart';
 import '../widgets/home_header.dart';
-import '../widgets/home_footer.dart';
 import '../widgets/home_dropdowns_column.dart';
 import '../widgets/home_button_column.dart';
 import 'part_input_screen.dart';
@@ -13,6 +12,8 @@ import 'stopwatch_app.dart';
 import '../logic/app_database.dart';
 import 'plant_setup_screen.dart';
 import '../database_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../widgets/home_footer.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,10 +23,16 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  static const _kCompanyKey = 'selectedCompany';
+  static const _kPlantKey = 'selectedPlant';
+  static const _kValueStreamKey = 'selectedValueStream';
+  static const _kValueStreamIdKey = 'selectedValueStreamId';
+  static const _kProcessKey = 'selectedProcess';
   void _onProcessChanged(String? value) {
     setState(() {
       selectedProcess = value;
     });
+    _saveSelections();
   }
 
   void _onAddVSProcess() async {
@@ -43,6 +50,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       );
+      // Reload process dropdown after returning from process input
+      await _loadProcessesForValueStream();
     }
   }
 
@@ -84,10 +93,37 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    DatabaseProvider.getInstance().then((database) {
-      db = database;
-      _loadDropdownData();
+    _loadSelections().then((_) {
+      DatabaseProvider.getInstance().then((database) {
+        db = database;
+        _loadDropdownData();
+      });
     });
+  }
+
+  Future<void> _loadSelections() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      final c = prefs.getString(_kCompanyKey);
+      selectedCompany = (c != null && c.isNotEmpty) ? c : null;
+      final p = prefs.getString(_kPlantKey);
+      selectedPlant = (p != null && p.isNotEmpty) ? p : null;
+      final vs = prefs.getString(_kValueStreamKey);
+      selectedValueStream = (vs != null && vs.isNotEmpty) ? vs : null;
+      final vsid = prefs.getInt(_kValueStreamIdKey);
+      selectedValueStreamId = (vsid != null && vsid != -1) ? vsid : null;
+      final proc = prefs.getString(_kProcessKey);
+      selectedProcess = (proc != null && proc.isNotEmpty) ? proc : null;
+    });
+  }
+
+  Future<void> _saveSelections() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kCompanyKey, selectedCompany ?? '');
+    await prefs.setString(_kPlantKey, selectedPlant ?? '');
+    await prefs.setString(_kValueStreamKey, selectedValueStream ?? '');
+    await prefs.setInt(_kValueStreamIdKey, selectedValueStreamId ?? -1);
+    await prefs.setString(_kProcessKey, selectedProcess ?? '');
   }
 
   Future<void> _openPlantSetupScreen() async {
@@ -131,14 +167,20 @@ class _HomeScreenState extends State<HomeScreen> {
       selectedCompany = value;
       selectedPlant = null;
       selectedValueStream = null;
+      selectedValueStreamId = null;
+      selectedProcess = null;
     });
+    _saveSelections();
   }
 
   void _onPlantChanged(String? value) {
     setState(() {
       selectedPlant = value;
       selectedValueStream = null;
+      selectedValueStreamId = null;
+      selectedProcess = null;
     });
+    _saveSelections();
   }
 
   // Removed duplicate declaration of _allValueStreams
@@ -162,13 +204,12 @@ class _HomeScreenState extends State<HomeScreen> {
           orElse: () => ValueStream(id: -1, plantId: -1, name: ''),
         );
         selectedValueStreamId = vs.id > 0 ? vs.id : null;
-        debugPrint(
-            '[Dropdown] Selected Value Stream: $value, Plant: ${plant.name}, PlantId: ${plant.id}, VS ID: ${vs.id}');
       } else {
         selectedValueStreamId = null;
-        debugPrint('[Dropdown] Value stream cleared or plant not selected.');
       }
+      selectedProcess = null;
     });
+    _saveSelections();
     await _loadProcessesForValueStream();
   }
 
@@ -187,6 +228,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       );
+      await _loadSelections();
     }
   }
 
@@ -245,59 +287,69 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ],
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      HomeButtonColumn(
-                        onSetupOrg: () async {
-                          await Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const OrganizationSetupScreen(),
+                  child: SingleChildScrollView(
+                    child: IntrinsicHeight(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Flexible(
+                            child: HomeButtonColumn(
+                              onSetupOrg: () async {
+                                await Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const OrganizationSetupScreen(),
+                                  ),
+                                );
+                                await _loadDropdownData();
+                              },
+                              onLoadOrg: _openPlantSetupScreen,
+                              onOpenObs: _openStopwatchApp,
+                              onAddPartNumber: _openPartInputScreen,
+                              onAddVSProcess: _onAddVSProcess,
+                              enableAddPartNumber: (selectedCompany != null &&
+                                  selectedCompany!.isNotEmpty &&
+                                  selectedPlant != null &&
+                                  selectedPlant!.isNotEmpty &&
+                                  selectedValueStream != null &&
+                                  selectedValueStream!.isNotEmpty),
+                              enableOpenObs: (selectedCompany != null &&
+                                  selectedCompany!.isNotEmpty &&
+                                  selectedPlant != null &&
+                                  selectedPlant!.isNotEmpty &&
+                                  selectedValueStream != null &&
+                                  selectedValueStream!.isNotEmpty &&
+                                  selectedProcess != null &&
+                                  selectedProcess!.isNotEmpty),
                             ),
-                          );
-                          await _loadDropdownData();
-                        },
-                        onLoadOrg: _openPlantSetupScreen,
-                        onOpenObs: _openStopwatchApp,
-                        onAddPartNumber: _openPartInputScreen,
-                        onAddVSProcess: _onAddVSProcess,
-                        enableAddPartNumber: (selectedCompany != null &&
-                            selectedCompany!.isNotEmpty &&
-                            selectedPlant != null &&
-                            selectedPlant!.isNotEmpty &&
-                            selectedValueStream != null &&
-                            selectedValueStream!.isNotEmpty),
-                        enableOpenObs: (selectedCompany != null &&
-                            selectedCompany!.isNotEmpty &&
-                            selectedPlant != null &&
-                            selectedPlant!.isNotEmpty &&
-                            selectedValueStream != null &&
-                            selectedValueStream!.isNotEmpty &&
-                            selectedProcess != null &&
-                            selectedProcess!.isNotEmpty),
+                          ),
+                          const SizedBox(width: 32),
+                          Flexible(
+                            child: HomeDropdownsColumn(
+                              companyNames: companyNames,
+                              selectedCompany: selectedCompany,
+                              onCompanyChanged: _onCompanyChanged,
+                              plantNames: orgPlants,
+                              selectedPlant: selectedPlant,
+                              onPlantChanged: _onPlantChanged,
+                              valueStreams: valueStreams,
+                              selectedValueStream: selectedValueStream,
+                              onValueStreamChanged: _onValueStreamChanged,
+                              processes: processNames,
+                              selectedProcess: selectedProcess,
+                              onProcessChanged: _onProcessChanged,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 32),
-                      HomeDropdownsColumn(
-                        companyNames: companyNames,
-                        selectedCompany: selectedCompany,
-                        onCompanyChanged: _onCompanyChanged,
-                        plantNames: orgPlants,
-                        selectedPlant: selectedPlant,
-                        onPlantChanged: _onPlantChanged,
-                        valueStreams: valueStreams,
-                        selectedValueStream: selectedValueStream,
-                        onValueStreamChanged: _onValueStreamChanged,
-                        processes: processNames,
-                        selectedProcess: selectedProcess,
-                        onProcessChanged: _onProcessChanged,
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
             ),
           ),
+          const SizedBox(height: 8),
           const HomeFooter(),
         ],
       ),

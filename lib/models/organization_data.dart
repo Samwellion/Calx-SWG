@@ -13,6 +13,8 @@ class PlantData {
     required this.zip,
   });
 
+  int? get id => null;
+
   PlantData copyWith({
     String? name,
     String? street,

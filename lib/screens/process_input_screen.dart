@@ -52,7 +52,7 @@ class _ProcessInputScreenState extends State<ProcessInputScreen> {
       _error = null;
     });
     try {
-      final result = await db.customSelect(
+      final result = await db.customSelectQuery(
         'SELECT id, process_name, process_description FROM processes WHERE value_stream_id = ?',
         variables: [drift.Variable.withInt(widget.valueStreamId)],
       ).get();
