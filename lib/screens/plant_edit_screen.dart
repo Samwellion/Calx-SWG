@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../logic/app_database.dart';
+// Example: import '../models/plant.dart';
+// import '../logic/plant.dart';
 
 class PlantEditScreen extends StatefulWidget {
   final Plant plant;

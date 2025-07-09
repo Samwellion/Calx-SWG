@@ -14,6 +14,7 @@ import 'plant_setup_screen.dart';
 import '../database_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/home_footer.dart';
+import 'setup.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -232,6 +233,21 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _openAddElementsScreen() async {
+    if (selectedValueStreamId != null) {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => SetupScreen(
+            companyName: selectedCompany,
+            plantName: selectedPlant,
+            valueStreamName: selectedValueStream,
+            processName: selectedProcess,
+          ),
+        ),
+      );
+    }
+  }
+
   void _openStopwatchApp() {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -308,6 +324,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               onOpenObs: _openStopwatchApp,
                               onAddPartNumber: _openPartInputScreen,
                               onAddVSProcess: _onAddVSProcess,
+                              onAddElements: _openAddElementsScreen,
                               enableAddPartNumber: (selectedCompany != null &&
                                   selectedCompany!.isNotEmpty &&
                                   selectedPlant != null &&
