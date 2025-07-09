@@ -169,16 +169,19 @@ class _SetupScreenState extends State<SetupScreen> {
             processName: widget.processName,
           ),
           Padding(
-            padding: const EdgeInsets.only(top: 24.0, left: 24.0, right: 24.0, bottom: 8.0),
+            padding: const EdgeInsets.only(
+                top: 24.0, left: 24.0, right: 24.0, bottom: 8.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (selectedPartNumber != null)
-                  Text('Part Number: $selectedPartNumber', style: const TextStyle(fontSize: 18)),
+                  Text('Part Number: $selectedPartNumber',
+                      style: const TextStyle(fontSize: 18)),
                 if (selectedPartNumber != null && processPartId != null)
                   const SizedBox(width: 32),
                 if (processPartId != null)
-                  Text('Process Part ID: $processPartId', style: const TextStyle(fontSize: 18)),
+                  Text('Process Part ID: $processPartId',
+                      style: const TextStyle(fontSize: 18)),
               ],
             ),
           ),
