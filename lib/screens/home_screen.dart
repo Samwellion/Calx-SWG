@@ -102,6 +102,12 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadSelections();
+  }
+
   Future<void> _loadSelections() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -155,7 +161,17 @@ class _HomeScreenState extends State<HomeScreen> {
           .map((vs) => vs.name)
           .toList();
     }
-    _allPlants = plants;
+    _allPlants = plants
+        .map((p) => Plant(
+              id: p.id,
+              organizationId: p.organizationId,
+              name: p.name,
+              street: p.street,
+              city: p.city,
+              state: p.state,
+              zip: p.zip,
+            ))
+        .toList();
     _allValueStreams = valueStreams;
 
     setState(() {
@@ -331,6 +347,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                   selectedPlant!.isNotEmpty &&
                                   selectedValueStream != null &&
                                   selectedValueStream!.isNotEmpty),
+                              // Only enable Add Setup and Elements and Open Time Observation if a process is selected
+                              enableAddElements: (selectedCompany != null &&
+                                  selectedCompany!.isNotEmpty &&
+                                  selectedPlant != null &&
+                                  selectedPlant!.isNotEmpty &&
+                                  selectedValueStream != null &&
+                                  selectedValueStream!.isNotEmpty &&
+                                  selectedProcess != null &&
+                                  selectedProcess!.isNotEmpty),
                               enableOpenObs: (selectedCompany != null &&
                                   selectedCompany!.isNotEmpty &&
                                   selectedPlant != null &&
@@ -372,4 +397,24 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+}
+
+class Plant {
+  final int id;
+  final int organizationId;
+  final String name;
+  final String street;
+  final String city;
+  final String state;
+  final String zip;
+
+  Plant({
+    required this.id,
+    required this.organizationId,
+    required this.name,
+    required this.street,
+    required this.city,
+    required this.state,
+    required this.zip,
+  });
 }

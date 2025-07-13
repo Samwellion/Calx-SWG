@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../logic/app_database.dart';
 // Example: import '../models/plant.dart';
 // import '../logic/plant.dart';
 
@@ -15,6 +14,18 @@ class PlantEditScreen extends StatefulWidget {
 
   @override
   State<PlantEditScreen> createState() => _PlantEditScreenState();
+}
+
+class Plant {
+  final String name;
+
+  Plant({required this.name});
+
+  Plant copyWith({String? name}) {
+    return Plant(
+      name: name ?? this.name,
+    );
+  }
 }
 
 class _PlantEditScreenState extends State<PlantEditScreen> {
