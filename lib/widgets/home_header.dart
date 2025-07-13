@@ -5,8 +5,14 @@ class HomeHeader extends StatelessWidget {
   final String? companyName;
   final String? plantName;
   final String? valueStreamName;
-  const HomeHeader(
-      {super.key, this.companyName, this.plantName, this.valueStreamName});
+  final String? processName;
+  const HomeHeader({
+    super.key,
+    this.companyName,
+    this.plantName,
+    this.valueStreamName,
+    this.processName,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -40,10 +46,11 @@ class HomeHeader extends StatelessWidget {
               style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
           ),
-          // Text boxes for company, plant, value stream
+          // Text boxes for company, plant, value stream, process
           if ((companyName?.isNotEmpty ?? false) ||
               (plantName?.isNotEmpty ?? false) ||
-              (valueStreamName?.isNotEmpty ?? false))
+              (valueStreamName?.isNotEmpty ?? false) ||
+              (processName?.isNotEmpty ?? false))
             Padding(
               padding: const EdgeInsets.only(left: 16.0),
               child: Row(
@@ -54,6 +61,10 @@ class HomeHeader extends StatelessWidget {
                   _HeaderTextBox(label: 'Plant', value: plantName),
                   const SizedBox(width: 8),
                   _HeaderTextBox(label: 'Value Stream', value: valueStreamName),
+                  if (processName != null && processName!.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    _HeaderTextBox(label: 'Process', value: processName),
+                  ],
                 ],
               ),
             ),

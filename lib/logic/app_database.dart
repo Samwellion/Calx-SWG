@@ -7,13 +7,23 @@ class ValueStreams extends Table {
   TextColumn get name => text()();
 }
 
+class SetupElements extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get processPartId => integer().references(ProcessParts, #id)();
+  TextColumn get setupName => text()();
+  DateTimeColumn get setupDateTime => dateTime()();
+  TextColumn get elementName => text()();
+  TextColumn get time => text()(); // Format: HH:MM:SS
+}
+
 @DriftDatabase(tables: [
   ProcessParts,
   Processes,
   Parts,
   Organizations,
   Plants,
-  ValueStreams
+  ValueStreams,
+  SetupElements
 ])
 class AppDatabase extends _$AppDatabase {
   // Insert or get an organization by name and return its id

@@ -6,8 +6,10 @@ class HomeButtonColumn extends StatelessWidget {
   final VoidCallback onOpenObs;
   final VoidCallback onAddPartNumber;
   final VoidCallback onAddVSProcess;
+  final VoidCallback onAddElements;
   final bool enableAddPartNumber;
   final bool enableOpenObs;
+  final bool enableAddElements;
   const HomeButtonColumn({
     super.key,
     required this.onSetupOrg,
@@ -15,8 +17,10 @@ class HomeButtonColumn extends StatelessWidget {
     required this.onOpenObs,
     required this.onAddPartNumber,
     required this.onAddVSProcess,
+    required this.onAddElements,
     required this.enableAddPartNumber,
     required this.enableOpenObs,
+    required this.enableAddElements,
   });
 
   @override
@@ -34,6 +38,11 @@ class HomeButtonColumn extends StatelessWidget {
         _buildHomeButton(
           label: 'Add VS Process',
           onPressed: enableAddPartNumber ? onAddVSProcess : null,
+        ),
+        const SizedBox(height: 20),
+        _buildHomeButton(
+          label: 'Add Setup and Elements',
+          onPressed: enableAddElements ? onAddElements : null,
         ),
         const SizedBox(height: 20),
         _buildHomeButton(

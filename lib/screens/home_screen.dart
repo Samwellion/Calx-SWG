@@ -14,6 +14,7 @@ import 'plant_setup_screen.dart';
 import '../database_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/home_footer.dart';
+import 'setup.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -101,6 +102,12 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadSelections();
+  }
+
   Future<void> _loadSelections() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -154,7 +161,17 @@ class _HomeScreenState extends State<HomeScreen> {
           .map((vs) => vs.name)
           .toList();
     }
-    _allPlants = plants;
+    _allPlants = plants
+        .map((p) => Plant(
+              id: p.id,
+              organizationId: p.organizationId,
+              name: p.name,
+              street: p.street,
+              city: p.city,
+              state: p.state,
+              zip: p.zip,
+            ))
+        .toList();
     _allValueStreams = valueStreams;
 
     setState(() {
@@ -229,6 +246,21 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
       await _loadSelections();
+    }
+  }
+
+  void _openAddElementsScreen() async {
+    if (selectedValueStreamId != null) {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => SetupScreen(
+            companyName: selectedCompany,
+            plantName: selectedPlant,
+            valueStreamName: selectedValueStream,
+            processName: selectedProcess,
+          ),
+        ),
+      );
     }
   }
 
@@ -308,12 +340,22 @@ class _HomeScreenState extends State<HomeScreen> {
                               onOpenObs: _openStopwatchApp,
                               onAddPartNumber: _openPartInputScreen,
                               onAddVSProcess: _onAddVSProcess,
+                              onAddElements: _openAddElementsScreen,
                               enableAddPartNumber: (selectedCompany != null &&
                                   selectedCompany!.isNotEmpty &&
                                   selectedPlant != null &&
                                   selectedPlant!.isNotEmpty &&
                                   selectedValueStream != null &&
                                   selectedValueStream!.isNotEmpty),
+                              // Only enable Add Setup and Elements and Open Time Observation if a process is selected
+                              enableAddElements: (selectedCompany != null &&
+                                  selectedCompany!.isNotEmpty &&
+                                  selectedPlant != null &&
+                                  selectedPlant!.isNotEmpty &&
+                                  selectedValueStream != null &&
+                                  selectedValueStream!.isNotEmpty &&
+                                  selectedProcess != null &&
+                                  selectedProcess!.isNotEmpty),
                               enableOpenObs: (selectedCompany != null &&
                                   selectedCompany!.isNotEmpty &&
                                   selectedPlant != null &&
@@ -355,4 +397,24 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+}
+
+class Plant {
+  final int id;
+  final int organizationId;
+  final String name;
+  final String street;
+  final String city;
+  final String state;
+  final String zip;
+
+  Plant({
+    required this.id,
+    required this.organizationId,
+    required this.name,
+    required this.street,
+    required this.city,
+    required this.state,
+    required this.zip,
+  });
 }
