@@ -29,11 +29,52 @@ class _HomeScreenState extends State<HomeScreen> {
   static const _kValueStreamKey = 'selectedValueStream';
   static const _kValueStreamIdKey = 'selectedValueStreamId';
   static const _kProcessKey = 'selectedProcess';
-  void _onProcessChanged(String? value) {
+  bool hasSetupsForSelectedProcess = false;
+
+  void _onProcessChanged(String? value) async {
     setState(() {
       selectedProcess = value;
     });
     _saveSelections();
+    await _checkSetupsForSelectedProcess();
+  }
+
+  Future<void> _checkSetupsForSelectedProcess() async {
+    if (selectedProcess == null || selectedProcess!.isEmpty) {
+      setState(() {
+        hasSetupsForSelectedProcess = false;
+      });
+      return;
+    }
+    // Get processId for selectedProcess
+    final processRow = await (db.select(db.processes)
+          ..where((tbl) => tbl.processName.equals(selectedProcess!)))
+        .getSingleOrNull();
+    if (processRow == null) {
+      setState(() {
+        hasSetupsForSelectedProcess = false;
+      });
+      return;
+    }
+    final processId = processRow.id;
+    // Get all ProcessParts for this processId
+    final processParts = await (db.select(db.processParts)
+          ..where((tbl) => tbl.processId.equals(processId)))
+        .get();
+    if (processParts.isEmpty) {
+      setState(() {
+        hasSetupsForSelectedProcess = false;
+      });
+      return;
+    }
+    // Check if any SetupElements exist for these processPartIds
+    final partIds = processParts.map((pp) => pp.id).toList();
+    final setupCount = await (db.select(db.setupElements)
+          ..where((tbl) => tbl.processPartId.isIn(partIds)))
+        .get();
+    setState(() {
+      hasSetupsForSelectedProcess = setupCount.isNotEmpty;
+    });
   }
 
   void _onAddVSProcess() async {
@@ -98,6 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
       DatabaseProvider.getInstance().then((database) {
         db = database;
         _loadDropdownData();
+        _checkSetupsForSelectedProcess();
       });
     });
   }
@@ -264,17 +306,98 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _openStopwatchApp() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => StopwatchApp(
-          companyName: selectedCompany ?? '',
-          plantName: selectedPlant ?? '',
-          valueStreamName: selectedValueStream ?? '',
-          processName: selectedProcess ?? '',
-        ),
-      ),
-    );
+  Future<void> _openStopwatchApp() async {
+    // Query available setups and part numbers for the selected process
+    if (selectedProcess == null || selectedProcess!.isEmpty) return;
+    // Get processId
+    final processRow = await (db.select(db.processes)
+          ..where((tbl) => tbl.processName.equals(selectedProcess!)))
+        .getSingleOrNull();
+    if (processRow == null) return;
+    final processId = processRow.id;
+    // Get all ProcessParts for this processId
+    final processParts = await (db.select(db.processParts)
+          ..where((tbl) => tbl.processId.equals(processId)))
+        .get();
+    if (processParts.isEmpty) return;
+    // For each processPart, get setups and elements
+    List<Map<String, dynamic>> setupOptions = [];
+    // Group by setupName and partNumber, merge elements
+    final Map<String, Map<String, dynamic>> grouped = {};
+    for (final pp in processParts) {
+      final setups = await (db.select(db.setupElements)
+            ..where((tbl) => tbl.processPartId.equals(pp.id)))
+          .get();
+      for (final setup in setups) {
+        final key = '${setup.setupName}||${pp.partNumber}';
+        if (!grouped.containsKey(key)) {
+          grouped[key] = {
+            'partNumber': pp.partNumber,
+            'setupName': setup.setupName,
+            'elements': <String>[],
+          };
+        }
+        (grouped[key]!['elements'] as List<String>).add(setup.elementName);
+      }
+    }
+    setupOptions = grouped.values.toList();
+    if (setupOptions.isEmpty) return;
+
+    Map<String, dynamic>? selectedOption = setupOptions[0];
+    await showDialog(
+      // ignore: use_build_context_synchronously
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Select Setup and Part Number'),
+          content: StatefulBuilder(
+            builder: (context, setState) {
+              return DropdownButton<Map<String, dynamic>>(
+                value: selectedOption,
+                isExpanded: true,
+                items: setupOptions.map((opt) {
+                  return DropdownMenuItem<Map<String, dynamic>>(
+                    value: opt,
+                    child: Text('${opt['setupName']} - ${opt['partNumber']}'),
+                  );
+                }).toList(),
+                onChanged: (val) {
+                  setState(() {
+                    selectedOption = val;
+                  });
+                },
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(selectedOption),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    ).then((result) {
+      if (result != null && result is Map<String, dynamic>) {
+        // ignore: use_build_context_synchronously
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => StopwatchApp(
+              companyName: selectedCompany ?? '',
+              plantName: selectedPlant ?? '',
+              valueStreamName: selectedValueStream ?? '',
+              processName: selectedProcess ?? '',
+              initialPartNumber: result['partNumber'],
+              initialElements: result['elements'],
+            ),
+          ),
+        );
+      }
+    });
   }
 
   @override
@@ -363,7 +486,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                   selectedValueStream != null &&
                                   selectedValueStream!.isNotEmpty &&
                                   selectedProcess != null &&
-                                  selectedProcess!.isNotEmpty),
+                                  selectedProcess!.isNotEmpty &&
+                                  hasSetupsForSelectedProcess),
                             ),
                           ),
                           const SizedBox(width: 32),
