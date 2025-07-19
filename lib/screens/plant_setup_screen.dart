@@ -27,7 +27,6 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
 
   // Controllers for each plant's value stream input
   final Map<String, TextEditingController> _controllers = {};
-  late final ValueNotifier<int?> _selectedPlantIndex;
   int? _selectedPlantIdx;
 
   @override
@@ -340,7 +339,6 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
     for (final controller in _controllers.values) {
       controller.dispose();
     }
-    _selectedPlantIndex.dispose();
     super.dispose();
   }
 }

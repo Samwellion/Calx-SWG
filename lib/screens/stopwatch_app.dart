@@ -200,6 +200,7 @@ class _StopwatchAppState extends State<StopwatchApp> {
 
   @override
   Widget build(BuildContext context) {
+    final observerNameNotEmpty = _observerNameController.text.trim().isNotEmpty;
     return Scaffold(
       backgroundColor: Colors.yellow[100],
       body: SafeArea(
@@ -235,7 +236,7 @@ class _StopwatchAppState extends State<StopwatchApp> {
                           TimerDisplay(elapsed: _elapsed, lapTime: _lapTime),
                           const SizedBox(height: 8),
                           ControlButtons(
-                            onStart: _start,
+                            onStart: observerNameNotEmpty ? _start : null,
                             onStop: _stop,
                             onReset: _reset,
                             onMarkLap: _markLap,

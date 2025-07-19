@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'plant_setup_screen.dart';
 import '../models/organization_data.dart' as org_data;
 import '../database_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OrganizationSetupHeader extends StatelessWidget {
   const OrganizationSetupHeader({super.key});
@@ -247,11 +248,14 @@ class OrganizationDetailsForm extends StatelessWidget {
                                     ? Colors.yellow[200]
                                     : Colors.transparent,
                                 child: ListTile(
-                                  title: Text(name,
-                                      style: TextStyle(
-                                          fontWeight: selected
-                                              ? FontWeight.bold
-                                              : FontWeight.normal)),
+                                  title: Text(
+                                    name,
+                                    style: TextStyle(
+                                      fontWeight: selected
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                    ),
+                                  ),
                                   selected: selected,
                                   onTap: () => onSelectCompany(name),
                                   trailing: IconButton(
@@ -374,6 +378,8 @@ class OrganizationSetupScreen extends StatefulWidget {
 }
 
 class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
+  static const _kCompanyKey = 'selectedCompany';
+  static const _kPlantKey = 'selectedPlant';
   final TextEditingController _companyNameController = TextEditingController();
   final FocusNode _companyNameFocusNode = FocusNode();
   final TextEditingController _plantController = TextEditingController();
@@ -390,7 +396,17 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FocusScope.of(context).requestFocus(_companyNameFocusNode);
     });
-    _loadFromDatabase();
+    _restoreSelections().then((_) => _loadFromDatabase());
+  }
+
+  Future<void> _restoreSelections() async {
+    final prefs = await SharedPreferences.getInstance();
+    final c = prefs.getString(_kCompanyKey);
+    final p = prefs.getString(_kPlantKey);
+    setState(() {
+      _selectedCompany = (c != null && c.isNotEmpty) ? c : null;
+      _selectedPlant = (p != null && p.isNotEmpty) ? p : null;
+    });
   }
 
   Future<void> _loadFromDatabase() async {
@@ -408,9 +424,38 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
           .map((p) => p.name)
           .toList();
     }
-    // Only set the controller if a company is selected (e.g., from the list), not on every DB load
-    if (_selectedCompany != null && _selectedCompany!.isNotEmpty) {
-      _companyNameController.text = _selectedCompany!;
+    // Load persisted organization and plants into OrganizationData
+    if (orgs.isNotEmpty) {
+      // Use restored selection if available, else first org
+      final selectedOrg = _selectedCompany ?? orgs.first.name;
+      _selectedCompany = selectedOrg;
+      _companyNameController.text = selectedOrg;
+      org_data.OrganizationData.companyName = selectedOrg;
+      final org = orgs.firstWhere((o) => o.name == selectedOrg,
+          orElse: () => orgs.first);
+      final orgPlants =
+          plants.where((p) => p.organizationId == org.id).toList();
+      org_data.OrganizationData.plants = orgPlants
+          .map((p) => org_data.PlantData(
+                name: p.name,
+                street: p.street,
+                city: p.city,
+                state: p.state,
+                zip: p.zip,
+              ))
+          .toList();
+      // Use restored plant selection if available, else first plant
+      if (orgPlants.isNotEmpty) {
+        _selectedPlant = _selectedPlant ?? orgPlants.first.name;
+      } else {
+        _selectedPlant = null;
+      }
+    } else {
+      org_data.OrganizationData.companyName = '';
+      org_data.OrganizationData.plants = [];
+      _selectedCompany = null;
+      _selectedPlant = null;
+      _companyNameController.text = '';
     }
     setState(() {
       _loading = false;
@@ -465,6 +510,7 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
       await _loadFromDatabase();
       setState(() {
         _selectedCompany = name;
+  _saveSelections();
       });
       _companyNameController.clear();
       // Move focus to plant name input after adding company
@@ -492,6 +538,7 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
       if (_selectedCompany == name) {
         _selectedCompany =
             _companyNames.isNotEmpty ? _companyNames.first : null;
+  _saveSelections();
       }
     });
   }
@@ -516,6 +563,8 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
       await _loadFromDatabase();
       setState(() {
         _plantController.clear();
+  _selectedPlant = plant;
+  _saveSelections();
       });
     }
     FocusScope.of(context).requestFocus(_plantFocusNode);
@@ -535,9 +584,23 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
         (p) => p.name == plantName && p.organizationId == org.id,
         orElse: () => throw Exception('Plant not found'),
       );
-      await (db.delete(db.plants)..where((p) => p.id.equals(plant.id))).go();
+      // await (db.delete(db.plants)..where((p) => p.id.equals(plant.id))).go();
       await _loadFromDatabase();
+      setState(() {
+        if (_selectedPlant == plantName) {
+          _selectedPlant = (_companyPlants[_selectedCompany!]?.isNotEmpty ?? false)
+              ? _companyPlants[_selectedCompany!]!.first
+              : null;
+          _saveSelections();
+        }
+      });
     }
+  }
+
+  Future<void> _saveSelections() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kCompanyKey, _selectedCompany ?? '');
+    await prefs.setString(_kPlantKey, _selectedPlant ?? '');
   }
 
   @override

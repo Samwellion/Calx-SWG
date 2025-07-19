@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 
 class ControlButtons extends StatelessWidget {
-  final VoidCallback onStart;
+  final VoidCallback? onStart;
   final VoidCallback onStop;
   final VoidCallback onReset;
   final VoidCallback onMarkLap;

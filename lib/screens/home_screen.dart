@@ -1,6 +1,4 @@
 import 'package:drift/drift.dart' as drift;
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 import '../widgets/home_header.dart';
 import '../widgets/home_dropdowns_column.dart';
@@ -16,6 +14,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/home_footer.dart';
 import 'setup.dart';
 
+final RouteObserver<ModalRoute<void>> routeObserver =
+    RouteObserver<ModalRoute<void>>();
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -23,7 +24,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with RouteAware {
   static const _kCompanyKey = 'selectedCompany';
   static const _kPlantKey = 'selectedPlant';
   static const _kValueStreamKey = 'selectedValueStream';
@@ -147,7 +148,21 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    routeObserver.subscribe(this, ModalRoute.of(context)!);
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    // Called when returning to this screen after popping another route
     _loadSelections();
+    _loadDropdownData();
+    setState(() {});
   }
 
   Future<void> _loadSelections() async {

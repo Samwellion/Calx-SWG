@@ -4,7 +4,7 @@ import 'package:drift/wasm.dart';
 
 Future<QueryExecutor> createDriftConnection() async {
   final result = await WasmDatabase.open(
-    databaseName: 'swg',
+    databaseName: 'swg', // This enables IndexedDB persistence
     sqlite3Uri: Uri.parse('sqlite3.wasm'),
     driftWorkerUri: Uri.parse('drift_worker.js'),
   );
