@@ -10,6 +10,35 @@ class TimeObservationTable extends StatefulWidget {
 }
 
 class TimeObservationTableState extends State<TimeObservationTable> {
+  // Hide rows where the 'element' is empty
+  void hideRowsWithoutElement() {
+    setState(() {
+      _rows.removeWhere((row) => (row['element'] == null ||
+          (row['element'] as String).trim().isEmpty));
+      if (_rows.isEmpty) {
+        _rows.add({'element': '', 'times': <Duration>[]});
+      }
+    });
+  }
+
+  // ...existing code...
+  // Set elements from setup selection
+  void setElements(List<String> elements) {
+    setState(() {
+      _rows.clear();
+      for (final e in elements) {
+        _rows.add({'element': e, 'times': <Duration>[]});
+      }
+      if (_rows.isEmpty) {
+        _rows.add({'element': '', 'times': <Duration>[]});
+      }
+      _elementControllers.clear();
+      _elementFocusNodes.clear();
+      _commentsControllers.clear();
+      _lowestRepeatableControllers.clear();
+    });
+  }
+
   static const double _columnWidth =
       120.0; // Define uniform column width for most columns
   static const double _lapColumnWidth =
@@ -53,7 +82,6 @@ class TimeObservationTableState extends State<TimeObservationTable> {
   List<Duration> _footerLapTotals = [];
   final List<String> _ovrdValues = [];
   final List<String> _summaryValues = [];
-  Duration? _footerLowestRepeatable;
 
   void insertTime(Duration time) {
     setState(() {
@@ -142,13 +170,7 @@ class TimeObservationTableState extends State<TimeObservationTable> {
         for (final t in roundedTotals) {
           counts[t] = (counts[t] ?? 0) + 1;
         }
-        final sorted = roundedTotals.toSet().toList()..sort();
-        _footerLowestRepeatable = sorted
-            .cast<Duration?>()
-            .firstWhere((t) => counts[t]! >= 2, orElse: () => null);
-      } else {
-        _footerLowestRepeatable = null;
-      }
+      } else {}
     });
   }
 
@@ -187,7 +209,7 @@ class TimeObservationTableState extends State<TimeObservationTable> {
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
+            color: Colors.black.withOpacity(0.12),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -197,165 +219,126 @@ class TimeObservationTableState extends State<TimeObservationTable> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              columnSpacing: 0.0,
-              horizontalMargin: 0.0,
-              dividerThickness: 1.0,
-              headingRowColor: WidgetStateProperty.all(Colors.yellow[200]),
-              columns: [
-                DataColumn(
-                    label: Container(
-                        width: _firstColumnWidth, // Use reduced width
-                        alignment: Alignment.center,
-                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                        child: const Text('#',
-                            style: TextStyle(fontWeight: FontWeight.bold)))),
-                DataColumn(
-                    label: Container(
-                        width: _lapColumnWidth, // Reduced width for Lap columns
-                        alignment: Alignment.center,
-                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                        child: const Text('Element',
-                            style: TextStyle(fontWeight: FontWeight.bold)))),
-                ...List.generate(
-                  displayLapCount, // Use calculated displayLapCount
-                  (lapIdx) => DataColumn(
-                    label: Container(
-                        width: _lapColumnWidth,
-                        alignment: Alignment.center, // Already centered
-                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                        child: Text('Lap${lapIdx + 1}',
-                            style:
-                                const TextStyle(fontWeight: FontWeight.bold))),
-                  ),
-                ),
-                DataColumn(
-                    label: Container(
-                        width: _columnWidth * 1.1, // 10% wider
-                        alignment: Alignment.center, // Already centered
-                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                        child: const Text(
-                          'Lowest Repeatable',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                          textAlign: TextAlign.center,
-                          softWrap: true,
-                          maxLines: 2,
-                        ))),
-                DataColumn(
-                    label: Container(
-                        width: _commentsColumnWidth, // Use doubled width
-                        alignment: Alignment
-                            .center, // Changed from centerLeft to center
-                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                        child: const Text('Comments',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                            textAlign: TextAlign.center,
-                            softWrap: true,
-                            maxLines: 2))),
-              ],
-              rows: List<DataRow>.generate(
-                _rows.length,
-                (rowIdx) {
-                  final row = _rows[rowIdx];
-                  _elementControllers.putIfAbsent(rowIdx,
-                      () => TextEditingController(text: row['element'] ?? ''));
-                  _elementFocusNodes.putIfAbsent(rowIdx, () => FocusNode());
-                  _commentsControllers.putIfAbsent(rowIdx,
-                      () => TextEditingController(text: row['comments'] ?? ''));
-                  _lowestRepeatableControllers.putIfAbsent(
-                      rowIdx,
-                      () => TextEditingController(
-                          text: row['lowestRepeatable'] == 'N/A'
-                              ? ''
-                              : (row['lowestRepeatable']?.toString() ?? '')));
-                  final controller = _elementControllers[rowIdx]!;
-                  final focusNode = _elementFocusNodes[rowIdx]!;
-                  final commentsController = _commentsControllers[rowIdx]!;
-                  final lowestRepeatableController =
-                      _lowestRepeatableControllers[rowIdx]!;
-                  if (controller.text != (row['element'] ?? '')) {
-                    controller.text = row['element'] ?? '';
-                    controller.selection = TextSelection.fromPosition(
-                        TextPosition(offset: controller.text.length));
-                  }
-                  if (commentsController.text != (row['comments'] ?? '')) {
-                    commentsController.text = row['comments'] ?? '';
-                  }
-                  if (lowestRepeatableController.text !=
-                      (row['lowestRepeatable'] == 'N/A'
-                          ? ''
-                          : (row['lowestRepeatable']?.toString() ?? ''))) {
-                    lowestRepeatableController.text =
-                        row['lowestRepeatable'] == 'N/A'
-                            ? ''
-                            : (row['lowestRepeatable']?.toString() ?? '');
-                  }
-                  if (_focusRowIndex == rowIdx) {
-                    Future.delayed(Duration.zero, () {
-                      if (!mounted) return;
-                      // ignore: use_build_context_synchronously
-                      FocusScope.of(context).requestFocus(focusNode);
-                      _focusRowIndex = null;
-                    });
-                  }
-                  return DataRow(
-                    cells: [
-                      DataCell(Container(
-                        width: _firstColumnWidth, // Use reduced width
-                        alignment: Alignment.center,
-                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
-                          color: Colors.transparent,
-                        ),
-                        child: Text('${rowIdx + 1}'),
-                      )),
-                      DataCell(
-                        Container(
-                          width: _columnWidth, // Standard width
-                          alignment: Alignment.centerLeft,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 4.0), // Keep padding for TextField
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
-                            color: Colors.white,
-                          ),
-                          child: TextField(
-                            controller: controller,
-                            focusNode: focusNode,
-                            decoration: const InputDecoration(
-                              border: InputBorder.none,
-                              hintText: 'Enter element',
-                              isDense: true,
-                              contentPadding: EdgeInsets.symmetric(vertical: 8),
-                            ),
-                            onSubmitted: (value) {
-                              setState(() {
-                                row['element'] = value;
-                                if (rowIdx == _rows.length - 1 &&
-                                    value.trim().isNotEmpty) {
-                                  _rows.add(
-                                      {'element': '', 'times': <Duration>[]});
-                                  _focusRowIndex = _rows.length - 1;
-                                }
-                                _updateFooterTotals();
-                              });
-                            },
-                            onChanged: (value) {
-                              row['element'] = value;
-                            },
-                          ),
-                        ),
-                      ),
-                      ...List.generate(displayLapCount, (lapIdx) {
-                        // Use displayLapCount
-                        final times = row['times'] as List<Duration>;
-                        final hasValue = lapIdx < times.length;
-                        return DataCell(
-                          Container(
+          // Table section with vertical and horizontal scroll
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.vertical,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: DataTable(
+                  columnSpacing: 0.0,
+                  horizontalMargin: 0.0,
+                  dividerThickness: 1.0,
+                  headingRowColor: WidgetStateProperty.all(Colors.yellow[200]),
+                  columns: [
+                    DataColumn(
+                        label: Container(
+                            width: _firstColumnWidth,
+                            alignment: Alignment.center,
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 4.0),
+                            child: const Text('#',
+                                style:
+                                    TextStyle(fontWeight: FontWeight.bold)))),
+                    DataColumn(
+                        label: Container(
                             width: _lapColumnWidth,
+                            alignment: Alignment.center,
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 4.0),
+                            child: const Text('Element',
+                                style:
+                                    TextStyle(fontWeight: FontWeight.bold)))),
+                    ...List.generate(
+                      displayLapCount,
+                      (lapIdx) => DataColumn(
+                        label: Container(
+                            width: _lapColumnWidth,
+                            alignment: Alignment.center,
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 4.0),
+                            child: Text('Lap${lapIdx + 1}',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold))),
+                      ),
+                    ),
+                    DataColumn(
+                        label: Container(
+                            width: _columnWidth * 1.1,
+                            alignment: Alignment.center,
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 4.0),
+                            child: const Text('Lowest Repeatable',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                                textAlign: TextAlign.center,
+                                softWrap: true,
+                                maxLines: 2))),
+                    DataColumn(
+                        label: Container(
+                            width: _commentsColumnWidth,
+                            alignment: Alignment.center,
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 4.0),
+                            child: const Text('Comments',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                                textAlign: TextAlign.center,
+                                softWrap: true,
+                                maxLines: 2))),
+                  ],
+                  rows: List<DataRow>.generate(
+                    _rows.length,
+                    (rowIdx) {
+                      final row = _rows[rowIdx];
+                      _elementControllers.putIfAbsent(
+                          rowIdx,
+                          () => TextEditingController(
+                              text: row['element'] ?? ''));
+                      _elementFocusNodes.putIfAbsent(rowIdx, () => FocusNode());
+                      _commentsControllers.putIfAbsent(
+                          rowIdx,
+                          () => TextEditingController(
+                              text: row['comments'] ?? ''));
+                      _lowestRepeatableControllers.putIfAbsent(
+                          rowIdx,
+                          () => TextEditingController(
+                              text: row['lowestRepeatable'] == 'N/A'
+                                  ? ''
+                                  : (row['lowestRepeatable']?.toString() ??
+                                      '')));
+                      final controller = _elementControllers[rowIdx]!;
+                      final focusNode = _elementFocusNodes[rowIdx]!;
+                      final commentsController = _commentsControllers[rowIdx]!;
+                      final lowestRepeatableController =
+                          _lowestRepeatableControllers[rowIdx]!;
+                      if (controller.text != (row['element'] ?? '')) {
+                        controller.text = row['element'] ?? '';
+                        controller.selection = TextSelection.fromPosition(
+                            TextPosition(offset: controller.text.length));
+                      }
+                      if (commentsController.text != (row['comments'] ?? '')) {
+                        commentsController.text = row['comments'] ?? '';
+                      }
+                      if (lowestRepeatableController.text !=
+                          (row['lowestRepeatable'] == 'N/A'
+                              ? ''
+                              : (row['lowestRepeatable']?.toString() ?? ''))) {
+                        lowestRepeatableController.text =
+                            row['lowestRepeatable'] == 'N/A'
+                                ? ''
+                                : (row['lowestRepeatable']?.toString() ?? '');
+                      }
+                      if (_focusRowIndex == rowIdx) {
+                        Future.delayed(Duration.zero, () {
+                          if (!mounted) return;
+                          // ignore: use_build_context_synchronously
+                          FocusScope.of(context).requestFocus(focusNode);
+                          _focusRowIndex = null;
+                        });
+                      }
+                      return DataRow(
+                        cells: [
+                          DataCell(Container(
+                            width: _firstColumnWidth,
                             alignment: Alignment.center,
                             padding:
                                 const EdgeInsets.symmetric(horizontal: 4.0),
@@ -363,47 +346,54 @@ class TimeObservationTableState extends State<TimeObservationTable> {
                               border: Border.all(color: Colors.grey.shade300),
                               color: Colors.transparent,
                             ),
-                            child: Text(
-                              hasValue ? timeToString(times[lapIdx]) : '',
-                              style: TextStyle(
-                                color: hasValue ? Colors.black : Colors.grey,
+                            child: Text('${rowIdx + 1}'),
+                          )),
+                          DataCell(
+                            Container(
+                              width: _columnWidth,
+                              alignment: Alignment.centerLeft,
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 4.0),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey.shade300),
+                                color: Colors.white,
+                              ),
+                              child: TextField(
+                                controller: controller,
+                                focusNode: focusNode,
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  hintText: 'Enter element',
+                                  isDense: true,
+                                  contentPadding:
+                                      EdgeInsets.symmetric(vertical: 8),
+                                ),
+                                onSubmitted: (value) {
+                                  setState(() {
+                                    row['element'] = value;
+                                    if (rowIdx == _rows.length - 1 &&
+                                        value.trim().isNotEmpty) {
+                                      _rows.add({
+                                        'element': '',
+                                        'times': <Duration>[]
+                                      });
+                                      _focusRowIndex = _rows.length - 1;
+                                    }
+                                    _updateFooterTotals();
+                                  });
+                                },
+                                onChanged: (value) {
+                                  row['element'] = value;
+                                },
                               ),
                             ),
                           ),
-                        );
-                      }),
-                      DataCell(
-                        (row['lowestRepeatable'] == null ||
-                                row['lowestRepeatable'] == '' ||
-                                row['lowestRepeatable'] == 'N/A')
-                            ? Container(
-                                width: _columnWidth,
-                                alignment: Alignment.center,
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 4.0),
-                                decoration: BoxDecoration(
-                                  border:
-                                      Border.all(color: Colors.grey.shade300),
-                                  color: Colors.white,
-                                ),
-                                child: TextField(
-                                  controller: lowestRepeatableController,
-                                  decoration: const InputDecoration(
-                                    border: InputBorder.none,
-                                    hintText: 'Enter time',
-                                    isDense: true,
-                                    contentPadding:
-                                        EdgeInsets.symmetric(vertical: 8),
-                                  ),
-                                  onChanged: (value) {
-                                    setState(() {
-                                      row['lowestRepeatable'] = value;
-                                    });
-                                  },
-                                ),
-                              )
-                            : Container(
-                                width: _columnWidth,
+                          ...List.generate(displayLapCount, (lapIdx) {
+                            final times = row['times'] as List<Duration>;
+                            final hasValue = lapIdx < times.length;
+                            return DataCell(
+                              Container(
+                                width: _lapColumnWidth,
                                 alignment: Alignment.center,
                                 padding:
                                     const EdgeInsets.symmetric(horizontal: 4.0),
@@ -413,211 +403,104 @@ class TimeObservationTableState extends State<TimeObservationTable> {
                                   color: Colors.transparent,
                                 ),
                                 child: Text(
-                                  row['lowestRepeatable'] is Duration
-                                      ? timeToString(
-                                          row['lowestRepeatable'] as Duration)
-                                      : (row['lowestRepeatable']?.toString() ??
-                                          ''),
+                                  hasValue ? timeToString(times[lapIdx]) : '',
+                                  style: TextStyle(
+                                    color:
+                                        hasValue ? Colors.black : Colors.grey,
+                                  ),
                                 ),
                               ),
-                      ),
-                      DataCell(
-                        Container(
-                          width: _commentsColumnWidth, // Use doubled width
-                          alignment: Alignment.centerLeft,
-                          padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
-                            color: Colors.white,
+                            );
+                          }),
+                          DataCell(
+                            (row['lowestRepeatable'] == null ||
+                                    row['lowestRepeatable'] == '' ||
+                                    row['lowestRepeatable'] == 'N/A')
+                                ? Container(
+                                    width: _columnWidth,
+                                    alignment: Alignment.center,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 4.0),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                          color: Colors.grey.shade300),
+                                      color: Colors.white,
+                                    ),
+                                    child: TextField(
+                                      controller: lowestRepeatableController,
+                                      decoration: const InputDecoration(
+                                        border: InputBorder.none,
+                                        hintText: 'Enter time',
+                                        isDense: true,
+                                        contentPadding:
+                                            EdgeInsets.symmetric(vertical: 8),
+                                      ),
+                                      onChanged: (value) {
+                                        setState(() {
+                                          row['lowestRepeatable'] = value;
+                                        });
+                                      },
+                                    ),
+                                  )
+                                : Container(
+                                    width: _columnWidth,
+                                    alignment: Alignment.center,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 4.0),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                          color: Colors.grey.shade300),
+                                      color: Colors.transparent,
+                                    ),
+                                    child: Text(
+                                      row['lowestRepeatable'] is Duration
+                                          ? timeToString(row['lowestRepeatable']
+                                              as Duration)
+                                          : (row['lowestRepeatable']
+                                                  ?.toString() ??
+                                              ''),
+                                    ),
+                                  ),
                           ),
-                          child: TextField(
-                            controller: commentsController,
-                            decoration: const InputDecoration(
-                              border: InputBorder.none,
-                              hintText: 'Enter comment',
-                              isDense: true,
-                              contentPadding: EdgeInsets.symmetric(vertical: 8),
-                            ),
-                            onChanged: (value) {
-                              setState(() {
-                                row['comments'] = value;
-                              });
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ),
-          ),
-          // Footer row below the DataTable, perfectly aligned
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Table(
-              columnWidths: {
-                0: const FixedColumnWidth(_firstColumnWidth +
-                    _columnWidth), // Merged: reduced first col + standard second col
-                for (int i = 0; i < displayLapCount; i++)
-                  1 + i: const FixedColumnWidth(
-                      _lapColumnWidth), // Lap columns (index shifted)
-                1 + displayLapCount: const FixedColumnWidth(
-                    _columnWidth), // Lowest Repeatable (index shifted)
-                2 + displayLapCount: const FixedColumnWidth(
-                    _commentsColumnWidth), // Comments (index shifted, use doubled width)
-              },
-              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-              children: [
-                TableRow(
-                  children: [
-                    // Merged Cell for first two columns ('#' and 'Element')
-                    TableCell(
-                      verticalAlignment: TableCellVerticalAlignment.middle,
-                      child: Container(
-                        width: _firstColumnWidth +
-                            _columnWidth, // Span updated first and second column widths
-                        decoration: BoxDecoration(
-                          color: Colors
-                              .yellow[300], // Color for the 'Total Lap' cell
-                          border: const Border(
-                            top: BorderSide(color: Colors.black26),
-                            // No right border here if it's the start of a visually merged cell group
-                            // but if it should look like one wide cell with a right border, add it.
-                            // For now, assume it's part of the continuous row look.
-                            //right: BorderSide(color: Colors.black26), // Keep right border for the merged cell
-                          ),
-                        ),
-                        alignment:
-                            Alignment.centerRight, // Right-align the text
-                        height: 40,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16.0), // Standard padding
-                        child: const Text(
-                          'Total Lap',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
-                    // Lap columns (indices are effectively shifted due to the merge)
-                    ...List.generate(displayLapCount, (lapIdx) {
-                      return TableCell(
-                        child: Container(
-                          width: _columnWidth, // Ensure width consistency
-                          decoration: BoxDecoration(
-                            color: Colors.yellow[100],
-                            border: const Border(
-                              top: BorderSide(color: Colors.black26),
-                              right: BorderSide(color: Colors.black26),
-                            ),
-                          ),
-                          alignment: Alignment.center,
-                          height: 40,
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                          child: Text(
-                            _footerLapTotals.length > lapIdx &&
-                                    _footerLapTotals[lapIdx] != Duration.zero
-                                ? timeToString(_footerLapTotals[lapIdx])
-                                : '',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      );
-                    }),
-                    // Empty cell for 'Lowest Repeatable'
-                    TableCell(
-                      child: _footerLowestRepeatable == null
-                          ? Container(
-                              width: _columnWidth * 1.1, // Match header width
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                border: Border(
-                                  top: BorderSide(color: Colors.black26),
-                                  right: BorderSide(color: Colors.black26),
-                                ),
-                              ),
-                              height: 40,
-                              alignment: Alignment.center,
+                          DataCell(
+                            Container(
+                              width: _commentsColumnWidth,
+                              alignment: Alignment.centerLeft,
                               padding:
-                                  const EdgeInsets.symmetric(horizontal: 16.0),
+                                  const EdgeInsets.symmetric(horizontal: 4.0),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey.shade300),
+                                color: Colors.white,
+                              ),
                               child: TextField(
+                                controller: commentsController,
                                 decoration: const InputDecoration(
                                   border: InputBorder.none,
-                                  hintText: 'Enter time',
+                                  hintText: 'Enter comment',
                                   isDense: true,
                                   contentPadding:
                                       EdgeInsets.symmetric(vertical: 8),
                                 ),
                                 onChanged: (value) {
                                   setState(() {
-                                    // Store as string for footer lowest repeatable if needed
-                                    // You may want to parse/validate as needed
+                                    row['comments'] = value;
                                   });
                                 },
                               ),
-                            )
-                          : Container(
-                              width: _columnWidth * 1.1, // Match header width
-                              decoration: BoxDecoration(
-                                color: Colors.yellow[100],
-                                border: const Border(
-                                  top: BorderSide(color: Colors.black26),
-                                  right: BorderSide(color: Colors.black26),
-                                ),
-                              ),
-                              height: 40,
-                              alignment: Alignment.center,
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 16.0),
-                              child: Text(
-                                timeToString(_footerLowestRepeatable!),
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold),
-                              ),
                             ),
-                    ),
-                    // Empty cell for 'Comments'
-                    TableCell(
-                      child: Container(
-                        width: _commentsColumnWidth, // Use doubled width
-                        decoration: BoxDecoration(
-                          color:
-                              Colors.yellow[300], // Match Total Lap cell color
-                          border: const Border(
-                            top: BorderSide(color: Colors.black26),
-                            // No right border for the last cell in the row
                           ),
-                        ),
-                        height: 40,
-                        alignment: Alignment.centerLeft,
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        child: const Text(''),
-                      ),
-                    ),
-                  ],
+                        ],
+                      );
+                    },
+                  ),
                 ),
-              ],
+              ),
             ),
           ),
+          // Footer and other widgets below the table remain outside the scroll views
+          // ...existing footer code...
         ],
       ),
     );
-  }
-
-  void hideRowsWithoutElement() {
-    setState(() {
-      _rows.removeWhere((row) => (row['element'] as String).trim().isEmpty);
-      // Clean up controllers and focus nodes for removed rows
-      final validIndices = List.generate(_rows.length, (i) => i);
-      _elementControllers.removeWhere((key, _) => !validIndices.contains(key));
-      _elementFocusNodes.removeWhere((key, _) => !validIndices.contains(key));
-      _updateFooterTotals();
-    });
-  }
-
-  void enterLowestRepeatedIntoTimeColumn() {
-    setState(() {
-      updateFooterLowestRepeatables();
-    });
   }
 }

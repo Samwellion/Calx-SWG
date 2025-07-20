@@ -2,14 +2,17 @@
 
 import 'package:flutter/material.dart';
 import 'plant_setup_screen.dart';
+import '../widgets/app_footer.dart';
 import '../models/organization_data.dart' as org_data;
 import '../database_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../widgets/app_drawer.dart';
 
 class OrganizationSetupHeader extends StatelessWidget {
   const OrganizationSetupHeader({super.key});
   @override
   Widget build(BuildContext context) {
-    final companyName = org_data.OrganizationData.companyName;
+    // final companyName = org_data.OrganizationData.companyName;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
@@ -18,7 +21,7 @@ class OrganizationSetupHeader extends StatelessWidget {
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
+            color: Colors.black.withOpacity(0.08),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -40,18 +43,7 @@ class OrganizationSetupHeader extends StatelessWidget {
               style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
           ),
-          if (companyName.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(left: 16.0),
-              child: Text(
-                companyName,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-            ),
+          // Removed company name label from header
         ],
       ),
     );
@@ -247,11 +239,14 @@ class OrganizationDetailsForm extends StatelessWidget {
                                     ? Colors.yellow[200]
                                     : Colors.transparent,
                                 child: ListTile(
-                                  title: Text(name,
-                                      style: TextStyle(
-                                          fontWeight: selected
-                                              ? FontWeight.bold
-                                              : FontWeight.normal)),
+                                  title: Text(
+                                    name,
+                                    style: TextStyle(
+                                      fontWeight: selected
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                    ),
+                                  ),
                                   selected: selected,
                                   onTap: () => onSelectCompany(name),
                                   trailing: IconButton(
@@ -358,7 +353,26 @@ class OrganizationDetailsForm extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          // ...existing code...
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.yellow[300],
+                  foregroundColor: Colors.black,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  textStyle: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  elevation: 6,
+                ),
+                onPressed: saveEnabled ? onSave : null,
+                child: const Text('Plant Setup'),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -374,6 +388,8 @@ class OrganizationSetupScreen extends StatefulWidget {
 }
 
 class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
+  static const _kCompanyKey = 'selectedCompany';
+  static const _kPlantKey = 'selectedPlant';
   final TextEditingController _companyNameController = TextEditingController();
   final FocusNode _companyNameFocusNode = FocusNode();
   final TextEditingController _plantController = TextEditingController();
@@ -390,7 +406,17 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FocusScope.of(context).requestFocus(_companyNameFocusNode);
     });
-    _loadFromDatabase();
+    _restoreSelections().then((_) => _loadFromDatabase());
+  }
+
+  Future<void> _restoreSelections() async {
+    final prefs = await SharedPreferences.getInstance();
+    final c = prefs.getString(_kCompanyKey);
+    final p = prefs.getString(_kPlantKey);
+    setState(() {
+      _selectedCompany = (c != null && c.isNotEmpty) ? c : null;
+      _selectedPlant = (p != null && p.isNotEmpty) ? p : null;
+    });
   }
 
   Future<void> _loadFromDatabase() async {
@@ -408,9 +434,38 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
           .map((p) => p.name)
           .toList();
     }
-    // Only set the controller if a company is selected (e.g., from the list), not on every DB load
-    if (_selectedCompany != null && _selectedCompany!.isNotEmpty) {
-      _companyNameController.text = _selectedCompany!;
+    // Load persisted organization and plants into OrganizationData
+    if (orgs.isNotEmpty) {
+      // Use restored selection if available, else first org
+      final selectedOrg = _selectedCompany ?? orgs.first.name;
+      _selectedCompany = selectedOrg;
+      _companyNameController.text = selectedOrg;
+      org_data.OrganizationData.companyName = selectedOrg;
+      final org = orgs.firstWhere((o) => o.name == selectedOrg,
+          orElse: () => orgs.first);
+      final orgPlants =
+          plants.where((p) => p.organizationId == org.id).toList();
+      org_data.OrganizationData.plants = orgPlants
+          .map((p) => org_data.PlantData(
+                name: p.name,
+                street: p.street,
+                city: p.city,
+                state: p.state,
+                zip: p.zip,
+              ))
+          .toList();
+      // Use restored plant selection if available, else first plant
+      if (orgPlants.isNotEmpty) {
+        _selectedPlant = _selectedPlant ?? orgPlants.first.name;
+      } else {
+        _selectedPlant = null;
+      }
+    } else {
+      org_data.OrganizationData.companyName = '';
+      org_data.OrganizationData.plants = [];
+      _selectedCompany = null;
+      _selectedPlant = null;
+      _companyNameController.text = '';
     }
     setState(() {
       _loading = false;
@@ -426,24 +481,29 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
     super.dispose();
   }
 
-  void _goBackToHome() {
-    Navigator.of(context).pop();
-  }
-
-  void _saveOrganization() {
+  void _saveOrganization() async {
     if (_selectedCompany != null && _selectedPlant != null) {
       org_data.OrganizationData.companyName = _selectedCompany!;
+
+      final db = await DatabaseProvider.getInstance();
       final plantNames =
           List<String>.from(_companyPlants[_selectedCompany!] ?? []);
-      org_data.OrganizationData.plants = plantNames
-          .map((name) => org_data.PlantData(
-                name: name,
-                street: '',
-                city: '',
-                state: '',
-                zip: '',
-              ))
-          .toList();
+
+      // Fetch full plant details from the database to ensure the in-memory state is correct
+      final allDbPlants = await db.select(db.plants).get();
+      final plantDetailsMap = {for (var p in allDbPlants) p.name: p};
+
+      org_data.OrganizationData.plants = plantNames.map((name) {
+        final details = plantDetailsMap[name];
+        return org_data.PlantData(
+          name: name,
+          street: details?.street ?? '',
+          city: details?.city ?? '',
+          state: details?.state ?? '',
+          zip: details?.zip ?? '',
+        );
+      }).toList();
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Organization details saved!'),
@@ -451,8 +511,14 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
         ),
       );
       // Navigate to Plant Setup UI
+      final selectedIndex = org_data.OrganizationData.plants
+          .indexWhere((p) => p.name == _selectedPlant);
       Navigator.of(context).push(
-        MaterialPageRoute(builder: (context) => const PlantSetupScreen()),
+        MaterialPageRoute(
+          builder: (context) => PlantSetupScreen(
+            initialPlantIndex: selectedIndex > -1 ? selectedIndex : 0,
+          ),
+        ),
       );
     }
   }
@@ -465,6 +531,7 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
       await _loadFromDatabase();
       setState(() {
         _selectedCompany = name;
+        _saveSelections();
       });
       _companyNameController.clear();
       // Move focus to plant name input after adding company
@@ -492,6 +559,7 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
       if (_selectedCompany == name) {
         _selectedCompany =
             _companyNames.isNotEmpty ? _companyNames.first : null;
+        _saveSelections();
       }
     });
   }
@@ -516,6 +584,8 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
       await _loadFromDatabase();
       setState(() {
         _plantController.clear();
+        _selectedPlant = plant;
+        _saveSelections();
       });
     }
     FocusScope.of(context).requestFocus(_plantFocusNode);
@@ -531,13 +601,28 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
       );
       final plantName = _companyPlants[_selectedCompany!]![index];
       final plants = await db.select(db.plants).get();
-      final plant = plants.firstWhere(
+      plants.firstWhere(
         (p) => p.name == plantName && p.organizationId == org.id,
         orElse: () => throw Exception('Plant not found'),
       );
-      await (db.delete(db.plants)..where((p) => p.id.equals(plant.id))).go();
+      // await (db.delete(db.plants)..where((p) => p.id.equals(plant.id))).go();
       await _loadFromDatabase();
+      setState(() {
+        if (_selectedPlant == plantName) {
+          _selectedPlant =
+              (_companyPlants[_selectedCompany!]?.isNotEmpty ?? false)
+                  ? _companyPlants[_selectedCompany!]!.first
+                  : null;
+          _saveSelections();
+        }
+      });
     }
+  }
+
+  Future<void> _saveSelections() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kCompanyKey, _selectedCompany ?? '');
+    await prefs.setString(_kPlantKey, _selectedPlant ?? '');
   }
 
   @override
@@ -549,11 +634,16 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
       );
     }
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Organization Setup'),
+        backgroundColor: Colors.white,
+      ),
+      drawer: const AppDrawer(),
       backgroundColor: Colors.yellow[100],
       resizeToAvoidBottomInset: true,
       body: Column(
         children: [
-          const OrganizationSetupHeader(),
+          // Removed OrganizationSetupHeader
           Expanded(
             child: SingleChildScrollView(
               padding: EdgeInsets.only(
@@ -593,24 +683,7 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
               ),
             ),
           ),
-          OrganizationSetupFooter(
-            onBack: _goBackToHome,
-            rightButton: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.yellow[300],
-                foregroundColor: Colors.black,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                textStyle:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                elevation: 6,
-              ),
-              onPressed: _selectedPlant != null ? _saveOrganization : null,
-              child: const Text('Plant Setup'),
-            ),
-          ),
+          const AppFooter(),
         ],
       ),
     );

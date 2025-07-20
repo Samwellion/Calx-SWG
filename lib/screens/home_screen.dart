@@ -1,20 +1,21 @@
 import 'package:drift/drift.dart' as drift;
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
-import '../widgets/home_header.dart';
 import '../widgets/home_dropdowns_column.dart';
 import '../widgets/home_button_column.dart';
 import 'part_input_screen.dart';
 import 'process_input_screen.dart';
 import '../screens/organization_setup_screen.dart';
-import 'stopwatch_app.dart';
 import '../logic/app_database.dart';
 import 'plant_setup_screen.dart';
 import '../database_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../widgets/home_footer.dart';
-import 'setup.dart';
+import '../widgets/app_footer.dart';
+import 'elements_input_screen.dart';
+import 'time_observation_form.dart';
+import '../widgets/app_drawer.dart';
+
+final RouteObserver<ModalRoute<void>> routeObserver =
+    RouteObserver<ModalRoute<void>>();
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -23,17 +24,58 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with RouteAware {
   static const _kCompanyKey = 'selectedCompany';
   static const _kPlantKey = 'selectedPlant';
   static const _kValueStreamKey = 'selectedValueStream';
   static const _kValueStreamIdKey = 'selectedValueStreamId';
   static const _kProcessKey = 'selectedProcess';
-  void _onProcessChanged(String? value) {
+  bool hasSetupsForSelectedProcess = false;
+
+  void _onProcessChanged(String? value) async {
     setState(() {
       selectedProcess = value;
     });
     _saveSelections();
+    await _checkSetupsForSelectedProcess();
+  }
+
+  Future<void> _checkSetupsForSelectedProcess() async {
+    if (selectedProcess == null || selectedProcess!.isEmpty) {
+      setState(() {
+        hasSetupsForSelectedProcess = false;
+      });
+      return;
+    }
+    // Get processId for selectedProcess
+    final processRow = await (db.select(db.processes)
+          ..where((tbl) => tbl.processName.equals(selectedProcess!)))
+        .getSingleOrNull();
+    if (processRow == null) {
+      setState(() {
+        hasSetupsForSelectedProcess = false;
+      });
+      return;
+    }
+    final processId = processRow.id;
+    // Get all ProcessParts for this processId
+    final processParts = await (db.select(db.processParts)
+          ..where((tbl) => tbl.processId.equals(processId)))
+        .get();
+    if (processParts.isEmpty) {
+      setState(() {
+        hasSetupsForSelectedProcess = false;
+      });
+      return;
+    }
+    // Check if any SetupElements exist for these processPartIds
+    final partIds = processParts.map((pp) => pp.id).toList();
+    final setupCount = await (db.select(db.setupElements)
+          ..where((tbl) => tbl.processPartId.isIn(partIds)))
+        .get();
+    setState(() {
+      hasSetupsForSelectedProcess = setupCount.isNotEmpty;
+    });
   }
 
   void _onAddVSProcess() async {
@@ -94,18 +136,40 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadSelections().then((_) {
-      DatabaseProvider.getInstance().then((database) {
-        db = database;
-        _loadDropdownData();
+    _initializeScreen();
+  }
+
+  Future<void> _initializeScreen() async {
+    db = await DatabaseProvider.getInstance();
+    await _loadSelections();
+    await _loadDropdownData();
+    await _loadProcessesForValueStream();
+    await _checkSetupsForSelectedProcess();
+    if (mounted) {
+      setState(() {
+        isLoading = false;
       });
-    });
+    }
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    routeObserver.subscribe(this, ModalRoute.of(context)!);
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    // Called when returning to this screen after popping another route
     _loadSelections();
+    _loadDropdownData();
+    setState(() {});
   }
 
   Future<void> _loadSelections() async {
@@ -173,10 +237,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ))
         .toList();
     _allValueStreams = valueStreams;
-
-    setState(() {
-      isLoading = false;
-    });
   }
 
   void _onCompanyChanged(String? value) {
@@ -253,7 +313,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (selectedValueStreamId != null) {
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => SetupScreen(
+          builder: (_) => ElementsInputScreen(
             companyName: selectedCompany,
             plantName: selectedPlant,
             valueStreamName: selectedValueStream,
@@ -264,17 +324,98 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _openStopwatchApp() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => StopwatchApp(
-          companyName: selectedCompany ?? '',
-          plantName: selectedPlant ?? '',
-          valueStreamName: selectedValueStream ?? '',
-          processName: selectedProcess ?? '',
-        ),
-      ),
-    );
+  Future<void> _openTimeObservationScreen() async {
+    // Query available setups and part numbers for the selected process
+    if (selectedProcess == null || selectedProcess!.isEmpty) return;
+    // Get processId
+    final processRow = await (db.select(db.processes)
+          ..where((tbl) => tbl.processName.equals(selectedProcess!)))
+        .getSingleOrNull();
+    if (processRow == null) return;
+    final processId = processRow.id;
+    // Get all ProcessParts for this processId
+    final processParts = await (db.select(db.processParts)
+          ..where((tbl) => tbl.processId.equals(processId)))
+        .get();
+    if (processParts.isEmpty) return;
+    // For each processPart, get setups and elements
+    List<Map<String, dynamic>> setupOptions = [];
+    // Group by setupName and partNumber, merge elements
+    final Map<String, Map<String, dynamic>> grouped = {};
+    for (final pp in processParts) {
+      final setups = await (db.select(db.setupElements)
+            ..where((tbl) => tbl.processPartId.equals(pp.id)))
+          .get();
+      for (final setup in setups) {
+        final key = '${setup.setupName}||${pp.partNumber}';
+        if (!grouped.containsKey(key)) {
+          grouped[key] = {
+            'partNumber': pp.partNumber,
+            'setupName': setup.setupName,
+            'elements': <String>[],
+          };
+        }
+        (grouped[key]!['elements'] as List<String>).add(setup.elementName);
+      }
+    }
+    setupOptions = grouped.values.toList();
+    if (setupOptions.isEmpty) return;
+
+    Map<String, dynamic>? selectedOption = setupOptions[0];
+    await showDialog(
+      // ignore: use_build_context_synchronously
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Select Setup and Part Number'),
+          content: StatefulBuilder(
+            builder: (context, setState) {
+              return DropdownButton<Map<String, dynamic>>(
+                value: selectedOption,
+                isExpanded: true,
+                items: setupOptions.map((opt) {
+                  return DropdownMenuItem<Map<String, dynamic>>(
+                    value: opt,
+                    child: Text('${opt['setupName']} - ${opt['partNumber']}'),
+                  );
+                }).toList(),
+                onChanged: (val) {
+                  setState(() {
+                    selectedOption = val;
+                  });
+                },
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(selectedOption),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    ).then((result) {
+      if (result != null && result is Map<String, dynamic>) {
+        // ignore: use_build_context_synchronously
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => TimeObservationForm(
+              companyName: selectedCompany ?? '',
+              plantName: selectedPlant ?? '',
+              valueStreamName: selectedValueStream ?? '',
+              processName: selectedProcess ?? '',
+              initialPartNumber: result['partNumber'],
+              initialElements: List<String>.from(result['elements']),
+            ),
+          ),
+        );
+      }
+    });
   }
 
   @override
@@ -294,14 +435,15 @@ class _HomeScreenState extends State<HomeScreen> {
             ? plantValueStreams[selectedPlant!]!
             : <String>[];
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Home'),
+        backgroundColor: Colors.white,
+      ),
+      drawer: const AppDrawer(),
       backgroundColor: Colors.yellow[100],
       body: Column(
         children: [
-          HomeHeader(
-            companyName: orgCompany,
-            plantName: selectedPlant,
-            valueStreamName: selectedValueStream,
-          ),
+          // Removed HomeHeader from home screen
           Expanded(
             child: Center(
               child: ConstrainedBox(
@@ -319,80 +461,93 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ],
                   ),
-                  child: SingleChildScrollView(
-                    child: IntrinsicHeight(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.center,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          Flexible(
-                            child: HomeButtonColumn(
-                              onSetupOrg: () async {
-                                await Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        const OrganizationSetupScreen(),
-                                  ),
-                                );
-                                await _loadDropdownData();
-                              },
-                              onLoadOrg: _openPlantSetupScreen,
-                              onOpenObs: _openStopwatchApp,
-                              onAddPartNumber: _openPartInputScreen,
-                              onAddVSProcess: _onAddVSProcess,
-                              onAddElements: _openAddElementsScreen,
-                              enableAddPartNumber: (selectedCompany != null &&
-                                  selectedCompany!.isNotEmpty &&
-                                  selectedPlant != null &&
-                                  selectedPlant!.isNotEmpty &&
-                                  selectedValueStream != null &&
-                                  selectedValueStream!.isNotEmpty),
-                              // Only enable Add Setup and Elements and Open Time Observation if a process is selected
-                              enableAddElements: (selectedCompany != null &&
-                                  selectedCompany!.isNotEmpty &&
-                                  selectedPlant != null &&
-                                  selectedPlant!.isNotEmpty &&
-                                  selectedValueStream != null &&
-                                  selectedValueStream!.isNotEmpty &&
-                                  selectedProcess != null &&
-                                  selectedProcess!.isNotEmpty),
-                              enableOpenObs: (selectedCompany != null &&
-                                  selectedCompany!.isNotEmpty &&
-                                  selectedPlant != null &&
-                                  selectedPlant!.isNotEmpty &&
-                                  selectedValueStream != null &&
-                                  selectedValueStream!.isNotEmpty &&
-                                  selectedProcess != null &&
-                                  selectedProcess!.isNotEmpty),
-                            ),
-                          ),
-                          const SizedBox(width: 32),
-                          Flexible(
-                            child: HomeDropdownsColumn(
-                              companyNames: companyNames,
-                              selectedCompany: selectedCompany,
-                              onCompanyChanged: _onCompanyChanged,
-                              plantNames: orgPlants,
-                              selectedPlant: selectedPlant,
-                              onPlantChanged: _onPlantChanged,
-                              valueStreams: valueStreams,
-                              selectedValueStream: selectedValueStream,
-                              onValueStreamChanged: _onValueStreamChanged,
-                              processes: processNames,
-                              selectedProcess: selectedProcess,
-                              onProcessChanged: _onProcessChanged,
-                            ),
-                          ),
+                          // Removed HeaderTextBox row
                         ],
                       ),
-                    ),
+                      const SizedBox(height: 16),
+                      SingleChildScrollView(
+                        child: IntrinsicHeight(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Flexible(
+                                child: HomeButtonColumn(
+                                  onSetupOrg: () async {
+                                    await Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const OrganizationSetupScreen(),
+                                      ),
+                                    );
+                                    await _loadDropdownData();
+                                  },
+                                  onLoadOrg: _openPlantSetupScreen,
+                                  onOpenObs: _openTimeObservationScreen,
+                                  onAddPartNumber: _openPartInputScreen,
+                                  onAddVSProcess: _onAddVSProcess,
+                                  onAddElements: _openAddElementsScreen,
+                                  enableAddPartNumber:
+                                      (selectedCompany != null &&
+                                          selectedCompany!.isNotEmpty &&
+                                          selectedPlant != null &&
+                                          selectedPlant!.isNotEmpty &&
+                                          selectedValueStream != null &&
+                                          selectedValueStream!.isNotEmpty),
+                                  enableAddElements: (selectedCompany != null &&
+                                      selectedCompany!.isNotEmpty &&
+                                      selectedPlant != null &&
+                                      selectedPlant!.isNotEmpty &&
+                                      selectedValueStream != null &&
+                                      selectedValueStream!.isNotEmpty &&
+                                      selectedProcess != null &&
+                                      selectedProcess!.isNotEmpty),
+                                  enableOpenObs: (selectedCompany != null &&
+                                      selectedCompany!.isNotEmpty &&
+                                      selectedPlant != null &&
+                                      selectedPlant!.isNotEmpty &&
+                                      selectedValueStream != null &&
+                                      selectedValueStream!.isNotEmpty &&
+                                      selectedProcess != null &&
+                                      selectedProcess!.isNotEmpty &&
+                                      hasSetupsForSelectedProcess),
+                                ),
+                              ),
+                              const SizedBox(width: 32),
+                              Flexible(
+                                child: HomeDropdownsColumn(
+                                  companyNames: companyNames,
+                                  selectedCompany: selectedCompany,
+                                  onCompanyChanged: _onCompanyChanged,
+                                  plantNames: orgPlants,
+                                  selectedPlant: selectedPlant,
+                                  onPlantChanged: _onPlantChanged,
+                                  valueStreams: valueStreams,
+                                  selectedValueStream: selectedValueStream,
+                                  onValueStreamChanged: _onValueStreamChanged,
+                                  processes: processNames,
+                                  selectedProcess: selectedProcess,
+                                  onProcessChanged: _onProcessChanged,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
           ),
           const SizedBox(height: 8),
-          const HomeFooter(),
+          const AppFooter(),
         ],
       ),
     );

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'home_header.dart';
 
 class AppScaffold extends StatelessWidget {
   final String? companyName;
@@ -23,11 +22,7 @@ class AppScaffold extends StatelessWidget {
       backgroundColor: backgroundColor ?? Colors.yellow[100],
       body: Column(
         children: [
-          HomeHeader(
-            companyName: companyName,
-            plantName: plantName,
-            valueStreamName: valueStreamName,
-          ),
+          // Removed HomeHeader
           Expanded(child: body),
         ],
       ),

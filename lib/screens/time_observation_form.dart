@@ -6,6 +6,7 @@ import '../time_observation_table.dart';
 import '../logic/simple_stopwatch.dart';
 import '../database_provider.dart';
 import 'package:drift/drift.dart' as drift;
+import '../widgets/app_drawer.dart';
 
 // Ensure that organization_data.dart defines a class OrganizationData with a static member companyName.
 // If not, define it below as a fallback.
@@ -55,24 +56,28 @@ class TimerDisplay extends StatelessWidget {
   }
 }
 
-class StopwatchApp extends StatefulWidget {
+class TimeObservationForm extends StatefulWidget {
   final String companyName;
   final String plantName;
   final String valueStreamName;
   final String processName;
-  const StopwatchApp({
+  final String? initialPartNumber;
+  final List<String>? initialElements;
+  const TimeObservationForm({
     super.key,
     required this.companyName,
     required this.plantName,
     required this.valueStreamName,
     required this.processName,
+    this.initialPartNumber,
+    this.initialElements,
   });
 
   @override
-  State<StopwatchApp> createState() => _StopwatchAppState();
+  State<TimeObservationForm> createState() => _TimeObservationFormState();
 }
 
-class _StopwatchAppState extends State<StopwatchApp> {
+class _TimeObservationFormState extends State<TimeObservationForm> {
   final TextEditingController _observerNameController = TextEditingController();
   String get companyName => widget.companyName;
   String get plantName => widget.plantName;
@@ -96,12 +101,19 @@ class _StopwatchAppState extends State<StopwatchApp> {
   @override
   void initState() {
     super.initState();
+    _selectedPartNumber = widget.initialPartNumber;
     _timer = Timer.periodic(const Duration(milliseconds: 30), (_) {
       setState(() {
         _elapsed = _simpleStopwatch.elapsed;
       });
     });
     _loadParts();
+    // If initialElements are provided, load them into the table
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.initialElements != null && _tableKey.currentState != null) {
+        _tableKey.currentState!.setElements(widget.initialElements!);
+      }
+    });
   }
 
   Future<void> _loadParts() async {
@@ -134,7 +146,7 @@ class _StopwatchAppState extends State<StopwatchApp> {
     // This assumes valueStreamName is unique for the plant; adjust as needed
     final db = await DatabaseProvider.getInstance();
     final valueStreams = await db.customSelect(
-      'SELECT id FROM value_streams WHERE VS_Name = ?',
+      'SELECT id FROM value_streams WHERE name = ?',
       variables: [drift.Variable.withString(widget.valueStreamName)],
     ).get();
     if (valueStreams.isNotEmpty) {
@@ -163,7 +175,6 @@ class _StopwatchAppState extends State<StopwatchApp> {
   void _stop() {
     if (_simpleStopwatch.isRunning) {
       _simpleStopwatch.stop();
-      _tableKey.currentState?.enterLowestRepeatedIntoTimeColumn();
       _tableKey.currentState?.unhideOvrdColumn();
     }
   }
@@ -190,7 +201,13 @@ class _StopwatchAppState extends State<StopwatchApp> {
 
   @override
   Widget build(BuildContext context) {
+    final observerNameNotEmpty = _observerNameController.text.trim().isNotEmpty;
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Time Observation'),
+        backgroundColor: Colors.white,
+      ),
+      drawer: const AppDrawer(),
       backgroundColor: Colors.yellow[100],
       body: SafeArea(
         child: Padding(
@@ -225,7 +242,7 @@ class _StopwatchAppState extends State<StopwatchApp> {
                           TimerDisplay(elapsed: _elapsed, lapTime: _lapTime),
                           const SizedBox(height: 8),
                           ControlButtons(
-                            onStart: _start,
+                            onStart: observerNameNotEmpty ? _start : null,
                             onStop: _stop,
                             onReset: _reset,
                             onMarkLap: _markLap,

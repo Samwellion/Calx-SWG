@@ -63,6 +63,8 @@ class AppDatabase extends _$AppDatabase {
     if (existing != null) {
       await (update(plants)..where((tbl) => tbl.id.equals(existing.id))).write(
         PlantsCompanion(
+          organizationId: Value(organizationId),
+          name: Value(name),
           street: Value(street),
           city: Value(city),
           state: Value(state),

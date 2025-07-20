@@ -14,12 +14,12 @@ dependencies:
   flutter:
     sdk: flutter
   shared_preferences: any
-  drift: any
-  drift_flutter: any
+  drift: ^2.15.0
+  drift_flutter: ^0.2.4
   path_provider: any
   cupertino_icons: any
   sqlite3: any
-  sqlite3_flutter_libs: any
+  sqlite3_flutter_libs: ^0.5.0
   path: any
   collection: any
 
@@ -27,7 +27,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   build_runner: any
-  drift_dev: any
+  drift_dev: ^2.15.0
   flutter_lints: any
 
 
