@@ -5,13 +5,14 @@ import '../widgets/home_button_column.dart';
 import 'part_input_screen.dart';
 import 'process_input_screen.dart';
 import '../screens/organization_setup_screen.dart';
-import 'stopwatch_app.dart';
 import '../logic/app_database.dart';
 import 'plant_setup_screen.dart';
 import '../database_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/app_footer.dart';
-import 'setup.dart';
+import 'elements_input_screen.dart';
+import 'time_observation_form.dart';
+import '../widgets/app_drawer.dart';
 
 final RouteObserver<ModalRoute<void>> routeObserver =
     RouteObserver<ModalRoute<void>>();
@@ -135,13 +136,20 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   @override
   void initState() {
     super.initState();
-    _loadSelections().then((_) {
-      DatabaseProvider.getInstance().then((database) {
-        db = database;
-        _loadDropdownData();
-        _checkSetupsForSelectedProcess();
+    _initializeScreen();
+  }
+
+  Future<void> _initializeScreen() async {
+    db = await DatabaseProvider.getInstance();
+    await _loadSelections();
+    await _loadDropdownData();
+    await _loadProcessesForValueStream();
+    await _checkSetupsForSelectedProcess();
+    if (mounted) {
+      setState(() {
+        isLoading = false;
       });
-    });
+    }
   }
 
   @override
@@ -229,10 +237,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             ))
         .toList();
     _allValueStreams = valueStreams;
-
-    setState(() {
-      isLoading = false;
-    });
   }
 
   void _onCompanyChanged(String? value) {
@@ -309,7 +313,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     if (selectedValueStreamId != null) {
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => SetupScreen(
+          builder: (_) => ElementsInputScreen(
             companyName: selectedCompany,
             plantName: selectedPlant,
             valueStreamName: selectedValueStream,
@@ -320,7 +324,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     }
   }
 
-  Future<void> _openStopwatchApp() async {
+  Future<void> _openTimeObservationScreen() async {
     // Query available setups and part numbers for the selected process
     if (selectedProcess == null || selectedProcess!.isEmpty) return;
     // Get processId
@@ -400,13 +404,13 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         // ignore: use_build_context_synchronously
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => StopwatchApp(
+            builder: (_) => TimeObservationForm(
               companyName: selectedCompany ?? '',
               plantName: selectedPlant ?? '',
               valueStreamName: selectedValueStream ?? '',
               processName: selectedProcess ?? '',
               initialPartNumber: result['partNumber'],
-              initialElements: result['elements'],
+              initialElements: List<String>.from(result['elements']),
             ),
           ),
         );
@@ -431,6 +435,11 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             ? plantValueStreams[selectedPlant!]!
             : <String>[];
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Home'),
+        backgroundColor: Colors.white,
+      ),
+      drawer: const AppDrawer(),
       backgroundColor: Colors.yellow[100],
       body: Column(
         children: [
@@ -480,7 +489,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                                     await _loadDropdownData();
                                   },
                                   onLoadOrg: _openPlantSetupScreen,
-                                  onOpenObs: _openStopwatchApp,
+                                  onOpenObs: _openTimeObservationScreen,
                                   onAddPartNumber: _openPartInputScreen,
                                   onAddVSProcess: _onAddVSProcess,
                                   onAddElements: _openAddElementsScreen,

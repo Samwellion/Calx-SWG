@@ -1,50 +1,63 @@
 import 'package:flutter/material.dart';
+import '../screens/home_screen.dart';
+import '../screens/organization_setup_screen.dart';
+import '../screens/plant_setup_screen.dart';
 
-class AppMenuBar extends StatelessWidget {
-  final String selected;
-  final void Function(String) onMenuSelected;
-  const AppMenuBar({
-    super.key,
-    required this.selected,
-    required this.onMenuSelected,
-  });
+class AppMenuBar extends StatelessWidget implements PreferredSizeWidget {
+  const AppMenuBar({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final menuItems = [
-      {'label': 'Home', 'route': '/home'},
-      {'label': 'Organization Setup', 'route': '/organization'},
-      {'label': 'Plant Setup', 'route': '/plant'},
-      {'label': 'Part Input', 'route': '/part'},
-      {'label': 'Process Input', 'route': '/process'},
-      {'label': 'Settings', 'route': '/settings'},
-    ];
-    return Container(
-      width: 220,
-      color: Colors.yellow[200],
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    return AppBar(
+      title: Row(
         children: [
-          const SizedBox(height: 24),
-          ...menuItems.map((item) {
-            final isSelected = selected == item['label'];
-            return ListTile(
-              title: Text(
-                item['label']!,
-                style: TextStyle(
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  color: isSelected ? Colors.black : Colors.black87,
-                  fontSize: 18,
-                ),
-              ),
-              selected: isSelected,
-              selectedTileColor: Colors.yellow[300],
-              onTap: () => onMenuSelected(item['label']!),
-            );
-            // ignore: unnecessary_to_list_in_spreads
-          }).toList(),
+          Image.asset(
+            'assets/images/calx_logo.png',
+            height: 40,
+            width: 40,
+            fit: BoxFit.contain,
+          ),
+          const SizedBox(width: 10),
+          const Text('Calx Time Observation'),
         ],
       ),
+      backgroundColor: Colors.yellow[300],
+      actions: <Widget>[
+        TextButton(
+          onPressed: () {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => const HomeScreen()),
+              (Route<dynamic> route) => false,
+            );
+          },
+          child: const Text('Home', style: TextStyle(color: Colors.black)),
+        ),
+        TextButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const OrganizationSetupScreen()),
+            );
+          },
+          child: const Text('Organization Setup',
+              style: TextStyle(color: Colors.black)),
+        ),
+        TextButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const PlantSetupScreen()),
+            );
+          },
+          child:
+              const Text('Plant Setup', style: TextStyle(color: Colors.black)),
+        ),
+      ],
     );
   }
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }

@@ -6,6 +6,7 @@ import '../widgets/app_footer.dart';
 import '../models/organization_data.dart' as org_data;
 import '../database_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../widgets/app_drawer.dart';
 
 class OrganizationSetupHeader extends StatelessWidget {
   const OrganizationSetupHeader({super.key});
@@ -480,20 +481,29 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
     super.dispose();
   }
 
-  void _saveOrganization() {
+  void _saveOrganization() async {
     if (_selectedCompany != null && _selectedPlant != null) {
       org_data.OrganizationData.companyName = _selectedCompany!;
+
+      final db = await DatabaseProvider.getInstance();
       final plantNames =
           List<String>.from(_companyPlants[_selectedCompany!] ?? []);
-      org_data.OrganizationData.plants = plantNames
-          .map((name) => org_data.PlantData(
-                name: name,
-                street: '',
-                city: '',
-                state: '',
-                zip: '',
-              ))
-          .toList();
+
+      // Fetch full plant details from the database to ensure the in-memory state is correct
+      final allDbPlants = await db.select(db.plants).get();
+      final plantDetailsMap = {for (var p in allDbPlants) p.name: p};
+
+      org_data.OrganizationData.plants = plantNames.map((name) {
+        final details = plantDetailsMap[name];
+        return org_data.PlantData(
+          name: name,
+          street: details?.street ?? '',
+          city: details?.city ?? '',
+          state: details?.state ?? '',
+          zip: details?.zip ?? '',
+        );
+      }).toList();
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Organization details saved!'),
@@ -501,11 +511,12 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
         ),
       );
       // Navigate to Plant Setup UI
+      final selectedIndex = org_data.OrganizationData.plants
+          .indexWhere((p) => p.name == _selectedPlant);
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (context) => PlantSetupScreen(
-            initialPlantIndex: org_data.OrganizationData.plants
-                .indexWhere((p) => p.name == _selectedPlant),
+            initialPlantIndex: selectedIndex > -1 ? selectedIndex : 0,
           ),
         ),
       );
@@ -623,6 +634,11 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
       );
     }
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Organization Setup'),
+        backgroundColor: Colors.white,
+      ),
+      drawer: const AppDrawer(),
       backgroundColor: Colors.yellow[100],
       resizeToAvoidBottomInset: true,
       body: Column(

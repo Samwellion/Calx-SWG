@@ -6,6 +6,7 @@ import '../time_observation_table.dart';
 import '../logic/simple_stopwatch.dart';
 import '../database_provider.dart';
 import 'package:drift/drift.dart' as drift;
+import '../widgets/app_drawer.dart';
 
 // Ensure that organization_data.dart defines a class OrganizationData with a static member companyName.
 // If not, define it below as a fallback.
@@ -55,14 +56,14 @@ class TimerDisplay extends StatelessWidget {
   }
 }
 
-class StopwatchApp extends StatefulWidget {
+class TimeObservationForm extends StatefulWidget {
   final String companyName;
   final String plantName;
   final String valueStreamName;
   final String processName;
   final String? initialPartNumber;
   final List<String>? initialElements;
-  const StopwatchApp({
+  const TimeObservationForm({
     super.key,
     required this.companyName,
     required this.plantName,
@@ -73,10 +74,10 @@ class StopwatchApp extends StatefulWidget {
   });
 
   @override
-  State<StopwatchApp> createState() => _StopwatchAppState();
+  State<TimeObservationForm> createState() => _TimeObservationFormState();
 }
 
-class _StopwatchAppState extends State<StopwatchApp> {
+class _TimeObservationFormState extends State<TimeObservationForm> {
   final TextEditingController _observerNameController = TextEditingController();
   String get companyName => widget.companyName;
   String get plantName => widget.plantName;
@@ -202,6 +203,11 @@ class _StopwatchAppState extends State<StopwatchApp> {
   Widget build(BuildContext context) {
     final observerNameNotEmpty = _observerNameController.text.trim().isNotEmpty;
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Time Observation'),
+        backgroundColor: Colors.white,
+      ),
+      drawer: const AppDrawer(),
       backgroundColor: Colors.yellow[100],
       body: SafeArea(
         child: Padding(
