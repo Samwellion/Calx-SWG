@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'plant_setup_screen.dart';
+import '../widgets/app_footer.dart';
 import '../models/organization_data.dart' as org_data;
 import '../database_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,7 +11,7 @@ class OrganizationSetupHeader extends StatelessWidget {
   const OrganizationSetupHeader({super.key});
   @override
   Widget build(BuildContext context) {
-    final companyName = org_data.OrganizationData.companyName;
+    // final companyName = org_data.OrganizationData.companyName;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
@@ -19,7 +20,7 @@ class OrganizationSetupHeader extends StatelessWidget {
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
+            color: Colors.black.withOpacity(0.08),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -41,18 +42,7 @@ class OrganizationSetupHeader extends StatelessWidget {
               style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
           ),
-          if (companyName.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(left: 16.0),
-              child: Text(
-                companyName,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-            ),
+          // Removed company name label from header
         ],
       ),
     );
@@ -362,7 +352,26 @@ class OrganizationDetailsForm extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          // ...existing code...
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.yellow[300],
+                  foregroundColor: Colors.black,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  textStyle: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  elevation: 6,
+                ),
+                onPressed: saveEnabled ? onSave : null,
+                child: const Text('Plant Setup'),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -471,10 +480,6 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
     super.dispose();
   }
 
-  void _goBackToHome() {
-    Navigator.of(context).pop();
-  }
-
   void _saveOrganization() {
     if (_selectedCompany != null && _selectedPlant != null) {
       org_data.OrganizationData.companyName = _selectedCompany!;
@@ -497,7 +502,12 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
       );
       // Navigate to Plant Setup UI
       Navigator.of(context).push(
-        MaterialPageRoute(builder: (context) => const PlantSetupScreen()),
+        MaterialPageRoute(
+          builder: (context) => PlantSetupScreen(
+            initialPlantIndex: org_data.OrganizationData.plants
+                .indexWhere((p) => p.name == _selectedPlant),
+          ),
+        ),
       );
     }
   }
@@ -510,7 +520,7 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
       await _loadFromDatabase();
       setState(() {
         _selectedCompany = name;
-  _saveSelections();
+        _saveSelections();
       });
       _companyNameController.clear();
       // Move focus to plant name input after adding company
@@ -538,7 +548,7 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
       if (_selectedCompany == name) {
         _selectedCompany =
             _companyNames.isNotEmpty ? _companyNames.first : null;
-  _saveSelections();
+        _saveSelections();
       }
     });
   }
@@ -563,8 +573,8 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
       await _loadFromDatabase();
       setState(() {
         _plantController.clear();
-  _selectedPlant = plant;
-  _saveSelections();
+        _selectedPlant = plant;
+        _saveSelections();
       });
     }
     FocusScope.of(context).requestFocus(_plantFocusNode);
@@ -580,7 +590,7 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
       );
       final plantName = _companyPlants[_selectedCompany!]![index];
       final plants = await db.select(db.plants).get();
-      final plant = plants.firstWhere(
+      plants.firstWhere(
         (p) => p.name == plantName && p.organizationId == org.id,
         orElse: () => throw Exception('Plant not found'),
       );
@@ -588,9 +598,10 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
       await _loadFromDatabase();
       setState(() {
         if (_selectedPlant == plantName) {
-          _selectedPlant = (_companyPlants[_selectedCompany!]?.isNotEmpty ?? false)
-              ? _companyPlants[_selectedCompany!]!.first
-              : null;
+          _selectedPlant =
+              (_companyPlants[_selectedCompany!]?.isNotEmpty ?? false)
+                  ? _companyPlants[_selectedCompany!]!.first
+                  : null;
           _saveSelections();
         }
       });
@@ -616,7 +627,7 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
       resizeToAvoidBottomInset: true,
       body: Column(
         children: [
-          const OrganizationSetupHeader(),
+          // Removed OrganizationSetupHeader
           Expanded(
             child: SingleChildScrollView(
               padding: EdgeInsets.only(
@@ -656,24 +667,7 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
               ),
             ),
           ),
-          OrganizationSetupFooter(
-            onBack: _goBackToHome,
-            rightButton: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.yellow[300],
-                foregroundColor: Colors.black,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                textStyle:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                elevation: 6,
-              ),
-              onPressed: _selectedPlant != null ? _saveOrganization : null,
-              child: const Text('Plant Setup'),
-            ),
-          ),
+          const AppFooter(),
         ],
       ),
     );

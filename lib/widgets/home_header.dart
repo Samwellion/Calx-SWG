@@ -24,7 +24,7 @@ class HomeHeader extends StatelessWidget {
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
+            color: Colors.black.withOpacity(0.08),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -46,38 +46,16 @@ class HomeHeader extends StatelessWidget {
               style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
           ),
-          // Text boxes for company, plant, value stream, process
-          if ((companyName?.isNotEmpty ?? false) ||
-              (plantName?.isNotEmpty ?? false) ||
-              (valueStreamName?.isNotEmpty ?? false) ||
-              (processName?.isNotEmpty ?? false))
-            Padding(
-              padding: const EdgeInsets.only(left: 16.0),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _HeaderTextBox(label: 'Company', value: companyName),
-                  const SizedBox(width: 8),
-                  _HeaderTextBox(label: 'Plant', value: plantName),
-                  const SizedBox(width: 8),
-                  _HeaderTextBox(label: 'Value Stream', value: valueStreamName),
-                  if (processName != null && processName!.isNotEmpty) ...[
-                    const SizedBox(width: 8),
-                    _HeaderTextBox(label: 'Process', value: processName),
-                  ],
-                ],
-              ),
-            ),
         ],
       ),
     );
   }
 }
 
-class _HeaderTextBox extends StatelessWidget {
+class HeaderTextBox extends StatelessWidget {
   final String label;
   final String? value;
-  const _HeaderTextBox({required this.label, required this.value});
+  const HeaderTextBox({super.key, required this.label, required this.value});
   @override
   Widget build(BuildContext context) {
     return Container(

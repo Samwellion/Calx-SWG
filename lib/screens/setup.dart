@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:drift/drift.dart' as drift;
 
-import '../widgets/home_header.dart';
 import '../widgets/app_footer.dart';
 
 import '../logic/app_database.dart';
@@ -192,12 +191,7 @@ class _SetupScreenState extends State<SetupScreen> {
       backgroundColor: Colors.yellow[100],
       body: Column(
         children: [
-          HomeHeader(
-            companyName: widget.companyName,
-            plantName: widget.plantName,
-            valueStreamName: widget.valueStreamName,
-            processName: widget.processName,
-          ),
+          // Removed HomeHeader
           Expanded(
             child: Center(
               child: ConstrainedBox(

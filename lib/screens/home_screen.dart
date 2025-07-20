@@ -1,6 +1,5 @@
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
-import '../widgets/home_header.dart';
 import '../widgets/home_dropdowns_column.dart';
 import '../widgets/home_button_column.dart';
 import 'part_input_screen.dart';
@@ -11,7 +10,7 @@ import '../logic/app_database.dart';
 import 'plant_setup_screen.dart';
 import '../database_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../widgets/home_footer.dart';
+import '../widgets/app_footer.dart';
 import 'setup.dart';
 
 final RouteObserver<ModalRoute<void>> routeObserver =
@@ -435,11 +434,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       backgroundColor: Colors.yellow[100],
       body: Column(
         children: [
-          HomeHeader(
-            companyName: orgCompany,
-            plantName: selectedPlant,
-            valueStreamName: selectedValueStream,
-          ),
+          // Removed HomeHeader from home screen
           Expanded(
             child: Center(
               child: ConstrainedBox(
@@ -457,81 +452,93 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                       ),
                     ],
                   ),
-                  child: SingleChildScrollView(
-                    child: IntrinsicHeight(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.center,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          Flexible(
-                            child: HomeButtonColumn(
-                              onSetupOrg: () async {
-                                await Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        const OrganizationSetupScreen(),
-                                  ),
-                                );
-                                await _loadDropdownData();
-                              },
-                              onLoadOrg: _openPlantSetupScreen,
-                              onOpenObs: _openStopwatchApp,
-                              onAddPartNumber: _openPartInputScreen,
-                              onAddVSProcess: _onAddVSProcess,
-                              onAddElements: _openAddElementsScreen,
-                              enableAddPartNumber: (selectedCompany != null &&
-                                  selectedCompany!.isNotEmpty &&
-                                  selectedPlant != null &&
-                                  selectedPlant!.isNotEmpty &&
-                                  selectedValueStream != null &&
-                                  selectedValueStream!.isNotEmpty),
-                              // Only enable Add Setup and Elements and Open Time Observation if a process is selected
-                              enableAddElements: (selectedCompany != null &&
-                                  selectedCompany!.isNotEmpty &&
-                                  selectedPlant != null &&
-                                  selectedPlant!.isNotEmpty &&
-                                  selectedValueStream != null &&
-                                  selectedValueStream!.isNotEmpty &&
-                                  selectedProcess != null &&
-                                  selectedProcess!.isNotEmpty),
-                              enableOpenObs: (selectedCompany != null &&
-                                  selectedCompany!.isNotEmpty &&
-                                  selectedPlant != null &&
-                                  selectedPlant!.isNotEmpty &&
-                                  selectedValueStream != null &&
-                                  selectedValueStream!.isNotEmpty &&
-                                  selectedProcess != null &&
-                                  selectedProcess!.isNotEmpty &&
-                                  hasSetupsForSelectedProcess),
-                            ),
-                          ),
-                          const SizedBox(width: 32),
-                          Flexible(
-                            child: HomeDropdownsColumn(
-                              companyNames: companyNames,
-                              selectedCompany: selectedCompany,
-                              onCompanyChanged: _onCompanyChanged,
-                              plantNames: orgPlants,
-                              selectedPlant: selectedPlant,
-                              onPlantChanged: _onPlantChanged,
-                              valueStreams: valueStreams,
-                              selectedValueStream: selectedValueStream,
-                              onValueStreamChanged: _onValueStreamChanged,
-                              processes: processNames,
-                              selectedProcess: selectedProcess,
-                              onProcessChanged: _onProcessChanged,
-                            ),
-                          ),
+                          // Removed HeaderTextBox row
                         ],
                       ),
-                    ),
+                      const SizedBox(height: 16),
+                      SingleChildScrollView(
+                        child: IntrinsicHeight(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Flexible(
+                                child: HomeButtonColumn(
+                                  onSetupOrg: () async {
+                                    await Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const OrganizationSetupScreen(),
+                                      ),
+                                    );
+                                    await _loadDropdownData();
+                                  },
+                                  onLoadOrg: _openPlantSetupScreen,
+                                  onOpenObs: _openStopwatchApp,
+                                  onAddPartNumber: _openPartInputScreen,
+                                  onAddVSProcess: _onAddVSProcess,
+                                  onAddElements: _openAddElementsScreen,
+                                  enableAddPartNumber:
+                                      (selectedCompany != null &&
+                                          selectedCompany!.isNotEmpty &&
+                                          selectedPlant != null &&
+                                          selectedPlant!.isNotEmpty &&
+                                          selectedValueStream != null &&
+                                          selectedValueStream!.isNotEmpty),
+                                  enableAddElements: (selectedCompany != null &&
+                                      selectedCompany!.isNotEmpty &&
+                                      selectedPlant != null &&
+                                      selectedPlant!.isNotEmpty &&
+                                      selectedValueStream != null &&
+                                      selectedValueStream!.isNotEmpty &&
+                                      selectedProcess != null &&
+                                      selectedProcess!.isNotEmpty),
+                                  enableOpenObs: (selectedCompany != null &&
+                                      selectedCompany!.isNotEmpty &&
+                                      selectedPlant != null &&
+                                      selectedPlant!.isNotEmpty &&
+                                      selectedValueStream != null &&
+                                      selectedValueStream!.isNotEmpty &&
+                                      selectedProcess != null &&
+                                      selectedProcess!.isNotEmpty &&
+                                      hasSetupsForSelectedProcess),
+                                ),
+                              ),
+                              const SizedBox(width: 32),
+                              Flexible(
+                                child: HomeDropdownsColumn(
+                                  companyNames: companyNames,
+                                  selectedCompany: selectedCompany,
+                                  onCompanyChanged: _onCompanyChanged,
+                                  plantNames: orgPlants,
+                                  selectedPlant: selectedPlant,
+                                  onPlantChanged: _onPlantChanged,
+                                  valueStreams: valueStreams,
+                                  selectedValueStream: selectedValueStream,
+                                  onValueStreamChanged: _onValueStreamChanged,
+                                  processes: processNames,
+                                  selectedProcess: selectedProcess,
+                                  onProcessChanged: _onProcessChanged,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
           ),
           const SizedBox(height: 8),
-          const HomeFooter(),
+          const AppFooter(),
         ],
       ),
     );

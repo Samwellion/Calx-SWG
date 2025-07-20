@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../logic/app_database.dart';
 import 'package:drift/drift.dart' as drift;
 import '../database_provider.dart';
-import '../widgets/home_header.dart';
 
 class PartInputScreen extends StatefulWidget {
   final int valueStreamId;
@@ -121,11 +120,7 @@ class _PartInputScreenState extends State<PartInputScreen> {
       backgroundColor: Colors.yellow[100],
       body: Column(
         children: [
-          HomeHeader(
-            companyName: widget.companyName,
-            plantName: widget.plantName,
-            valueStreamName: widget.valueStreamName,
-          ),
+          // Removed HomeHeader
           Expanded(
             child: Center(
               child: ConstrainedBox(
