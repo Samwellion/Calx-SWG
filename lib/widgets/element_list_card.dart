@@ -129,7 +129,8 @@ class _ElementListCardState extends State<ElementListCard> {
         final elements = await (db.select(db.setupElements)
               ..where((tbl) =>
                   tbl.processPartId.equals(widget.processPartId!) &
-                  tbl.setupId.equals(setup.id)))
+                  tbl.setupId.equals(setup.id))
+              ..orderBy([(tbl) => drift.OrderingTerm.asc(tbl.orderIndex)]))
             .get();
 
         if (mounted) {
@@ -153,6 +154,42 @@ class _ElementListCardState extends State<ElementListCard> {
           loadingElements = false;
         });
       }
+    }
+  }
+
+  Future<void> _onReorder(int oldIndex, int newIndex) async {
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+
+    setState(() {
+      final element = setupElements.removeAt(oldIndex);
+      setupElements.insert(newIndex, element);
+    });
+
+    // Update the order in the database
+    await _updateElementOrder();
+
+    // Notify parent that elements have changed
+    if (widget.onElementChanged != null) {
+      widget.onElementChanged!();
+    }
+  }
+
+  Future<void> _updateElementOrder() async {
+    try {
+      // Update each element's order index in the database
+      for (int i = 0; i < setupElements.length; i++) {
+        await (db.update(db.setupElements)
+              ..where((tbl) => tbl.id.equals(setupElements[i].id)))
+            .write(
+          SetupElementsCompanion(
+            orderIndex: drift.Value(i),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error updating element order: $e');
     }
   }
 
@@ -182,87 +219,113 @@ class _ElementListCardState extends State<ElementListCard> {
                           ),
                           const SizedBox(height: 12),
                           Expanded(
-                            child: SingleChildScrollView(
-                              child: DataTable(
-                                columns: const [
-                                  DataColumn(
-                                      label: Text('Element Name',
-                                          style: TextStyle(
-                                              fontWeight: FontWeight.bold))),
-                                  DataColumn(
-                                      label: Text('Time',
-                                          style: TextStyle(
-                                              fontWeight: FontWeight.bold))),
-                                  DataColumn(
-                                      label: Text('Actions',
-                                          style: TextStyle(
-                                              fontWeight: FontWeight.bold))),
-                                ],
-                                rows: setupElements
-                                    .map((element) => DataRow(
-                                          cells: [
-                                            DataCell(
-                                              editingStates[element.id] ?? false
-                                                  ? TextFormField(
-                                                      initialValue:
-                                                          element.elementName,
-                                                      onChanged: (value) {
-                                                        elementNameEdits[
-                                                            element.id] = value;
-                                                      },
-                                                    )
-                                                  : Text(element.elementName),
+                            child: setupElements.isEmpty
+                                ? const Center(
+                                    child: Text(
+                                      'No elements added yet',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Colors.grey,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  )
+                                : ReorderableListView.builder(
+                                    itemCount: setupElements.length,
+                                    onReorder: _onReorder,
+                                    itemBuilder: (context, index) {
+                                      final element = setupElements[index];
+                                      return Card(
+                                        key: ValueKey(element.id),
+                                        margin: const EdgeInsets.symmetric(
+                                            vertical: 2.0, horizontal: 4.0),
+                                        elevation: 2,
+                                        color: Colors.yellow[100],
+                                        child: ListTile(
+                                          leading: ReorderableDragStartListener(
+                                            index: index,
+                                            child: const Icon(
+                                              Icons.drag_handle,
+                                              color: Colors.grey,
                                             ),
-                                            DataCell(
-                                              editingStates[element.id] ?? false
-                                                  ? TextFormField(
-                                                      initialValue:
-                                                          element.time,
-                                                      onChanged: (value) {
-                                                        timeEdits[element.id] =
-                                                            value;
-                                                      },
-                                                    )
-                                                  : Text(element.time),
-                                            ),
-                                            DataCell(
-                                              Row(
-                                                children: [
-                                                  if (editingStates[
-                                                          element.id] ??
-                                                      false)
-                                                    IconButton(
-                                                      icon: const Icon(
-                                                          Icons.check,
-                                                          color: Colors.green),
-                                                      onPressed: () =>
-                                                          _updateElement(
-                                                              element),
-                                                    )
-                                                  else
-                                                    IconButton(
-                                                      icon: const Icon(
-                                                          Icons.edit,
-                                                          color: Colors.blue),
-                                                      onPressed: () =>
-                                                          _toggleEditing(
-                                                              element.id, true),
-                                                    ),
-                                                  IconButton(
-                                                    icon: const Icon(
-                                                        Icons.delete,
-                                                        color: Colors.red),
-                                                    onPressed: () =>
-                                                        _deleteElement(element),
+                                          ),
+                                          title: editingStates[element.id] ??
+                                                  false
+                                              ? TextFormField(
+                                                  initialValue:
+                                                      element.elementName,
+                                                  onChanged: (value) {
+                                                    elementNameEdits[
+                                                        element.id] = value;
+                                                  },
+                                                  decoration:
+                                                      const InputDecoration(
+                                                    border:
+                                                        OutlineInputBorder(),
+                                                    isDense: true,
                                                   ),
-                                                ],
+                                                )
+                                              : Text(
+                                                  element.elementName,
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 16,
+                                                  ),
+                                                ),
+                                          subtitle: editingStates[element.id] ??
+                                                  false
+                                              ? TextFormField(
+                                                  initialValue: element.time,
+                                                  onChanged: (value) {
+                                                    timeEdits[element.id] =
+                                                        value;
+                                                  },
+                                                  decoration:
+                                                      const InputDecoration(
+                                                    border:
+                                                        OutlineInputBorder(),
+                                                    isDense: true,
+                                                    labelText: 'Time',
+                                                  ),
+                                                )
+                                              : Text(
+                                                  'Time: ${element.time}',
+                                                  style: const TextStyle(
+                                                    fontSize: 14,
+                                                    color: Colors.grey,
+                                                  ),
+                                                ),
+                                          trailing: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              if (editingStates[element.id] ??
+                                                  false)
+                                                IconButton(
+                                                  icon: const Icon(Icons.check,
+                                                      color: Colors.green),
+                                                  onPressed: () =>
+                                                      _updateElement(element),
+                                                )
+                                              else
+                                                IconButton(
+                                                  icon: const Icon(Icons.edit,
+                                                      color: Colors.blue),
+                                                  onPressed: () =>
+                                                      _toggleEditing(
+                                                          element.id, true),
+                                                ),
+                                              IconButton(
+                                                icon: const Icon(Icons.delete,
+                                                    color: Colors.red),
+                                                onPressed: () =>
+                                                    _deleteElement(element),
                                               ),
-                                            ),
-                                          ],
-                                        ))
-                                    .toList(),
-                              ),
-                            ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
                           ),
                         ],
                       ),

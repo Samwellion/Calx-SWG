@@ -14,6 +14,7 @@ class SetupElements extends Table {
   DateTimeColumn get setupDateTime => dateTime()();
   TextColumn get elementName => text()();
   TextColumn get time => text()(); // Format: HH:MM:SS
+  IntColumn get orderIndex => integer().withDefault(const Constant(0))();
 }
 
 class Setups extends Table {
@@ -63,7 +64,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -91,6 +92,11 @@ class AppDatabase extends _$AppDatabase {
             // Force recreate setup_elements table to ensure setupId column exists
             await m.deleteTable('setup_elements');
             await m.createTable(setupElements);
+          }
+          if (from == 6 && to == 7) {
+            // Add orderIndex column to SetupElements
+            await m.addColumn(setupElements,
+                setupElements.orderIndex as GeneratedColumn<Object>);
           }
           if (from == 1 && to == 3) {
             await m.createTable(setups);

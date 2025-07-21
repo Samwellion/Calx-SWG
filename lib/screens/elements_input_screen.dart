@@ -451,8 +451,6 @@ class _ElementsInputScreenState extends State<ElementsInputScreen> {
       if (!_isNewSetup && setupName != null) {
         // Existing setup - load elements
         await _loadExistingSetupElements(setupName!);
-        // Clean up any duplicate elements that might exist
-        await _cleanupDuplicateElements();
       } else if (_isNewSetup && setupName != null && processPartId != null) {
         // New setup - create the setup record immediately
         await db.into(db.setups).insert(
@@ -503,38 +501,13 @@ class _ElementsInputScreenState extends State<ElementsInputScreen> {
         ),
         drawer: _buildCustomDrawer(),
         backgroundColor: Colors.yellow[100],
-        floatingActionButton: Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            // Cleanup duplicates button
-            FloatingActionButton(
-              heroTag: "cleanup",
-              onPressed: () async {
-                await _cleanupDuplicateElements();
-                if (mounted) {
-                  // ignore: use_build_context_synchronously
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Duplicate elements cleaned up'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                }
-              },
-              backgroundColor: Colors.red[300],
-              child: const Icon(Icons.cleaning_services),
-            ),
-            const SizedBox(width: 16),
-            // Setup dialog button
-            FloatingActionButton(
-              heroTag: "setup",
-              onPressed: () {
-                _showSetupDialog();
-              },
-              backgroundColor: Colors.yellow[300],
-              child: const Icon(Icons.settings),
-            ),
-          ],
+        floatingActionButton: FloatingActionButton(
+          heroTag: "setup",
+          onPressed: () {
+            _showSetupDialog();
+          },
+          backgroundColor: Colors.yellow[300],
+          child: const Icon(Icons.settings),
         ),
         body: Column(
           children: [
@@ -706,6 +679,19 @@ class _ElementsInputScreenState extends State<ElementsInputScreen> {
                                                   return;
                                                 }
 
+                                                // Get the count of existing elements to set the order index
+                                                final existingElements = await (db
+                                                        .select(
+                                                            db.setupElements)
+                                                      ..where((tbl) =>
+                                                          tbl.processPartId.equals(
+                                                              processPartId!) &
+                                                          tbl.setupId.equals(
+                                                              setup.id)))
+                                                    .get();
+                                                final nextOrderIndex =
+                                                    existingElements.length;
+
                                                 // Add to database for immediate display
                                                 await db
                                                     .into(db.setupElements)
@@ -725,6 +711,8 @@ class _ElementsInputScreenState extends State<ElementsInputScreen> {
                                                         time: drift.Value(
                                                             newTimeController
                                                                 .text),
+                                                        orderIndex: drift.Value(
+                                                            nextOrderIndex),
                                                       ),
                                                     );
 
@@ -807,50 +795,6 @@ class _ElementsInputScreenState extends State<ElementsInputScreen> {
         ),
       ),
     );
-  }
-
-  // Clean up duplicate elements in the database for a specific setup
-  Future<void> _cleanupDuplicateElements() async {
-    if (processPartId == null || setupName == null) return;
-
-    // Get the setup ID first
-    final existingSetup = await (db.select(db.setups)
-          ..where((setup) => setup.setupName.equals(setupName!)))
-        .getSingleOrNull();
-
-    if (existingSetup == null) return;
-
-    // Get all elements for this setup
-    final allElements = await (db.select(db.setupElements)
-          ..where((tbl) =>
-              tbl.processPartId.equals(processPartId!) &
-              tbl.setupId.equals(existingSetup.id)))
-        .get();
-
-    // Group elements by name
-    Map<String, List<SetupElement>> elementsByName = {};
-    for (final element in allElements) {
-      if (!elementsByName.containsKey(element.elementName)) {
-        elementsByName[element.elementName] = [];
-      }
-      elementsByName[element.elementName]!.add(element);
-    }
-
-    // Remove duplicates (keep the first one, remove the rest)
-    for (final entry in elementsByName.entries) {
-      final elements = entry.value;
-      if (elements.length > 1) {
-        // Keep the first element, delete the rest
-        for (int i = 1; i < elements.length; i++) {
-          await db.delete(db.setupElements).delete(elements[i]);
-        }
-      }
-    }
-
-    // Refresh the display after cleanup
-    setState(() {
-      _elementListRefreshKey++;
-    });
   }
 
   // Refresh current elements list when ElementListCard changes

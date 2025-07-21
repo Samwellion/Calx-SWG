@@ -1822,9 +1822,24 @@ class $SetupElementsTable extends SetupElements
   late final GeneratedColumn<String> time = GeneratedColumn<String>(
       'time', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _orderIndexMeta =
+      const VerificationMeta('orderIndex');
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, processPartId, setupId, setupDateTime, elementName, time];
+  late final GeneratedColumn<int> orderIndex = GeneratedColumn<int>(
+      'order_index', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        processPartId,
+        setupId,
+        setupDateTime,
+        elementName,
+        time,
+        orderIndex
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1874,6 +1889,12 @@ class $SetupElementsTable extends SetupElements
     } else if (isInserting) {
       context.missing(_timeMeta);
     }
+    if (data.containsKey('order_index')) {
+      context.handle(
+          _orderIndexMeta,
+          orderIndex.isAcceptableOrUnknown(
+              data['order_index']!, _orderIndexMeta));
+    }
     return context;
   }
 
@@ -1895,6 +1916,8 @@ class $SetupElementsTable extends SetupElements
           .read(DriftSqlType.string, data['${effectivePrefix}element_name'])!,
       time: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}time'])!,
+      orderIndex: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}order_index'])!,
     );
   }
 
@@ -1911,13 +1934,15 @@ class SetupElement extends DataClass implements Insertable<SetupElement> {
   final DateTime setupDateTime;
   final String elementName;
   final String time;
+  final int orderIndex;
   const SetupElement(
       {required this.id,
       required this.processPartId,
       required this.setupId,
       required this.setupDateTime,
       required this.elementName,
-      required this.time});
+      required this.time,
+      required this.orderIndex});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1927,6 +1952,7 @@ class SetupElement extends DataClass implements Insertable<SetupElement> {
     map['setup_date_time'] = Variable<DateTime>(setupDateTime);
     map['element_name'] = Variable<String>(elementName);
     map['time'] = Variable<String>(time);
+    map['order_index'] = Variable<int>(orderIndex);
     return map;
   }
 
@@ -1938,6 +1964,7 @@ class SetupElement extends DataClass implements Insertable<SetupElement> {
       setupDateTime: Value(setupDateTime),
       elementName: Value(elementName),
       time: Value(time),
+      orderIndex: Value(orderIndex),
     );
   }
 
@@ -1951,6 +1978,7 @@ class SetupElement extends DataClass implements Insertable<SetupElement> {
       setupDateTime: serializer.fromJson<DateTime>(json['setupDateTime']),
       elementName: serializer.fromJson<String>(json['elementName']),
       time: serializer.fromJson<String>(json['time']),
+      orderIndex: serializer.fromJson<int>(json['orderIndex']),
     );
   }
   @override
@@ -1963,6 +1991,7 @@ class SetupElement extends DataClass implements Insertable<SetupElement> {
       'setupDateTime': serializer.toJson<DateTime>(setupDateTime),
       'elementName': serializer.toJson<String>(elementName),
       'time': serializer.toJson<String>(time),
+      'orderIndex': serializer.toJson<int>(orderIndex),
     };
   }
 
@@ -1972,7 +2001,8 @@ class SetupElement extends DataClass implements Insertable<SetupElement> {
           int? setupId,
           DateTime? setupDateTime,
           String? elementName,
-          String? time}) =>
+          String? time,
+          int? orderIndex}) =>
       SetupElement(
         id: id ?? this.id,
         processPartId: processPartId ?? this.processPartId,
@@ -1980,6 +2010,7 @@ class SetupElement extends DataClass implements Insertable<SetupElement> {
         setupDateTime: setupDateTime ?? this.setupDateTime,
         elementName: elementName ?? this.elementName,
         time: time ?? this.time,
+        orderIndex: orderIndex ?? this.orderIndex,
       );
   SetupElement copyWithCompanion(SetupElementsCompanion data) {
     return SetupElement(
@@ -1994,6 +2025,8 @@ class SetupElement extends DataClass implements Insertable<SetupElement> {
       elementName:
           data.elementName.present ? data.elementName.value : this.elementName,
       time: data.time.present ? data.time.value : this.time,
+      orderIndex:
+          data.orderIndex.present ? data.orderIndex.value : this.orderIndex,
     );
   }
 
@@ -2005,14 +2038,15 @@ class SetupElement extends DataClass implements Insertable<SetupElement> {
           ..write('setupId: $setupId, ')
           ..write('setupDateTime: $setupDateTime, ')
           ..write('elementName: $elementName, ')
-          ..write('time: $time')
+          ..write('time: $time, ')
+          ..write('orderIndex: $orderIndex')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, processPartId, setupId, setupDateTime, elementName, time);
+  int get hashCode => Object.hash(
+      id, processPartId, setupId, setupDateTime, elementName, time, orderIndex);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2022,7 +2056,8 @@ class SetupElement extends DataClass implements Insertable<SetupElement> {
           other.setupId == this.setupId &&
           other.setupDateTime == this.setupDateTime &&
           other.elementName == this.elementName &&
-          other.time == this.time);
+          other.time == this.time &&
+          other.orderIndex == this.orderIndex);
 }
 
 class SetupElementsCompanion extends UpdateCompanion<SetupElement> {
@@ -2032,6 +2067,7 @@ class SetupElementsCompanion extends UpdateCompanion<SetupElement> {
   final Value<DateTime> setupDateTime;
   final Value<String> elementName;
   final Value<String> time;
+  final Value<int> orderIndex;
   const SetupElementsCompanion({
     this.id = const Value.absent(),
     this.processPartId = const Value.absent(),
@@ -2039,6 +2075,7 @@ class SetupElementsCompanion extends UpdateCompanion<SetupElement> {
     this.setupDateTime = const Value.absent(),
     this.elementName = const Value.absent(),
     this.time = const Value.absent(),
+    this.orderIndex = const Value.absent(),
   });
   SetupElementsCompanion.insert({
     this.id = const Value.absent(),
@@ -2047,6 +2084,7 @@ class SetupElementsCompanion extends UpdateCompanion<SetupElement> {
     required DateTime setupDateTime,
     required String elementName,
     required String time,
+    this.orderIndex = const Value.absent(),
   })  : processPartId = Value(processPartId),
         setupId = Value(setupId),
         setupDateTime = Value(setupDateTime),
@@ -2059,6 +2097,7 @@ class SetupElementsCompanion extends UpdateCompanion<SetupElement> {
     Expression<DateTime>? setupDateTime,
     Expression<String>? elementName,
     Expression<String>? time,
+    Expression<int>? orderIndex,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2067,6 +2106,7 @@ class SetupElementsCompanion extends UpdateCompanion<SetupElement> {
       if (setupDateTime != null) 'setup_date_time': setupDateTime,
       if (elementName != null) 'element_name': elementName,
       if (time != null) 'time': time,
+      if (orderIndex != null) 'order_index': orderIndex,
     });
   }
 
@@ -2076,7 +2116,8 @@ class SetupElementsCompanion extends UpdateCompanion<SetupElement> {
       Value<int>? setupId,
       Value<DateTime>? setupDateTime,
       Value<String>? elementName,
-      Value<String>? time}) {
+      Value<String>? time,
+      Value<int>? orderIndex}) {
     return SetupElementsCompanion(
       id: id ?? this.id,
       processPartId: processPartId ?? this.processPartId,
@@ -2084,6 +2125,7 @@ class SetupElementsCompanion extends UpdateCompanion<SetupElement> {
       setupDateTime: setupDateTime ?? this.setupDateTime,
       elementName: elementName ?? this.elementName,
       time: time ?? this.time,
+      orderIndex: orderIndex ?? this.orderIndex,
     );
   }
 
@@ -2108,6 +2150,9 @@ class SetupElementsCompanion extends UpdateCompanion<SetupElement> {
     if (time.present) {
       map['time'] = Variable<String>(time.value);
     }
+    if (orderIndex.present) {
+      map['order_index'] = Variable<int>(orderIndex.value);
+    }
     return map;
   }
 
@@ -2119,7 +2164,8 @@ class SetupElementsCompanion extends UpdateCompanion<SetupElement> {
           ..write('setupId: $setupId, ')
           ..write('setupDateTime: $setupDateTime, ')
           ..write('elementName: $elementName, ')
-          ..write('time: $time')
+          ..write('time: $time, ')
+          ..write('orderIndex: $orderIndex')
           ..write(')'))
         .toString();
   }
@@ -4684,6 +4730,7 @@ typedef $$SetupElementsTableCreateCompanionBuilder = SetupElementsCompanion
   required DateTime setupDateTime,
   required String elementName,
   required String time,
+  Value<int> orderIndex,
 });
 typedef $$SetupElementsTableUpdateCompanionBuilder = SetupElementsCompanion
     Function({
@@ -4693,6 +4740,7 @@ typedef $$SetupElementsTableUpdateCompanionBuilder = SetupElementsCompanion
   Value<DateTime> setupDateTime,
   Value<String> elementName,
   Value<String> time,
+  Value<int> orderIndex,
 });
 
 final class $$SetupElementsTableReferences
@@ -4765,6 +4813,9 @@ class $$SetupElementsTableFilterComposer
 
   ColumnFilters<String> get time => $composableBuilder(
       column: $table.time, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get orderIndex => $composableBuilder(
+      column: $table.orderIndex, builder: (column) => ColumnFilters(column));
 
   $$ProcessPartsTableFilterComposer get processPartId {
     final $$ProcessPartsTableFilterComposer composer = $composerBuilder(
@@ -4850,6 +4901,9 @@ class $$SetupElementsTableOrderingComposer
   ColumnOrderings<String> get time => $composableBuilder(
       column: $table.time, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get orderIndex => $composableBuilder(
+      column: $table.orderIndex, builder: (column) => ColumnOrderings(column));
+
   $$ProcessPartsTableOrderingComposer get processPartId {
     final $$ProcessPartsTableOrderingComposer composer = $composerBuilder(
         composer: this,
@@ -4911,6 +4965,9 @@ class $$SetupElementsTableAnnotationComposer
 
   GeneratedColumn<String> get time =>
       $composableBuilder(column: $table.time, builder: (column) => column);
+
+  GeneratedColumn<int> get orderIndex => $composableBuilder(
+      column: $table.orderIndex, builder: (column) => column);
 
   $$ProcessPartsTableAnnotationComposer get processPartId {
     final $$ProcessPartsTableAnnotationComposer composer = $composerBuilder(
@@ -5004,6 +5061,7 @@ class $$SetupElementsTableTableManager extends RootTableManager<
             Value<DateTime> setupDateTime = const Value.absent(),
             Value<String> elementName = const Value.absent(),
             Value<String> time = const Value.absent(),
+            Value<int> orderIndex = const Value.absent(),
           }) =>
               SetupElementsCompanion(
             id: id,
@@ -5012,6 +5070,7 @@ class $$SetupElementsTableTableManager extends RootTableManager<
             setupDateTime: setupDateTime,
             elementName: elementName,
             time: time,
+            orderIndex: orderIndex,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -5020,6 +5079,7 @@ class $$SetupElementsTableTableManager extends RootTableManager<
             required DateTime setupDateTime,
             required String elementName,
             required String time,
+            Value<int> orderIndex = const Value.absent(),
           }) =>
               SetupElementsCompanion.insert(
             id: id,
@@ -5028,6 +5088,7 @@ class $$SetupElementsTableTableManager extends RootTableManager<
             setupDateTime: setupDateTime,
             elementName: elementName,
             time: time,
+            orderIndex: orderIndex,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (
