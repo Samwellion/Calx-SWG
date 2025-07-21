@@ -271,6 +271,11 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
   Future<void> _loadInitialData() async {
     final db = await DatabaseProvider.getInstance();
     _repository = PlantRepository(db);
+
+    // Load all plants from database into OrganizationData.plants
+    final dbPlants = await _repository.getAllPlants();
+    org_data.OrganizationData.plants = dbPlants;
+
     // Load data for the initially selected plant
     if (mounted) {
       await _loadSelectedPlantData();
@@ -363,6 +368,7 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
 
             final shouldPop = await _onWillPop();
             if (shouldPop && mounted) {
+              // ignore: use_build_context_synchronously
               Navigator.of(context).pop();
             }
           },
@@ -466,6 +472,48 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
                                 cityController: _cityController,
                                 stateController: _stateController,
                                 zipController: _zipController,
+                              ),
+                            )
+                          else
+                            Expanded(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.yellow[50],
+                                  borderRadius: BorderRadius.circular(12),
+                                  border:
+                                      Border.all(color: Colors.yellow[300]!),
+                                ),
+                                padding: const EdgeInsets.all(32),
+                                child: const Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.factory_outlined,
+                                        size: 64,
+                                        color: Colors.grey,
+                                      ),
+                                      SizedBox(height: 16),
+                                      Text(
+                                        'No Plants Available',
+                                        style: TextStyle(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                      SizedBox(height: 8),
+                                      Text(
+                                        'Please go to Organization Setup to add plants first.',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: Colors.grey,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
                         ],

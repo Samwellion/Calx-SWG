@@ -113,6 +113,8 @@ class OrganizationDetailsForm extends StatelessWidget {
   final FocusNode companyNameFocusNode;
   final TextEditingController plantController;
   final FocusNode plantFocusNode;
+  final ScrollController companyScrollController;
+  final ScrollController plantScrollController;
   final List<String> companyNames;
   final String? selectedCompany;
   final void Function() onAddCompanyName;
@@ -132,6 +134,8 @@ class OrganizationDetailsForm extends StatelessWidget {
     required this.companyNameFocusNode,
     required this.plantController,
     required this.plantFocusNode,
+    required this.companyScrollController,
+    required this.plantScrollController,
     required this.companyNames,
     required this.selectedCompany,
     required this.onAddCompanyName,
@@ -228,8 +232,10 @@ class OrganizationDetailsForm extends StatelessWidget {
                       SizedBox(
                         height: 180,
                         child: Scrollbar(
+                          controller: companyScrollController,
                           thumbVisibility: true,
                           child: ListView.builder(
+                            controller: companyScrollController,
                             itemCount: companyNames.length,
                             itemBuilder: (context, idx) {
                               final name = companyNames[idx];
@@ -318,8 +324,10 @@ class OrganizationDetailsForm extends StatelessWidget {
                     SizedBox(
                       height: 180,
                       child: Scrollbar(
+                        controller: plantScrollController,
                         thumbVisibility: true,
                         child: ListView.builder(
+                          controller: plantScrollController,
                           itemCount: plants.length,
                           itemBuilder: (context, idx) {
                             final plant = plants[idx];
@@ -394,6 +402,8 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
   final FocusNode _companyNameFocusNode = FocusNode();
   final TextEditingController _plantController = TextEditingController();
   final FocusNode _plantFocusNode = FocusNode();
+  final ScrollController _companyScrollController = ScrollController();
+  final ScrollController _plantScrollController = ScrollController();
   List<String> _companyNames = [];
   String? _selectedCompany;
   Map<String, List<String>> _companyPlants = {};
@@ -478,6 +488,8 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
     _companyNameFocusNode.dispose();
     _plantController.dispose();
     _plantFocusNode.dispose();
+    _companyScrollController.dispose();
+    _plantScrollController.dispose();
     super.dispose();
   }
 
@@ -657,6 +669,8 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
                 companyNameFocusNode: _companyNameFocusNode,
                 plantController: _plantController,
                 plantFocusNode: _plantFocusNode,
+                companyScrollController: _companyScrollController,
+                plantScrollController: _plantScrollController,
                 companyNames: _companyNames,
                 selectedCompany: _selectedCompany,
                 onAddCompanyName: _addCompanyName,

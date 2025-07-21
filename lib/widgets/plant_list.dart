@@ -17,30 +17,38 @@ class PlantList extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: 220,
+      height: 400, // Add explicit height
       decoration: BoxDecoration(
         color: Colors.yellow[50],
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.yellow[300]!),
       ),
-      child: ListView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: plants.length,
-        itemBuilder: (context, idx) {
-          final isSelected = idx == selectedPlantIdx;
-          return Material(
-            color: isSelected ? Colors.yellow[100] : Colors.transparent,
-            child: ListTile(
-              title: Text(plants[idx].name,
-                  style: TextStyle(
-                      fontWeight:
-                          isSelected ? FontWeight.bold : FontWeight.normal)),
-              selected: isSelected,
-              onTap: () => onPlantSelected(idx),
+      child: plants.isEmpty
+          ? const Center(
+              child: Text(
+                'No plants available',
+                style: TextStyle(color: Colors.grey),
+              ),
+            )
+          : ListView.builder(
+              // Remove shrinkWrap and NeverScrollableScrollPhysics to allow proper scrolling
+              itemCount: plants.length,
+              itemBuilder: (context, idx) {
+                final isSelected = idx == selectedPlantIdx;
+                return Material(
+                  color: isSelected ? Colors.yellow[100] : Colors.transparent,
+                  child: ListTile(
+                    title: Text(plants[idx].name,
+                        style: TextStyle(
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal)),
+                    selected: isSelected,
+                    onTap: () => onPlantSelected(idx),
+                  ),
+                );
+              },
             ),
-          );
-        },
-      ),
     );
   }
 }

@@ -32,6 +32,27 @@ class HomeDropdownsColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Validate selected values to prevent dropdown assertion errors
+    final validSelectedCompany =
+        (companyNames.isNotEmpty && companyNames.contains(selectedCompany))
+            ? selectedCompany
+            : null;
+
+    final validSelectedPlant =
+        (plantNames.isNotEmpty && plantNames.contains(selectedPlant))
+            ? selectedPlant
+            : null;
+
+    final validSelectedValueStream =
+        (valueStreams.isNotEmpty && valueStreams.contains(selectedValueStream))
+            ? selectedValueStream
+            : null;
+
+    final validSelectedProcess =
+        (processes.isNotEmpty && processes.contains(selectedProcess))
+            ? selectedProcess
+            : null;
+
     return Container(
       width: 400, // Width for the dropdowns container
       padding: const EdgeInsets.all(20),
@@ -56,7 +77,7 @@ class HomeDropdownsColumn extends StatelessWidget {
               Expanded(
                 child: DropdownButton<String>(
                   isExpanded: true,
-                  value: selectedCompany,
+                  value: validSelectedCompany,
                   hint: const Text('Select Company',
                       style: TextStyle(fontSize: 18)),
                   items: companyNames
@@ -82,7 +103,7 @@ class HomeDropdownsColumn extends StatelessWidget {
               Expanded(
                 child: DropdownButton<String>(
                   isExpanded: true,
-                  value: selectedPlant,
+                  value: validSelectedPlant,
                   hint: const Text('Select Plant',
                       style: TextStyle(fontSize: 18)),
                   items: plantNames
@@ -108,7 +129,7 @@ class HomeDropdownsColumn extends StatelessWidget {
               Expanded(
                 child: DropdownButton<String>(
                   isExpanded: true,
-                  value: selectedValueStream,
+                  value: validSelectedValueStream,
                   hint: const Text('Select Value Stream',
                       style: TextStyle(fontSize: 18)),
                   items: valueStreams
@@ -134,7 +155,7 @@ class HomeDropdownsColumn extends StatelessWidget {
               Expanded(
                 child: DropdownButton<String>(
                   isExpanded: true,
-                  value: selectedProcess,
+                  value: validSelectedProcess,
                   hint: const Text('Select Process',
                       style: TextStyle(fontSize: 18)),
                   items: processes

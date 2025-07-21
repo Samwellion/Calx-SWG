@@ -343,19 +343,28 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     // Group by setupName and partNumber, merge elements
     final Map<String, Map<String, dynamic>> grouped = {};
     for (final pp in processParts) {
-      final setups = await (db.select(db.setupElements)
+      final setupElementsWithSetup = await (db.select(db.setupElements)
             ..where((tbl) => tbl.processPartId.equals(pp.id)))
-          .get();
-      for (final setup in setups) {
-        final key = '${setup.setupName}||${pp.partNumber}';
-        if (!grouped.containsKey(key)) {
-          grouped[key] = {
-            'partNumber': pp.partNumber,
-            'setupName': setup.setupName,
-            'elements': <String>[],
-          };
+          .join([
+        drift.leftOuterJoin(
+            db.setups, db.setups.id.equalsExp(db.setupElements.setupId))
+      ]).get();
+
+      for (final row in setupElementsWithSetup) {
+        final setupElement = row.readTable(db.setupElements);
+        final setup = row.readTableOrNull(db.setups);
+        if (setup != null) {
+          final key = '${setup.setupName}||${pp.partNumber}';
+          if (!grouped.containsKey(key)) {
+            grouped[key] = {
+              'partNumber': pp.partNumber,
+              'setupName': setup.setupName,
+              'elements': <String>[],
+            };
+          }
+          (grouped[key]!['elements'] as List<String>)
+              .add(setupElement.elementName);
         }
-        (grouped[key]!['elements'] as List<String>).add(setup.elementName);
       }
     }
     setupOptions = grouped.values.toList();
@@ -434,6 +443,42 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         (selectedPlant != null && plantValueStreams[selectedPlant!] != null)
             ? plantValueStreams[selectedPlant!]!
             : <String>[];
+
+    // Validate and clear invalid selections to prevent dropdown assertion errors
+    String? validCompany = selectedCompany;
+    String? validPlant = selectedPlant;
+    String? validValueStream = selectedValueStream;
+    String? validProcess = selectedProcess;
+
+    if (selectedCompany != null && !companyNames.contains(selectedCompany)) {
+      validCompany = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _onCompanyChanged(null);
+      });
+    }
+
+    if (selectedPlant != null && !orgPlants.contains(selectedPlant)) {
+      validPlant = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _onPlantChanged(null);
+      });
+    }
+
+    if (selectedValueStream != null &&
+        !valueStreams.contains(selectedValueStream)) {
+      validValueStream = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _onValueStreamChanged(null);
+      });
+    }
+
+    if (selectedProcess != null && !processNames.contains(selectedProcess)) {
+      validProcess = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _onProcessChanged(null);
+      });
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Home'),
@@ -523,16 +568,16 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                               Flexible(
                                 child: HomeDropdownsColumn(
                                   companyNames: companyNames,
-                                  selectedCompany: selectedCompany,
+                                  selectedCompany: validCompany,
                                   onCompanyChanged: _onCompanyChanged,
                                   plantNames: orgPlants,
-                                  selectedPlant: selectedPlant,
+                                  selectedPlant: validPlant,
                                   onPlantChanged: _onPlantChanged,
                                   valueStreams: valueStreams,
-                                  selectedValueStream: selectedValueStream,
+                                  selectedValueStream: validValueStream,
                                   onValueStreamChanged: _onValueStreamChanged,
                                   processes: processNames,
-                                  selectedProcess: selectedProcess,
+                                  selectedProcess: validProcess,
                                   onProcessChanged: _onProcessChanged,
                                 ),
                               ),

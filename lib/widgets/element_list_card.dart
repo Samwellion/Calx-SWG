@@ -52,7 +52,6 @@ class _ElementListCardState extends State<ElementListCard> {
         await _fetchSetupElements();
       }
     } catch (e) {
-      print('Error initializing database in ElementListCard: $e');
       if (mounted) {
         setState(() {
           setupElements = [];
@@ -104,11 +103,7 @@ class _ElementListCardState extends State<ElementListCard> {
   }
 
   Future<void> _fetchSetupElements() async {
-    print(
-        'ElementListCard: _fetchSetupElements called with processPartId: ${widget.processPartId}, setupName: ${widget.setupName}');
-
     if (widget.processPartId == null || widget.setupName == null) {
-      print('ElementListCard: Missing required parameters, clearing elements');
       if (mounted) {
         setState(() {
           setupElements = [];
@@ -125,23 +120,33 @@ class _ElementListCardState extends State<ElementListCard> {
     }
 
     try {
-      print('ElementListCard: Querying database for elements...');
-      final elements = await (db.select(db.setupElements)
-            ..where((tbl) =>
-                tbl.processPartId.equals(widget.processPartId!) &
-                tbl.setupName.equals(widget.setupName!)))
-          .get();
+      // First get the setup ID
+      final setup = await (db.select(db.setups)
+            ..where((setup) => setup.setupName.equals(widget.setupName!)))
+          .getSingleOrNull();
 
-      print('ElementListCard: Found ${elements.length} elements');
+      if (setup != null) {
+        final elements = await (db.select(db.setupElements)
+              ..where((tbl) =>
+                  tbl.processPartId.equals(widget.processPartId!) &
+                  tbl.setupId.equals(setup.id)))
+            .get();
 
-      if (mounted) {
-        setState(() {
-          setupElements = elements;
-          loadingElements = false;
-        });
+        if (mounted) {
+          setState(() {
+            setupElements = elements;
+            loadingElements = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            setupElements = [];
+            loadingElements = false;
+          });
+        }
       }
     } catch (e) {
-      print('ElementListCard: Error fetching elements: $e');
       if (mounted) {
         setState(() {
           setupElements = [];

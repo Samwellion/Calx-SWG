@@ -54,6 +54,19 @@ class PlantRepository {
         .getSingleOrNull();
   }
 
+  Future<List<org_data.PlantData>> getAllPlants() async {
+    final plants = await _db.select(_db.plants).get();
+    return plants
+        .map((dbPlant) => org_data.PlantData(
+              name: dbPlant.name,
+              street: dbPlant.street,
+              city: dbPlant.city,
+              state: dbPlant.state,
+              zip: dbPlant.zip,
+            ))
+        .toList();
+  }
+
   Future<List<String>> getValueStreams(int plantId) async {
     final valueStreams = await (_db.select(_db.valueStreams)
           ..where((tbl) => tbl.plantId.equals(plantId)))
