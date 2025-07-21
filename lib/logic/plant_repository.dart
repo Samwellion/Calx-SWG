@@ -11,7 +11,19 @@ class PlantRepository {
 
   Future<void> savePlantDetails(
       org_data.PlantData plant, List<String> valueStreamNames) async {
-    const orgId = 1; // Assuming a static orgId for now.
+    // Find the existing plant in the database to get its correct organization ID
+    final existingPlant = await (_db.select(_db.plants)
+          ..where((tbl) => tbl.name.equals(plant.name)))
+        .getSingleOrNull();
+
+    if (existingPlant == null) {
+      // If plant doesn't exist, we can't save it without knowing which organization it belongs to
+      throw Exception(
+          'Cannot save plant details: Plant "${plant.name}" not found in database');
+    }
+
+    // Use the existing plant's organization ID to preserve the relationship
+    final orgId = existingPlant.organizationId;
 
     await _db.upsertPlant(
       organizationId: orgId,
@@ -52,6 +64,19 @@ class PlantRepository {
     return await (_db.select(_db.plants)
           ..where((tbl) => tbl.name.equals(plantName)))
         .getSingleOrNull();
+  }
+
+  Future<List<org_data.PlantData>> getAllPlants() async {
+    final plants = await _db.select(_db.plants).get();
+    return plants
+        .map((dbPlant) => org_data.PlantData(
+              name: dbPlant.name,
+              street: dbPlant.street,
+              city: dbPlant.city,
+              state: dbPlant.state,
+              zip: dbPlant.zip,
+            ))
+        .toList();
   }
 
   Future<List<String>> getValueStreams(int plantId) async {

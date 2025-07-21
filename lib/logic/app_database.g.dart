@@ -1550,12 +1550,11 @@ class PlantsCompanion extends UpdateCompanion<PlantData> {
   }
 }
 
-class $SetupElementsTable extends SetupElements
-    with TableInfo<$SetupElementsTable, SetupElement> {
+class $SetupsTable extends Setups with TableInfo<$SetupsTable, Setup> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
-  $SetupElementsTable(this.attachedDatabase, [this._alias]);
+  $SetupsTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<int> id = GeneratedColumn<int>(
@@ -1580,6 +1579,232 @@ class $SetupElementsTable extends SetupElements
   late final GeneratedColumn<String> setupName = GeneratedColumn<String>(
       'setup_name', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [id, processPartId, setupName];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'setups';
+  @override
+  VerificationContext validateIntegrity(Insertable<Setup> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('process_part_id')) {
+      context.handle(
+          _processPartIdMeta,
+          processPartId.isAcceptableOrUnknown(
+              data['process_part_id']!, _processPartIdMeta));
+    } else if (isInserting) {
+      context.missing(_processPartIdMeta);
+    }
+    if (data.containsKey('setup_name')) {
+      context.handle(_setupNameMeta,
+          setupName.isAcceptableOrUnknown(data['setup_name']!, _setupNameMeta));
+    } else if (isInserting) {
+      context.missing(_setupNameMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Setup map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Setup(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      processPartId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}process_part_id'])!,
+      setupName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}setup_name'])!,
+    );
+  }
+
+  @override
+  $SetupsTable createAlias(String alias) {
+    return $SetupsTable(attachedDatabase, alias);
+  }
+}
+
+class Setup extends DataClass implements Insertable<Setup> {
+  final int id;
+  final int processPartId;
+  final String setupName;
+  const Setup(
+      {required this.id, required this.processPartId, required this.setupName});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['process_part_id'] = Variable<int>(processPartId);
+    map['setup_name'] = Variable<String>(setupName);
+    return map;
+  }
+
+  SetupsCompanion toCompanion(bool nullToAbsent) {
+    return SetupsCompanion(
+      id: Value(id),
+      processPartId: Value(processPartId),
+      setupName: Value(setupName),
+    );
+  }
+
+  factory Setup.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Setup(
+      id: serializer.fromJson<int>(json['id']),
+      processPartId: serializer.fromJson<int>(json['processPartId']),
+      setupName: serializer.fromJson<String>(json['setupName']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'processPartId': serializer.toJson<int>(processPartId),
+      'setupName': serializer.toJson<String>(setupName),
+    };
+  }
+
+  Setup copyWith({int? id, int? processPartId, String? setupName}) => Setup(
+        id: id ?? this.id,
+        processPartId: processPartId ?? this.processPartId,
+        setupName: setupName ?? this.setupName,
+      );
+  Setup copyWithCompanion(SetupsCompanion data) {
+    return Setup(
+      id: data.id.present ? data.id.value : this.id,
+      processPartId: data.processPartId.present
+          ? data.processPartId.value
+          : this.processPartId,
+      setupName: data.setupName.present ? data.setupName.value : this.setupName,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Setup(')
+          ..write('id: $id, ')
+          ..write('processPartId: $processPartId, ')
+          ..write('setupName: $setupName')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, processPartId, setupName);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Setup &&
+          other.id == this.id &&
+          other.processPartId == this.processPartId &&
+          other.setupName == this.setupName);
+}
+
+class SetupsCompanion extends UpdateCompanion<Setup> {
+  final Value<int> id;
+  final Value<int> processPartId;
+  final Value<String> setupName;
+  const SetupsCompanion({
+    this.id = const Value.absent(),
+    this.processPartId = const Value.absent(),
+    this.setupName = const Value.absent(),
+  });
+  SetupsCompanion.insert({
+    this.id = const Value.absent(),
+    required int processPartId,
+    required String setupName,
+  })  : processPartId = Value(processPartId),
+        setupName = Value(setupName);
+  static Insertable<Setup> custom({
+    Expression<int>? id,
+    Expression<int>? processPartId,
+    Expression<String>? setupName,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (processPartId != null) 'process_part_id': processPartId,
+      if (setupName != null) 'setup_name': setupName,
+    });
+  }
+
+  SetupsCompanion copyWith(
+      {Value<int>? id, Value<int>? processPartId, Value<String>? setupName}) {
+    return SetupsCompanion(
+      id: id ?? this.id,
+      processPartId: processPartId ?? this.processPartId,
+      setupName: setupName ?? this.setupName,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (processPartId.present) {
+      map['process_part_id'] = Variable<int>(processPartId.value);
+    }
+    if (setupName.present) {
+      map['setup_name'] = Variable<String>(setupName.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SetupsCompanion(')
+          ..write('id: $id, ')
+          ..write('processPartId: $processPartId, ')
+          ..write('setupName: $setupName')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SetupElementsTable extends SetupElements
+    with TableInfo<$SetupElementsTable, SetupElement> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SetupElementsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _processPartIdMeta =
+      const VerificationMeta('processPartId');
+  @override
+  late final GeneratedColumn<int> processPartId = GeneratedColumn<int>(
+      'process_part_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES process_parts (id)'));
+  static const VerificationMeta _setupIdMeta =
+      const VerificationMeta('setupId');
+  @override
+  late final GeneratedColumn<int> setupId = GeneratedColumn<int>(
+      'setup_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES setups (id)'));
   static const VerificationMeta _setupDateTimeMeta =
       const VerificationMeta('setupDateTime');
   @override
@@ -1597,9 +1822,24 @@ class $SetupElementsTable extends SetupElements
   late final GeneratedColumn<String> time = GeneratedColumn<String>(
       'time', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _orderIndexMeta =
+      const VerificationMeta('orderIndex');
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, processPartId, setupName, setupDateTime, elementName, time];
+  late final GeneratedColumn<int> orderIndex = GeneratedColumn<int>(
+      'order_index', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        processPartId,
+        setupId,
+        setupDateTime,
+        elementName,
+        time,
+        orderIndex
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1621,11 +1861,11 @@ class $SetupElementsTable extends SetupElements
     } else if (isInserting) {
       context.missing(_processPartIdMeta);
     }
-    if (data.containsKey('setup_name')) {
-      context.handle(_setupNameMeta,
-          setupName.isAcceptableOrUnknown(data['setup_name']!, _setupNameMeta));
+    if (data.containsKey('setup_id')) {
+      context.handle(_setupIdMeta,
+          setupId.isAcceptableOrUnknown(data['setup_id']!, _setupIdMeta));
     } else if (isInserting) {
-      context.missing(_setupNameMeta);
+      context.missing(_setupIdMeta);
     }
     if (data.containsKey('setup_date_time')) {
       context.handle(
@@ -1649,6 +1889,12 @@ class $SetupElementsTable extends SetupElements
     } else if (isInserting) {
       context.missing(_timeMeta);
     }
+    if (data.containsKey('order_index')) {
+      context.handle(
+          _orderIndexMeta,
+          orderIndex.isAcceptableOrUnknown(
+              data['order_index']!, _orderIndexMeta));
+    }
     return context;
   }
 
@@ -1662,14 +1908,16 @@ class $SetupElementsTable extends SetupElements
           .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
       processPartId: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}process_part_id'])!,
-      setupName: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}setup_name'])!,
+      setupId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}setup_id'])!,
       setupDateTime: attachedDatabase.typeMapping.read(
           DriftSqlType.dateTime, data['${effectivePrefix}setup_date_time'])!,
       elementName: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}element_name'])!,
       time: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}time'])!,
+      orderIndex: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}order_index'])!,
     );
   }
 
@@ -1682,26 +1930,29 @@ class $SetupElementsTable extends SetupElements
 class SetupElement extends DataClass implements Insertable<SetupElement> {
   final int id;
   final int processPartId;
-  final String setupName;
+  final int setupId;
   final DateTime setupDateTime;
   final String elementName;
   final String time;
+  final int orderIndex;
   const SetupElement(
       {required this.id,
       required this.processPartId,
-      required this.setupName,
+      required this.setupId,
       required this.setupDateTime,
       required this.elementName,
-      required this.time});
+      required this.time,
+      required this.orderIndex});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['process_part_id'] = Variable<int>(processPartId);
-    map['setup_name'] = Variable<String>(setupName);
+    map['setup_id'] = Variable<int>(setupId);
     map['setup_date_time'] = Variable<DateTime>(setupDateTime);
     map['element_name'] = Variable<String>(elementName);
     map['time'] = Variable<String>(time);
+    map['order_index'] = Variable<int>(orderIndex);
     return map;
   }
 
@@ -1709,10 +1960,11 @@ class SetupElement extends DataClass implements Insertable<SetupElement> {
     return SetupElementsCompanion(
       id: Value(id),
       processPartId: Value(processPartId),
-      setupName: Value(setupName),
+      setupId: Value(setupId),
       setupDateTime: Value(setupDateTime),
       elementName: Value(elementName),
       time: Value(time),
+      orderIndex: Value(orderIndex),
     );
   }
 
@@ -1722,10 +1974,11 @@ class SetupElement extends DataClass implements Insertable<SetupElement> {
     return SetupElement(
       id: serializer.fromJson<int>(json['id']),
       processPartId: serializer.fromJson<int>(json['processPartId']),
-      setupName: serializer.fromJson<String>(json['setupName']),
+      setupId: serializer.fromJson<int>(json['setupId']),
       setupDateTime: serializer.fromJson<DateTime>(json['setupDateTime']),
       elementName: serializer.fromJson<String>(json['elementName']),
       time: serializer.fromJson<String>(json['time']),
+      orderIndex: serializer.fromJson<int>(json['orderIndex']),
     );
   }
   @override
@@ -1734,27 +1987,30 @@ class SetupElement extends DataClass implements Insertable<SetupElement> {
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'processPartId': serializer.toJson<int>(processPartId),
-      'setupName': serializer.toJson<String>(setupName),
+      'setupId': serializer.toJson<int>(setupId),
       'setupDateTime': serializer.toJson<DateTime>(setupDateTime),
       'elementName': serializer.toJson<String>(elementName),
       'time': serializer.toJson<String>(time),
+      'orderIndex': serializer.toJson<int>(orderIndex),
     };
   }
 
   SetupElement copyWith(
           {int? id,
           int? processPartId,
-          String? setupName,
+          int? setupId,
           DateTime? setupDateTime,
           String? elementName,
-          String? time}) =>
+          String? time,
+          int? orderIndex}) =>
       SetupElement(
         id: id ?? this.id,
         processPartId: processPartId ?? this.processPartId,
-        setupName: setupName ?? this.setupName,
+        setupId: setupId ?? this.setupId,
         setupDateTime: setupDateTime ?? this.setupDateTime,
         elementName: elementName ?? this.elementName,
         time: time ?? this.time,
+        orderIndex: orderIndex ?? this.orderIndex,
       );
   SetupElement copyWithCompanion(SetupElementsCompanion data) {
     return SetupElement(
@@ -1762,13 +2018,15 @@ class SetupElement extends DataClass implements Insertable<SetupElement> {
       processPartId: data.processPartId.present
           ? data.processPartId.value
           : this.processPartId,
-      setupName: data.setupName.present ? data.setupName.value : this.setupName,
+      setupId: data.setupId.present ? data.setupId.value : this.setupId,
       setupDateTime: data.setupDateTime.present
           ? data.setupDateTime.value
           : this.setupDateTime,
       elementName:
           data.elementName.present ? data.elementName.value : this.elementName,
       time: data.time.present ? data.time.value : this.time,
+      orderIndex:
+          data.orderIndex.present ? data.orderIndex.value : this.orderIndex,
     );
   }
 
@@ -1777,88 +2035,97 @@ class SetupElement extends DataClass implements Insertable<SetupElement> {
     return (StringBuffer('SetupElement(')
           ..write('id: $id, ')
           ..write('processPartId: $processPartId, ')
-          ..write('setupName: $setupName, ')
+          ..write('setupId: $setupId, ')
           ..write('setupDateTime: $setupDateTime, ')
           ..write('elementName: $elementName, ')
-          ..write('time: $time')
+          ..write('time: $time, ')
+          ..write('orderIndex: $orderIndex')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode => Object.hash(
-      id, processPartId, setupName, setupDateTime, elementName, time);
+      id, processPartId, setupId, setupDateTime, elementName, time, orderIndex);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is SetupElement &&
           other.id == this.id &&
           other.processPartId == this.processPartId &&
-          other.setupName == this.setupName &&
+          other.setupId == this.setupId &&
           other.setupDateTime == this.setupDateTime &&
           other.elementName == this.elementName &&
-          other.time == this.time);
+          other.time == this.time &&
+          other.orderIndex == this.orderIndex);
 }
 
 class SetupElementsCompanion extends UpdateCompanion<SetupElement> {
   final Value<int> id;
   final Value<int> processPartId;
-  final Value<String> setupName;
+  final Value<int> setupId;
   final Value<DateTime> setupDateTime;
   final Value<String> elementName;
   final Value<String> time;
+  final Value<int> orderIndex;
   const SetupElementsCompanion({
     this.id = const Value.absent(),
     this.processPartId = const Value.absent(),
-    this.setupName = const Value.absent(),
+    this.setupId = const Value.absent(),
     this.setupDateTime = const Value.absent(),
     this.elementName = const Value.absent(),
     this.time = const Value.absent(),
+    this.orderIndex = const Value.absent(),
   });
   SetupElementsCompanion.insert({
     this.id = const Value.absent(),
     required int processPartId,
-    required String setupName,
+    required int setupId,
     required DateTime setupDateTime,
     required String elementName,
     required String time,
+    this.orderIndex = const Value.absent(),
   })  : processPartId = Value(processPartId),
-        setupName = Value(setupName),
+        setupId = Value(setupId),
         setupDateTime = Value(setupDateTime),
         elementName = Value(elementName),
         time = Value(time);
   static Insertable<SetupElement> custom({
     Expression<int>? id,
     Expression<int>? processPartId,
-    Expression<String>? setupName,
+    Expression<int>? setupId,
     Expression<DateTime>? setupDateTime,
     Expression<String>? elementName,
     Expression<String>? time,
+    Expression<int>? orderIndex,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (processPartId != null) 'process_part_id': processPartId,
-      if (setupName != null) 'setup_name': setupName,
+      if (setupId != null) 'setup_id': setupId,
       if (setupDateTime != null) 'setup_date_time': setupDateTime,
       if (elementName != null) 'element_name': elementName,
       if (time != null) 'time': time,
+      if (orderIndex != null) 'order_index': orderIndex,
     });
   }
 
   SetupElementsCompanion copyWith(
       {Value<int>? id,
       Value<int>? processPartId,
-      Value<String>? setupName,
+      Value<int>? setupId,
       Value<DateTime>? setupDateTime,
       Value<String>? elementName,
-      Value<String>? time}) {
+      Value<String>? time,
+      Value<int>? orderIndex}) {
     return SetupElementsCompanion(
       id: id ?? this.id,
       processPartId: processPartId ?? this.processPartId,
-      setupName: setupName ?? this.setupName,
+      setupId: setupId ?? this.setupId,
       setupDateTime: setupDateTime ?? this.setupDateTime,
       elementName: elementName ?? this.elementName,
       time: time ?? this.time,
+      orderIndex: orderIndex ?? this.orderIndex,
     );
   }
 
@@ -1871,8 +2138,8 @@ class SetupElementsCompanion extends UpdateCompanion<SetupElement> {
     if (processPartId.present) {
       map['process_part_id'] = Variable<int>(processPartId.value);
     }
-    if (setupName.present) {
-      map['setup_name'] = Variable<String>(setupName.value);
+    if (setupId.present) {
+      map['setup_id'] = Variable<int>(setupId.value);
     }
     if (setupDateTime.present) {
       map['setup_date_time'] = Variable<DateTime>(setupDateTime.value);
@@ -1883,6 +2150,9 @@ class SetupElementsCompanion extends UpdateCompanion<SetupElement> {
     if (time.present) {
       map['time'] = Variable<String>(time.value);
     }
+    if (orderIndex.present) {
+      map['order_index'] = Variable<int>(orderIndex.value);
+    }
     return map;
   }
 
@@ -1891,9 +2161,579 @@ class SetupElementsCompanion extends UpdateCompanion<SetupElement> {
     return (StringBuffer('SetupElementsCompanion(')
           ..write('id: $id, ')
           ..write('processPartId: $processPartId, ')
-          ..write('setupName: $setupName, ')
+          ..write('setupId: $setupId, ')
           ..write('setupDateTime: $setupDateTime, ')
           ..write('elementName: $elementName, ')
+          ..write('time: $time, ')
+          ..write('orderIndex: $orderIndex')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $StudyTable extends Study with TableInfo<$StudyTable, StudyData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $StudyTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _setupIdMeta =
+      const VerificationMeta('setupId');
+  @override
+  late final GeneratedColumn<int> setupId = GeneratedColumn<int>(
+      'setup_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES setups (id)'));
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
+      'date', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _timeMeta = const VerificationMeta('time');
+  @override
+  late final GeneratedColumn<DateTime> time = GeneratedColumn<DateTime>(
+      'time', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _observerNameMeta =
+      const VerificationMeta('observerName');
+  @override
+  late final GeneratedColumn<String> observerName = GeneratedColumn<String>(
+      'observer_name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [id, setupId, date, time, observerName];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'study';
+  @override
+  VerificationContext validateIntegrity(Insertable<StudyData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('setup_id')) {
+      context.handle(_setupIdMeta,
+          setupId.isAcceptableOrUnknown(data['setup_id']!, _setupIdMeta));
+    } else if (isInserting) {
+      context.missing(_setupIdMeta);
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+          _dateMeta, date.isAcceptableOrUnknown(data['date']!, _dateMeta));
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('time')) {
+      context.handle(
+          _timeMeta, time.isAcceptableOrUnknown(data['time']!, _timeMeta));
+    } else if (isInserting) {
+      context.missing(_timeMeta);
+    }
+    if (data.containsKey('observer_name')) {
+      context.handle(
+          _observerNameMeta,
+          observerName.isAcceptableOrUnknown(
+              data['observer_name']!, _observerNameMeta));
+    } else if (isInserting) {
+      context.missing(_observerNameMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  StudyData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StudyData(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      setupId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}setup_id'])!,
+      date: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}date'])!,
+      time: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}time'])!,
+      observerName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}observer_name'])!,
+    );
+  }
+
+  @override
+  $StudyTable createAlias(String alias) {
+    return $StudyTable(attachedDatabase, alias);
+  }
+}
+
+class StudyData extends DataClass implements Insertable<StudyData> {
+  final int id;
+  final int setupId;
+  final DateTime date;
+  final DateTime time;
+  final String observerName;
+  const StudyData(
+      {required this.id,
+      required this.setupId,
+      required this.date,
+      required this.time,
+      required this.observerName});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['setup_id'] = Variable<int>(setupId);
+    map['date'] = Variable<DateTime>(date);
+    map['time'] = Variable<DateTime>(time);
+    map['observer_name'] = Variable<String>(observerName);
+    return map;
+  }
+
+  StudyCompanion toCompanion(bool nullToAbsent) {
+    return StudyCompanion(
+      id: Value(id),
+      setupId: Value(setupId),
+      date: Value(date),
+      time: Value(time),
+      observerName: Value(observerName),
+    );
+  }
+
+  factory StudyData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StudyData(
+      id: serializer.fromJson<int>(json['id']),
+      setupId: serializer.fromJson<int>(json['setupId']),
+      date: serializer.fromJson<DateTime>(json['date']),
+      time: serializer.fromJson<DateTime>(json['time']),
+      observerName: serializer.fromJson<String>(json['observerName']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'setupId': serializer.toJson<int>(setupId),
+      'date': serializer.toJson<DateTime>(date),
+      'time': serializer.toJson<DateTime>(time),
+      'observerName': serializer.toJson<String>(observerName),
+    };
+  }
+
+  StudyData copyWith(
+          {int? id,
+          int? setupId,
+          DateTime? date,
+          DateTime? time,
+          String? observerName}) =>
+      StudyData(
+        id: id ?? this.id,
+        setupId: setupId ?? this.setupId,
+        date: date ?? this.date,
+        time: time ?? this.time,
+        observerName: observerName ?? this.observerName,
+      );
+  StudyData copyWithCompanion(StudyCompanion data) {
+    return StudyData(
+      id: data.id.present ? data.id.value : this.id,
+      setupId: data.setupId.present ? data.setupId.value : this.setupId,
+      date: data.date.present ? data.date.value : this.date,
+      time: data.time.present ? data.time.value : this.time,
+      observerName: data.observerName.present
+          ? data.observerName.value
+          : this.observerName,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StudyData(')
+          ..write('id: $id, ')
+          ..write('setupId: $setupId, ')
+          ..write('date: $date, ')
+          ..write('time: $time, ')
+          ..write('observerName: $observerName')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, setupId, date, time, observerName);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StudyData &&
+          other.id == this.id &&
+          other.setupId == this.setupId &&
+          other.date == this.date &&
+          other.time == this.time &&
+          other.observerName == this.observerName);
+}
+
+class StudyCompanion extends UpdateCompanion<StudyData> {
+  final Value<int> id;
+  final Value<int> setupId;
+  final Value<DateTime> date;
+  final Value<DateTime> time;
+  final Value<String> observerName;
+  const StudyCompanion({
+    this.id = const Value.absent(),
+    this.setupId = const Value.absent(),
+    this.date = const Value.absent(),
+    this.time = const Value.absent(),
+    this.observerName = const Value.absent(),
+  });
+  StudyCompanion.insert({
+    this.id = const Value.absent(),
+    required int setupId,
+    required DateTime date,
+    required DateTime time,
+    required String observerName,
+  })  : setupId = Value(setupId),
+        date = Value(date),
+        time = Value(time),
+        observerName = Value(observerName);
+  static Insertable<StudyData> custom({
+    Expression<int>? id,
+    Expression<int>? setupId,
+    Expression<DateTime>? date,
+    Expression<DateTime>? time,
+    Expression<String>? observerName,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (setupId != null) 'setup_id': setupId,
+      if (date != null) 'date': date,
+      if (time != null) 'time': time,
+      if (observerName != null) 'observer_name': observerName,
+    });
+  }
+
+  StudyCompanion copyWith(
+      {Value<int>? id,
+      Value<int>? setupId,
+      Value<DateTime>? date,
+      Value<DateTime>? time,
+      Value<String>? observerName}) {
+    return StudyCompanion(
+      id: id ?? this.id,
+      setupId: setupId ?? this.setupId,
+      date: date ?? this.date,
+      time: time ?? this.time,
+      observerName: observerName ?? this.observerName,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (setupId.present) {
+      map['setup_id'] = Variable<int>(setupId.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<DateTime>(date.value);
+    }
+    if (time.present) {
+      map['time'] = Variable<DateTime>(time.value);
+    }
+    if (observerName.present) {
+      map['observer_name'] = Variable<String>(observerName.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StudyCompanion(')
+          ..write('id: $id, ')
+          ..write('setupId: $setupId, ')
+          ..write('date: $date, ')
+          ..write('time: $time, ')
+          ..write('observerName: $observerName')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $TimeStudyTable extends TimeStudy
+    with TableInfo<$TimeStudyTable, TimeStudyData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TimeStudyTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _studyIdMeta =
+      const VerificationMeta('studyId');
+  @override
+  late final GeneratedColumn<int> studyId = GeneratedColumn<int>(
+      'study_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES study (id)'));
+  static const VerificationMeta _setupElementIdMeta =
+      const VerificationMeta('setupElementId');
+  @override
+  late final GeneratedColumn<int> setupElementId = GeneratedColumn<int>(
+      'setup_element_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES setup_elements (id)'));
+  static const VerificationMeta _timeMeta = const VerificationMeta('time');
+  @override
+  late final GeneratedColumn<String> time = GeneratedColumn<String>(
+      'time', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [id, studyId, setupElementId, time];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'time_study';
+  @override
+  VerificationContext validateIntegrity(Insertable<TimeStudyData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('study_id')) {
+      context.handle(_studyIdMeta,
+          studyId.isAcceptableOrUnknown(data['study_id']!, _studyIdMeta));
+    } else if (isInserting) {
+      context.missing(_studyIdMeta);
+    }
+    if (data.containsKey('setup_element_id')) {
+      context.handle(
+          _setupElementIdMeta,
+          setupElementId.isAcceptableOrUnknown(
+              data['setup_element_id']!, _setupElementIdMeta));
+    } else if (isInserting) {
+      context.missing(_setupElementIdMeta);
+    }
+    if (data.containsKey('time')) {
+      context.handle(
+          _timeMeta, time.isAcceptableOrUnknown(data['time']!, _timeMeta));
+    } else if (isInserting) {
+      context.missing(_timeMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  TimeStudyData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TimeStudyData(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      studyId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}study_id'])!,
+      setupElementId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}setup_element_id'])!,
+      time: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}time'])!,
+    );
+  }
+
+  @override
+  $TimeStudyTable createAlias(String alias) {
+    return $TimeStudyTable(attachedDatabase, alias);
+  }
+}
+
+class TimeStudyData extends DataClass implements Insertable<TimeStudyData> {
+  final int id;
+  final int studyId;
+  final int setupElementId;
+  final String time;
+  const TimeStudyData(
+      {required this.id,
+      required this.studyId,
+      required this.setupElementId,
+      required this.time});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['study_id'] = Variable<int>(studyId);
+    map['setup_element_id'] = Variable<int>(setupElementId);
+    map['time'] = Variable<String>(time);
+    return map;
+  }
+
+  TimeStudyCompanion toCompanion(bool nullToAbsent) {
+    return TimeStudyCompanion(
+      id: Value(id),
+      studyId: Value(studyId),
+      setupElementId: Value(setupElementId),
+      time: Value(time),
+    );
+  }
+
+  factory TimeStudyData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TimeStudyData(
+      id: serializer.fromJson<int>(json['id']),
+      studyId: serializer.fromJson<int>(json['studyId']),
+      setupElementId: serializer.fromJson<int>(json['setupElementId']),
+      time: serializer.fromJson<String>(json['time']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'studyId': serializer.toJson<int>(studyId),
+      'setupElementId': serializer.toJson<int>(setupElementId),
+      'time': serializer.toJson<String>(time),
+    };
+  }
+
+  TimeStudyData copyWith(
+          {int? id, int? studyId, int? setupElementId, String? time}) =>
+      TimeStudyData(
+        id: id ?? this.id,
+        studyId: studyId ?? this.studyId,
+        setupElementId: setupElementId ?? this.setupElementId,
+        time: time ?? this.time,
+      );
+  TimeStudyData copyWithCompanion(TimeStudyCompanion data) {
+    return TimeStudyData(
+      id: data.id.present ? data.id.value : this.id,
+      studyId: data.studyId.present ? data.studyId.value : this.studyId,
+      setupElementId: data.setupElementId.present
+          ? data.setupElementId.value
+          : this.setupElementId,
+      time: data.time.present ? data.time.value : this.time,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TimeStudyData(')
+          ..write('id: $id, ')
+          ..write('studyId: $studyId, ')
+          ..write('setupElementId: $setupElementId, ')
+          ..write('time: $time')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, studyId, setupElementId, time);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TimeStudyData &&
+          other.id == this.id &&
+          other.studyId == this.studyId &&
+          other.setupElementId == this.setupElementId &&
+          other.time == this.time);
+}
+
+class TimeStudyCompanion extends UpdateCompanion<TimeStudyData> {
+  final Value<int> id;
+  final Value<int> studyId;
+  final Value<int> setupElementId;
+  final Value<String> time;
+  const TimeStudyCompanion({
+    this.id = const Value.absent(),
+    this.studyId = const Value.absent(),
+    this.setupElementId = const Value.absent(),
+    this.time = const Value.absent(),
+  });
+  TimeStudyCompanion.insert({
+    this.id = const Value.absent(),
+    required int studyId,
+    required int setupElementId,
+    required String time,
+  })  : studyId = Value(studyId),
+        setupElementId = Value(setupElementId),
+        time = Value(time);
+  static Insertable<TimeStudyData> custom({
+    Expression<int>? id,
+    Expression<int>? studyId,
+    Expression<int>? setupElementId,
+    Expression<String>? time,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (studyId != null) 'study_id': studyId,
+      if (setupElementId != null) 'setup_element_id': setupElementId,
+      if (time != null) 'time': time,
+    });
+  }
+
+  TimeStudyCompanion copyWith(
+      {Value<int>? id,
+      Value<int>? studyId,
+      Value<int>? setupElementId,
+      Value<String>? time}) {
+    return TimeStudyCompanion(
+      id: id ?? this.id,
+      studyId: studyId ?? this.studyId,
+      setupElementId: setupElementId ?? this.setupElementId,
+      time: time ?? this.time,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (studyId.present) {
+      map['study_id'] = Variable<int>(studyId.value);
+    }
+    if (setupElementId.present) {
+      map['setup_element_id'] = Variable<int>(setupElementId.value);
+    }
+    if (time.present) {
+      map['time'] = Variable<String>(time.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TimeStudyCompanion(')
+          ..write('id: $id, ')
+          ..write('studyId: $studyId, ')
+          ..write('setupElementId: $setupElementId, ')
           ..write('time: $time')
           ..write(')'))
         .toString();
@@ -1909,7 +2749,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $PartsTable parts = $PartsTable(this);
   late final $OrganizationsTable organizations = $OrganizationsTable(this);
   late final $PlantsTable plants = $PlantsTable(this);
+  late final $SetupsTable setups = $SetupsTable(this);
   late final $SetupElementsTable setupElements = $SetupElementsTable(this);
+  late final $StudyTable study = $StudyTable(this);
+  late final $TimeStudyTable timeStudy = $TimeStudyTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1921,7 +2764,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         parts,
         organizations,
         plants,
-        setupElements
+        setups,
+        setupElements,
+        study,
+        timeStudy
       ];
 }
 
@@ -2575,6 +3421,21 @@ final class $$ProcessPartsTableReferences
         manager.$state.copyWith(prefetchedData: [item]));
   }
 
+  static MultiTypedResultKey<$SetupsTable, List<Setup>> _setupsRefsTable(
+          _$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(db.setups,
+          aliasName: $_aliasNameGenerator(
+              db.processParts.id, db.setups.processPartId));
+
+  $$SetupsTableProcessedTableManager get setupsRefs {
+    final manager = $$SetupsTableTableManager($_db, $_db.setups)
+        .filter((f) => f.processPartId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_setupsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
   static MultiTypedResultKey<$SetupElementsTable, List<SetupElement>>
       _setupElementsRefsTable(_$AppDatabase db) =>
           MultiTypedResultKey.fromTable(db.setupElements,
@@ -2624,6 +3485,27 @@ class $$ProcessPartsTableFilterComposer
                   $removeJoinBuilderFromRootComposer,
             ));
     return composer;
+  }
+
+  Expression<bool> setupsRefs(
+      Expression<bool> Function($$SetupsTableFilterComposer f) f) {
+    final $$SetupsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.setups,
+        getReferencedColumn: (t) => t.processPartId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SetupsTableFilterComposer(
+              $db: $db,
+              $table: $db.setups,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
   }
 
   Expression<bool> setupElementsRefs(
@@ -2719,6 +3601,27 @@ class $$ProcessPartsTableAnnotationComposer
     return composer;
   }
 
+  Expression<T> setupsRefs<T extends Object>(
+      Expression<T> Function($$SetupsTableAnnotationComposer a) f) {
+    final $$SetupsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.setups,
+        getReferencedColumn: (t) => t.processPartId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SetupsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.setups,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
   Expression<T> setupElementsRefs<T extends Object>(
       Expression<T> Function($$SetupElementsTableAnnotationComposer a) f) {
     final $$SetupElementsTableAnnotationComposer composer = $composerBuilder(
@@ -2752,7 +3655,8 @@ class $$ProcessPartsTableTableManager extends RootTableManager<
     $$ProcessPartsTableUpdateCompanionBuilder,
     (ProcessPart, $$ProcessPartsTableReferences),
     ProcessPart,
-    PrefetchHooks Function({bool processId, bool setupElementsRefs})> {
+    PrefetchHooks Function(
+        {bool processId, bool setupsRefs, bool setupElementsRefs})> {
   $$ProcessPartsTableTableManager(_$AppDatabase db, $ProcessPartsTable table)
       : super(TableManagerState(
           db: db,
@@ -2790,10 +3694,13 @@ class $$ProcessPartsTableTableManager extends RootTableManager<
                   ))
               .toList(),
           prefetchHooksCallback: (
-              {processId = false, setupElementsRefs = false}) {
+              {processId = false,
+              setupsRefs = false,
+              setupElementsRefs = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [
+                if (setupsRefs) db.setups,
                 if (setupElementsRefs) db.setupElements
               ],
               addJoins: <
@@ -2824,6 +3731,19 @@ class $$ProcessPartsTableTableManager extends RootTableManager<
               },
               getPrefetchedDataCallback: (items) async {
                 return [
+                  if (setupsRefs)
+                    await $_getPrefetchedData<ProcessPart, $ProcessPartsTable,
+                            Setup>(
+                        currentTable: table,
+                        referencedTable:
+                            $$ProcessPartsTableReferences._setupsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$ProcessPartsTableReferences(db, table, p0)
+                                .setupsRefs,
+                        referencedItemsForCurrentItem:
+                            (item, referencedItems) => referencedItems
+                                .where((e) => e.processPartId == item.id),
+                        typedResults: items),
                   if (setupElementsRefs)
                     await $_getPrefetchedData<ProcessPart, $ProcessPartsTable,
                             SetupElement>(
@@ -2855,7 +3775,8 @@ typedef $$ProcessPartsTableProcessedTableManager = ProcessedTableManager<
     $$ProcessPartsTableUpdateCompanionBuilder,
     (ProcessPart, $$ProcessPartsTableReferences),
     ProcessPart,
-    PrefetchHooks Function({bool processId, bool setupElementsRefs})>;
+    PrefetchHooks Function(
+        {bool processId, bool setupsRefs, bool setupElementsRefs})>;
 typedef $$PartsTableCreateCompanionBuilder = PartsCompanion Function({
   Value<int> id,
   required int valueStreamId,
@@ -3420,33 +4341,24 @@ typedef $$PlantsTableProcessedTableManager = ProcessedTableManager<
     (PlantData, BaseReferences<_$AppDatabase, $PlantsTable, PlantData>),
     PlantData,
     PrefetchHooks Function()>;
-typedef $$SetupElementsTableCreateCompanionBuilder = SetupElementsCompanion
-    Function({
+typedef $$SetupsTableCreateCompanionBuilder = SetupsCompanion Function({
   Value<int> id,
   required int processPartId,
   required String setupName,
-  required DateTime setupDateTime,
-  required String elementName,
-  required String time,
 });
-typedef $$SetupElementsTableUpdateCompanionBuilder = SetupElementsCompanion
-    Function({
+typedef $$SetupsTableUpdateCompanionBuilder = SetupsCompanion Function({
   Value<int> id,
   Value<int> processPartId,
   Value<String> setupName,
-  Value<DateTime> setupDateTime,
-  Value<String> elementName,
-  Value<String> time,
 });
 
-final class $$SetupElementsTableReferences
-    extends BaseReferences<_$AppDatabase, $SetupElementsTable, SetupElement> {
-  $$SetupElementsTableReferences(
-      super.$_db, super.$_table, super.$_typedResult);
+final class $$SetupsTableReferences
+    extends BaseReferences<_$AppDatabase, $SetupsTable, Setup> {
+  $$SetupsTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
   static $ProcessPartsTable _processPartIdTable(_$AppDatabase db) =>
-      db.processParts.createAlias($_aliasNameGenerator(
-          db.setupElements.processPartId, db.processParts.id));
+      db.processParts.createAlias(
+          $_aliasNameGenerator(db.setups.processPartId, db.processParts.id));
 
   $$ProcessPartsTableProcessedTableManager get processPartId {
     final $_column = $_itemColumn<int>('process_part_id')!;
@@ -3458,11 +4370,40 @@ final class $$SetupElementsTableReferences
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: [item]));
   }
+
+  static MultiTypedResultKey<$SetupElementsTable, List<SetupElement>>
+      _setupElementsRefsTable(_$AppDatabase db) =>
+          MultiTypedResultKey.fromTable(db.setupElements,
+              aliasName:
+                  $_aliasNameGenerator(db.setups.id, db.setupElements.setupId));
+
+  $$SetupElementsTableProcessedTableManager get setupElementsRefs {
+    final manager = $$SetupElementsTableTableManager($_db, $_db.setupElements)
+        .filter((f) => f.setupId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_setupElementsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
+  static MultiTypedResultKey<$StudyTable, List<StudyData>> _studyRefsTable(
+          _$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(db.study,
+          aliasName: $_aliasNameGenerator(db.setups.id, db.study.setupId));
+
+  $$StudyTableProcessedTableManager get studyRefs {
+    final manager = $$StudyTableTableManager($_db, $_db.study)
+        .filter((f) => f.setupId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_studyRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
 }
 
-class $$SetupElementsTableFilterComposer
-    extends Composer<_$AppDatabase, $SetupElementsTable> {
-  $$SetupElementsTableFilterComposer({
+class $$SetupsTableFilterComposer
+    extends Composer<_$AppDatabase, $SetupsTable> {
+  $$SetupsTableFilterComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -3474,15 +4415,6 @@ class $$SetupElementsTableFilterComposer
 
   ColumnFilters<String> get setupName => $composableBuilder(
       column: $table.setupName, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<DateTime> get setupDateTime => $composableBuilder(
-      column: $table.setupDateTime, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get elementName => $composableBuilder(
-      column: $table.elementName, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get time => $composableBuilder(
-      column: $table.time, builder: (column) => ColumnFilters(column));
 
   $$ProcessPartsTableFilterComposer get processPartId {
     final $$ProcessPartsTableFilterComposer composer = $composerBuilder(
@@ -3503,11 +4435,53 @@ class $$SetupElementsTableFilterComposer
             ));
     return composer;
   }
+
+  Expression<bool> setupElementsRefs(
+      Expression<bool> Function($$SetupElementsTableFilterComposer f) f) {
+    final $$SetupElementsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.setupElements,
+        getReferencedColumn: (t) => t.setupId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SetupElementsTableFilterComposer(
+              $db: $db,
+              $table: $db.setupElements,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<bool> studyRefs(
+      Expression<bool> Function($$StudyTableFilterComposer f) f) {
+    final $$StudyTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.study,
+        getReferencedColumn: (t) => t.setupId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$StudyTableFilterComposer(
+              $db: $db,
+              $table: $db.study,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
 }
 
-class $$SetupElementsTableOrderingComposer
-    extends Composer<_$AppDatabase, $SetupElementsTable> {
-  $$SetupElementsTableOrderingComposer({
+class $$SetupsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SetupsTable> {
+  $$SetupsTableOrderingComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -3519,16 +4493,6 @@ class $$SetupElementsTableOrderingComposer
 
   ColumnOrderings<String> get setupName => $composableBuilder(
       column: $table.setupName, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<DateTime> get setupDateTime => $composableBuilder(
-      column: $table.setupDateTime,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get elementName => $composableBuilder(
-      column: $table.elementName, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get time => $composableBuilder(
-      column: $table.time, builder: (column) => ColumnOrderings(column));
 
   $$ProcessPartsTableOrderingComposer get processPartId {
     final $$ProcessPartsTableOrderingComposer composer = $composerBuilder(
@@ -3551,9 +4515,9 @@ class $$SetupElementsTableOrderingComposer
   }
 }
 
-class $$SetupElementsTableAnnotationComposer
-    extends Composer<_$AppDatabase, $SetupElementsTable> {
-  $$SetupElementsTableAnnotationComposer({
+class $$SetupsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SetupsTable> {
+  $$SetupsTableAnnotationComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -3565,15 +4529,6 @@ class $$SetupElementsTableAnnotationComposer
 
   GeneratedColumn<String> get setupName =>
       $composableBuilder(column: $table.setupName, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get setupDateTime => $composableBuilder(
-      column: $table.setupDateTime, builder: (column) => column);
-
-  GeneratedColumn<String> get elementName => $composableBuilder(
-      column: $table.elementName, builder: (column) => column);
-
-  GeneratedColumn<String> get time =>
-      $composableBuilder(column: $table.time, builder: (column) => column);
 
   $$ProcessPartsTableAnnotationComposer get processPartId {
     final $$ProcessPartsTableAnnotationComposer composer = $composerBuilder(
@@ -3594,6 +4549,486 @@ class $$SetupElementsTableAnnotationComposer
             ));
     return composer;
   }
+
+  Expression<T> setupElementsRefs<T extends Object>(
+      Expression<T> Function($$SetupElementsTableAnnotationComposer a) f) {
+    final $$SetupElementsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.setupElements,
+        getReferencedColumn: (t) => t.setupId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SetupElementsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.setupElements,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<T> studyRefs<T extends Object>(
+      Expression<T> Function($$StudyTableAnnotationComposer a) f) {
+    final $$StudyTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.study,
+        getReferencedColumn: (t) => t.setupId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$StudyTableAnnotationComposer(
+              $db: $db,
+              $table: $db.study,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+}
+
+class $$SetupsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $SetupsTable,
+    Setup,
+    $$SetupsTableFilterComposer,
+    $$SetupsTableOrderingComposer,
+    $$SetupsTableAnnotationComposer,
+    $$SetupsTableCreateCompanionBuilder,
+    $$SetupsTableUpdateCompanionBuilder,
+    (Setup, $$SetupsTableReferences),
+    Setup,
+    PrefetchHooks Function(
+        {bool processPartId, bool setupElementsRefs, bool studyRefs})> {
+  $$SetupsTableTableManager(_$AppDatabase db, $SetupsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SetupsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SetupsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SetupsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<int> processPartId = const Value.absent(),
+            Value<String> setupName = const Value.absent(),
+          }) =>
+              SetupsCompanion(
+            id: id,
+            processPartId: processPartId,
+            setupName: setupName,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required int processPartId,
+            required String setupName,
+          }) =>
+              SetupsCompanion.insert(
+            id: id,
+            processPartId: processPartId,
+            setupName: setupName,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) =>
+                  (e.readTable(table), $$SetupsTableReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: (
+              {processPartId = false,
+              setupElementsRefs = false,
+              studyRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (setupElementsRefs) db.setupElements,
+                if (studyRefs) db.study
+              ],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (processPartId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.processPartId,
+                    referencedTable:
+                        $$SetupsTableReferences._processPartIdTable(db),
+                    referencedColumn:
+                        $$SetupsTableReferences._processPartIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (setupElementsRefs)
+                    await $_getPrefetchedData<Setup, $SetupsTable,
+                            SetupElement>(
+                        currentTable: table,
+                        referencedTable:
+                            $$SetupsTableReferences._setupElementsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$SetupsTableReferences(db, table, p0)
+                                .setupElementsRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.setupId == item.id),
+                        typedResults: items),
+                  if (studyRefs)
+                    await $_getPrefetchedData<Setup, $SetupsTable, StudyData>(
+                        currentTable: table,
+                        referencedTable:
+                            $$SetupsTableReferences._studyRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$SetupsTableReferences(db, table, p0).studyRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.setupId == item.id),
+                        typedResults: items)
+                ];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$SetupsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $SetupsTable,
+    Setup,
+    $$SetupsTableFilterComposer,
+    $$SetupsTableOrderingComposer,
+    $$SetupsTableAnnotationComposer,
+    $$SetupsTableCreateCompanionBuilder,
+    $$SetupsTableUpdateCompanionBuilder,
+    (Setup, $$SetupsTableReferences),
+    Setup,
+    PrefetchHooks Function(
+        {bool processPartId, bool setupElementsRefs, bool studyRefs})>;
+typedef $$SetupElementsTableCreateCompanionBuilder = SetupElementsCompanion
+    Function({
+  Value<int> id,
+  required int processPartId,
+  required int setupId,
+  required DateTime setupDateTime,
+  required String elementName,
+  required String time,
+  Value<int> orderIndex,
+});
+typedef $$SetupElementsTableUpdateCompanionBuilder = SetupElementsCompanion
+    Function({
+  Value<int> id,
+  Value<int> processPartId,
+  Value<int> setupId,
+  Value<DateTime> setupDateTime,
+  Value<String> elementName,
+  Value<String> time,
+  Value<int> orderIndex,
+});
+
+final class $$SetupElementsTableReferences
+    extends BaseReferences<_$AppDatabase, $SetupElementsTable, SetupElement> {
+  $$SetupElementsTableReferences(
+      super.$_db, super.$_table, super.$_typedResult);
+
+  static $ProcessPartsTable _processPartIdTable(_$AppDatabase db) =>
+      db.processParts.createAlias($_aliasNameGenerator(
+          db.setupElements.processPartId, db.processParts.id));
+
+  $$ProcessPartsTableProcessedTableManager get processPartId {
+    final $_column = $_itemColumn<int>('process_part_id')!;
+
+    final manager = $$ProcessPartsTableTableManager($_db, $_db.processParts)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_processPartIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+
+  static $SetupsTable _setupIdTable(_$AppDatabase db) => db.setups.createAlias(
+      $_aliasNameGenerator(db.setupElements.setupId, db.setups.id));
+
+  $$SetupsTableProcessedTableManager get setupId {
+    final $_column = $_itemColumn<int>('setup_id')!;
+
+    final manager = $$SetupsTableTableManager($_db, $_db.setups)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_setupIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+
+  static MultiTypedResultKey<$TimeStudyTable, List<TimeStudyData>>
+      _timeStudyRefsTable(_$AppDatabase db) =>
+          MultiTypedResultKey.fromTable(db.timeStudy,
+              aliasName: $_aliasNameGenerator(
+                  db.setupElements.id, db.timeStudy.setupElementId));
+
+  $$TimeStudyTableProcessedTableManager get timeStudyRefs {
+    final manager = $$TimeStudyTableTableManager($_db, $_db.timeStudy)
+        .filter((f) => f.setupElementId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_timeStudyRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+}
+
+class $$SetupElementsTableFilterComposer
+    extends Composer<_$AppDatabase, $SetupElementsTable> {
+  $$SetupElementsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get setupDateTime => $composableBuilder(
+      column: $table.setupDateTime, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get elementName => $composableBuilder(
+      column: $table.elementName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get time => $composableBuilder(
+      column: $table.time, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get orderIndex => $composableBuilder(
+      column: $table.orderIndex, builder: (column) => ColumnFilters(column));
+
+  $$ProcessPartsTableFilterComposer get processPartId {
+    final $$ProcessPartsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.processPartId,
+        referencedTable: $db.processParts,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ProcessPartsTableFilterComposer(
+              $db: $db,
+              $table: $db.processParts,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$SetupsTableFilterComposer get setupId {
+    final $$SetupsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.setupId,
+        referencedTable: $db.setups,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SetupsTableFilterComposer(
+              $db: $db,
+              $table: $db.setups,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  Expression<bool> timeStudyRefs(
+      Expression<bool> Function($$TimeStudyTableFilterComposer f) f) {
+    final $$TimeStudyTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.timeStudy,
+        getReferencedColumn: (t) => t.setupElementId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$TimeStudyTableFilterComposer(
+              $db: $db,
+              $table: $db.timeStudy,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+}
+
+class $$SetupElementsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SetupElementsTable> {
+  $$SetupElementsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get setupDateTime => $composableBuilder(
+      column: $table.setupDateTime,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get elementName => $composableBuilder(
+      column: $table.elementName, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get time => $composableBuilder(
+      column: $table.time, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get orderIndex => $composableBuilder(
+      column: $table.orderIndex, builder: (column) => ColumnOrderings(column));
+
+  $$ProcessPartsTableOrderingComposer get processPartId {
+    final $$ProcessPartsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.processPartId,
+        referencedTable: $db.processParts,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ProcessPartsTableOrderingComposer(
+              $db: $db,
+              $table: $db.processParts,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$SetupsTableOrderingComposer get setupId {
+    final $$SetupsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.setupId,
+        referencedTable: $db.setups,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SetupsTableOrderingComposer(
+              $db: $db,
+              $table: $db.setups,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$SetupElementsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SetupElementsTable> {
+  $$SetupElementsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get setupDateTime => $composableBuilder(
+      column: $table.setupDateTime, builder: (column) => column);
+
+  GeneratedColumn<String> get elementName => $composableBuilder(
+      column: $table.elementName, builder: (column) => column);
+
+  GeneratedColumn<String> get time =>
+      $composableBuilder(column: $table.time, builder: (column) => column);
+
+  GeneratedColumn<int> get orderIndex => $composableBuilder(
+      column: $table.orderIndex, builder: (column) => column);
+
+  $$ProcessPartsTableAnnotationComposer get processPartId {
+    final $$ProcessPartsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.processPartId,
+        referencedTable: $db.processParts,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ProcessPartsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.processParts,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$SetupsTableAnnotationComposer get setupId {
+    final $$SetupsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.setupId,
+        referencedTable: $db.setups,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SetupsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.setups,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  Expression<T> timeStudyRefs<T extends Object>(
+      Expression<T> Function($$TimeStudyTableAnnotationComposer a) f) {
+    final $$TimeStudyTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.timeStudy,
+        getReferencedColumn: (t) => t.setupElementId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$TimeStudyTableAnnotationComposer(
+              $db: $db,
+              $table: $db.timeStudy,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
 }
 
 class $$SetupElementsTableTableManager extends RootTableManager<
@@ -3607,7 +5042,8 @@ class $$SetupElementsTableTableManager extends RootTableManager<
     $$SetupElementsTableUpdateCompanionBuilder,
     (SetupElement, $$SetupElementsTableReferences),
     SetupElement,
-    PrefetchHooks Function({bool processPartId})> {
+    PrefetchHooks Function(
+        {bool processPartId, bool setupId, bool timeStudyRefs})> {
   $$SetupElementsTableTableManager(_$AppDatabase db, $SetupElementsTable table)
       : super(TableManagerState(
           db: db,
@@ -3621,34 +5057,38 @@ class $$SetupElementsTableTableManager extends RootTableManager<
           updateCompanionCallback: ({
             Value<int> id = const Value.absent(),
             Value<int> processPartId = const Value.absent(),
-            Value<String> setupName = const Value.absent(),
+            Value<int> setupId = const Value.absent(),
             Value<DateTime> setupDateTime = const Value.absent(),
             Value<String> elementName = const Value.absent(),
             Value<String> time = const Value.absent(),
+            Value<int> orderIndex = const Value.absent(),
           }) =>
               SetupElementsCompanion(
             id: id,
             processPartId: processPartId,
-            setupName: setupName,
+            setupId: setupId,
             setupDateTime: setupDateTime,
             elementName: elementName,
             time: time,
+            orderIndex: orderIndex,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
             required int processPartId,
-            required String setupName,
+            required int setupId,
             required DateTime setupDateTime,
             required String elementName,
             required String time,
+            Value<int> orderIndex = const Value.absent(),
           }) =>
               SetupElementsCompanion.insert(
             id: id,
             processPartId: processPartId,
-            setupName: setupName,
+            setupId: setupId,
             setupDateTime: setupDateTime,
             elementName: elementName,
             time: time,
+            orderIndex: orderIndex,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (
@@ -3656,10 +5096,11 @@ class $$SetupElementsTableTableManager extends RootTableManager<
                     $$SetupElementsTableReferences(db, table, e)
                   ))
               .toList(),
-          prefetchHooksCallback: ({processPartId = false}) {
+          prefetchHooksCallback: (
+              {processPartId = false, setupId = false, timeStudyRefs = false}) {
             return PrefetchHooks(
               db: db,
-              explicitlyWatchedTables: [],
+              explicitlyWatchedTables: [if (timeStudyRefs) db.timeStudy],
               addJoins: <
                   T extends TableManagerState<
                       dynamic,
@@ -3684,11 +5125,34 @@ class $$SetupElementsTableTableManager extends RootTableManager<
                         .id,
                   ) as T;
                 }
+                if (setupId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.setupId,
+                    referencedTable:
+                        $$SetupElementsTableReferences._setupIdTable(db),
+                    referencedColumn:
+                        $$SetupElementsTableReferences._setupIdTable(db).id,
+                  ) as T;
+                }
 
                 return state;
               },
               getPrefetchedDataCallback: (items) async {
-                return [];
+                return [
+                  if (timeStudyRefs)
+                    await $_getPrefetchedData<SetupElement, $SetupElementsTable, TimeStudyData>(
+                        currentTable: table,
+                        referencedTable: $$SetupElementsTableReferences
+                            ._timeStudyRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$SetupElementsTableReferences(db, table, p0)
+                                .timeStudyRefs,
+                        referencedItemsForCurrentItem:
+                            (item, referencedItems) => referencedItems
+                                .where((e) => e.setupElementId == item.id),
+                        typedResults: items)
+                ];
               },
             );
           },
@@ -3706,7 +5170,667 @@ typedef $$SetupElementsTableProcessedTableManager = ProcessedTableManager<
     $$SetupElementsTableUpdateCompanionBuilder,
     (SetupElement, $$SetupElementsTableReferences),
     SetupElement,
-    PrefetchHooks Function({bool processPartId})>;
+    PrefetchHooks Function(
+        {bool processPartId, bool setupId, bool timeStudyRefs})>;
+typedef $$StudyTableCreateCompanionBuilder = StudyCompanion Function({
+  Value<int> id,
+  required int setupId,
+  required DateTime date,
+  required DateTime time,
+  required String observerName,
+});
+typedef $$StudyTableUpdateCompanionBuilder = StudyCompanion Function({
+  Value<int> id,
+  Value<int> setupId,
+  Value<DateTime> date,
+  Value<DateTime> time,
+  Value<String> observerName,
+});
+
+final class $$StudyTableReferences
+    extends BaseReferences<_$AppDatabase, $StudyTable, StudyData> {
+  $$StudyTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $SetupsTable _setupIdTable(_$AppDatabase db) => db.setups
+      .createAlias($_aliasNameGenerator(db.study.setupId, db.setups.id));
+
+  $$SetupsTableProcessedTableManager get setupId {
+    final $_column = $_itemColumn<int>('setup_id')!;
+
+    final manager = $$SetupsTableTableManager($_db, $_db.setups)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_setupIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+
+  static MultiTypedResultKey<$TimeStudyTable, List<TimeStudyData>>
+      _timeStudyRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+          db.timeStudy,
+          aliasName: $_aliasNameGenerator(db.study.id, db.timeStudy.studyId));
+
+  $$TimeStudyTableProcessedTableManager get timeStudyRefs {
+    final manager = $$TimeStudyTableTableManager($_db, $_db.timeStudy)
+        .filter((f) => f.studyId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_timeStudyRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+}
+
+class $$StudyTableFilterComposer extends Composer<_$AppDatabase, $StudyTable> {
+  $$StudyTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get date => $composableBuilder(
+      column: $table.date, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get time => $composableBuilder(
+      column: $table.time, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get observerName => $composableBuilder(
+      column: $table.observerName, builder: (column) => ColumnFilters(column));
+
+  $$SetupsTableFilterComposer get setupId {
+    final $$SetupsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.setupId,
+        referencedTable: $db.setups,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SetupsTableFilterComposer(
+              $db: $db,
+              $table: $db.setups,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  Expression<bool> timeStudyRefs(
+      Expression<bool> Function($$TimeStudyTableFilterComposer f) f) {
+    final $$TimeStudyTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.timeStudy,
+        getReferencedColumn: (t) => t.studyId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$TimeStudyTableFilterComposer(
+              $db: $db,
+              $table: $db.timeStudy,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+}
+
+class $$StudyTableOrderingComposer
+    extends Composer<_$AppDatabase, $StudyTable> {
+  $$StudyTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get date => $composableBuilder(
+      column: $table.date, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get time => $composableBuilder(
+      column: $table.time, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get observerName => $composableBuilder(
+      column: $table.observerName,
+      builder: (column) => ColumnOrderings(column));
+
+  $$SetupsTableOrderingComposer get setupId {
+    final $$SetupsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.setupId,
+        referencedTable: $db.setups,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SetupsTableOrderingComposer(
+              $db: $db,
+              $table: $db.setups,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$StudyTableAnnotationComposer
+    extends Composer<_$AppDatabase, $StudyTable> {
+  $$StudyTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get time =>
+      $composableBuilder(column: $table.time, builder: (column) => column);
+
+  GeneratedColumn<String> get observerName => $composableBuilder(
+      column: $table.observerName, builder: (column) => column);
+
+  $$SetupsTableAnnotationComposer get setupId {
+    final $$SetupsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.setupId,
+        referencedTable: $db.setups,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SetupsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.setups,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  Expression<T> timeStudyRefs<T extends Object>(
+      Expression<T> Function($$TimeStudyTableAnnotationComposer a) f) {
+    final $$TimeStudyTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.timeStudy,
+        getReferencedColumn: (t) => t.studyId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$TimeStudyTableAnnotationComposer(
+              $db: $db,
+              $table: $db.timeStudy,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+}
+
+class $$StudyTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $StudyTable,
+    StudyData,
+    $$StudyTableFilterComposer,
+    $$StudyTableOrderingComposer,
+    $$StudyTableAnnotationComposer,
+    $$StudyTableCreateCompanionBuilder,
+    $$StudyTableUpdateCompanionBuilder,
+    (StudyData, $$StudyTableReferences),
+    StudyData,
+    PrefetchHooks Function({bool setupId, bool timeStudyRefs})> {
+  $$StudyTableTableManager(_$AppDatabase db, $StudyTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$StudyTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$StudyTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$StudyTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<int> setupId = const Value.absent(),
+            Value<DateTime> date = const Value.absent(),
+            Value<DateTime> time = const Value.absent(),
+            Value<String> observerName = const Value.absent(),
+          }) =>
+              StudyCompanion(
+            id: id,
+            setupId: setupId,
+            date: date,
+            time: time,
+            observerName: observerName,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required int setupId,
+            required DateTime date,
+            required DateTime time,
+            required String observerName,
+          }) =>
+              StudyCompanion.insert(
+            id: id,
+            setupId: setupId,
+            date: date,
+            time: time,
+            observerName: observerName,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) =>
+                  (e.readTable(table), $$StudyTableReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: ({setupId = false, timeStudyRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (timeStudyRefs) db.timeStudy],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (setupId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.setupId,
+                    referencedTable: $$StudyTableReferences._setupIdTable(db),
+                    referencedColumn:
+                        $$StudyTableReferences._setupIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (timeStudyRefs)
+                    await $_getPrefetchedData<StudyData, $StudyTable,
+                            TimeStudyData>(
+                        currentTable: table,
+                        referencedTable:
+                            $$StudyTableReferences._timeStudyRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$StudyTableReferences(db, table, p0).timeStudyRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.studyId == item.id),
+                        typedResults: items)
+                ];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$StudyTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $StudyTable,
+    StudyData,
+    $$StudyTableFilterComposer,
+    $$StudyTableOrderingComposer,
+    $$StudyTableAnnotationComposer,
+    $$StudyTableCreateCompanionBuilder,
+    $$StudyTableUpdateCompanionBuilder,
+    (StudyData, $$StudyTableReferences),
+    StudyData,
+    PrefetchHooks Function({bool setupId, bool timeStudyRefs})>;
+typedef $$TimeStudyTableCreateCompanionBuilder = TimeStudyCompanion Function({
+  Value<int> id,
+  required int studyId,
+  required int setupElementId,
+  required String time,
+});
+typedef $$TimeStudyTableUpdateCompanionBuilder = TimeStudyCompanion Function({
+  Value<int> id,
+  Value<int> studyId,
+  Value<int> setupElementId,
+  Value<String> time,
+});
+
+final class $$TimeStudyTableReferences
+    extends BaseReferences<_$AppDatabase, $TimeStudyTable, TimeStudyData> {
+  $$TimeStudyTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $StudyTable _studyIdTable(_$AppDatabase db) => db.study
+      .createAlias($_aliasNameGenerator(db.timeStudy.studyId, db.study.id));
+
+  $$StudyTableProcessedTableManager get studyId {
+    final $_column = $_itemColumn<int>('study_id')!;
+
+    final manager = $$StudyTableTableManager($_db, $_db.study)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_studyIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+
+  static $SetupElementsTable _setupElementIdTable(_$AppDatabase db) =>
+      db.setupElements.createAlias($_aliasNameGenerator(
+          db.timeStudy.setupElementId, db.setupElements.id));
+
+  $$SetupElementsTableProcessedTableManager get setupElementId {
+    final $_column = $_itemColumn<int>('setup_element_id')!;
+
+    final manager = $$SetupElementsTableTableManager($_db, $_db.setupElements)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_setupElementIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$TimeStudyTableFilterComposer
+    extends Composer<_$AppDatabase, $TimeStudyTable> {
+  $$TimeStudyTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get time => $composableBuilder(
+      column: $table.time, builder: (column) => ColumnFilters(column));
+
+  $$StudyTableFilterComposer get studyId {
+    final $$StudyTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.studyId,
+        referencedTable: $db.study,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$StudyTableFilterComposer(
+              $db: $db,
+              $table: $db.study,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$SetupElementsTableFilterComposer get setupElementId {
+    final $$SetupElementsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.setupElementId,
+        referencedTable: $db.setupElements,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SetupElementsTableFilterComposer(
+              $db: $db,
+              $table: $db.setupElements,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$TimeStudyTableOrderingComposer
+    extends Composer<_$AppDatabase, $TimeStudyTable> {
+  $$TimeStudyTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get time => $composableBuilder(
+      column: $table.time, builder: (column) => ColumnOrderings(column));
+
+  $$StudyTableOrderingComposer get studyId {
+    final $$StudyTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.studyId,
+        referencedTable: $db.study,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$StudyTableOrderingComposer(
+              $db: $db,
+              $table: $db.study,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$SetupElementsTableOrderingComposer get setupElementId {
+    final $$SetupElementsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.setupElementId,
+        referencedTable: $db.setupElements,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SetupElementsTableOrderingComposer(
+              $db: $db,
+              $table: $db.setupElements,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$TimeStudyTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TimeStudyTable> {
+  $$TimeStudyTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get time =>
+      $composableBuilder(column: $table.time, builder: (column) => column);
+
+  $$StudyTableAnnotationComposer get studyId {
+    final $$StudyTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.studyId,
+        referencedTable: $db.study,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$StudyTableAnnotationComposer(
+              $db: $db,
+              $table: $db.study,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$SetupElementsTableAnnotationComposer get setupElementId {
+    final $$SetupElementsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.setupElementId,
+        referencedTable: $db.setupElements,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SetupElementsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.setupElements,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$TimeStudyTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $TimeStudyTable,
+    TimeStudyData,
+    $$TimeStudyTableFilterComposer,
+    $$TimeStudyTableOrderingComposer,
+    $$TimeStudyTableAnnotationComposer,
+    $$TimeStudyTableCreateCompanionBuilder,
+    $$TimeStudyTableUpdateCompanionBuilder,
+    (TimeStudyData, $$TimeStudyTableReferences),
+    TimeStudyData,
+    PrefetchHooks Function({bool studyId, bool setupElementId})> {
+  $$TimeStudyTableTableManager(_$AppDatabase db, $TimeStudyTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TimeStudyTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TimeStudyTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TimeStudyTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<int> studyId = const Value.absent(),
+            Value<int> setupElementId = const Value.absent(),
+            Value<String> time = const Value.absent(),
+          }) =>
+              TimeStudyCompanion(
+            id: id,
+            studyId: studyId,
+            setupElementId: setupElementId,
+            time: time,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required int studyId,
+            required int setupElementId,
+            required String time,
+          }) =>
+              TimeStudyCompanion.insert(
+            id: id,
+            studyId: studyId,
+            setupElementId: setupElementId,
+            time: time,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$TimeStudyTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({studyId = false, setupElementId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (studyId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.studyId,
+                    referencedTable:
+                        $$TimeStudyTableReferences._studyIdTable(db),
+                    referencedColumn:
+                        $$TimeStudyTableReferences._studyIdTable(db).id,
+                  ) as T;
+                }
+                if (setupElementId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.setupElementId,
+                    referencedTable:
+                        $$TimeStudyTableReferences._setupElementIdTable(db),
+                    referencedColumn:
+                        $$TimeStudyTableReferences._setupElementIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$TimeStudyTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $TimeStudyTable,
+    TimeStudyData,
+    $$TimeStudyTableFilterComposer,
+    $$TimeStudyTableOrderingComposer,
+    $$TimeStudyTableAnnotationComposer,
+    $$TimeStudyTableCreateCompanionBuilder,
+    $$TimeStudyTableUpdateCompanionBuilder,
+    (TimeStudyData, $$TimeStudyTableReferences),
+    TimeStudyData,
+    PrefetchHooks Function({bool studyId, bool setupElementId})>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3723,6 +5847,12 @@ class $AppDatabaseManager {
       $$OrganizationsTableTableManager(_db, _db.organizations);
   $$PlantsTableTableManager get plants =>
       $$PlantsTableTableManager(_db, _db.plants);
+  $$SetupsTableTableManager get setups =>
+      $$SetupsTableTableManager(_db, _db.setups);
   $$SetupElementsTableTableManager get setupElements =>
       $$SetupElementsTableTableManager(_db, _db.setupElements);
+  $$StudyTableTableManager get study =>
+      $$StudyTableTableManager(_db, _db.study);
+  $$TimeStudyTableTableManager get timeStudy =>
+      $$TimeStudyTableTableManager(_db, _db.timeStudy);
 }

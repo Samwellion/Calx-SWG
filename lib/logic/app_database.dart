@@ -10,9 +10,31 @@ class ValueStreams extends Table {
 class SetupElements extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get processPartId => integer().references(ProcessParts, #id)();
-  TextColumn get setupName => text()();
+  IntColumn get setupId => integer().references(Setups, #id)();
   DateTimeColumn get setupDateTime => dateTime()();
   TextColumn get elementName => text()();
+  TextColumn get time => text()(); // Format: HH:MM:SS
+  IntColumn get orderIndex => integer().withDefault(const Constant(0))();
+}
+
+class Setups extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get processPartId => integer().references(ProcessParts, #id)();
+  TextColumn get setupName => text()();
+}
+
+class Study extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get setupId => integer().references(Setups, #id)();
+  DateTimeColumn get date => dateTime()();
+  DateTimeColumn get time => dateTime()();
+  TextColumn get observerName => text()();
+}
+
+class TimeStudy extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get studyId => integer().references(Study, #id)();
+  IntColumn get setupElementId => integer().references(SetupElements, #id)();
   TextColumn get time => text()(); // Format: HH:MM:SS
 }
 
@@ -23,7 +45,10 @@ class SetupElements extends Table {
   Organizations,
   Plants,
   ValueStreams,
-  SetupElements
+  SetupElements,
+  Setups,
+  Study,
+  TimeStudy
 ])
 class AppDatabase extends _$AppDatabase {
   // Insert or get an organization by name and return its id
@@ -39,11 +64,181 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 7;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (Migrator m) {
+          return m.createAll();
+        },
+        onUpgrade: (Migrator m, int from, int to) async {
+          if (from == 1 && to == 2) {
+            await m.createTable(setups);
+          }
+          if (from == 2 && to == 3) {
+            await m.createTable(study);
+          }
+          if (from == 3 && to == 4) {
+            await m.createTable(timeStudy);
+          }
+          if (from == 4 && to == 5) {
+            // Migration to replace setupName with setupId in SetupElements
+            // This is a breaking change - existing data will be lost
+            // In production, you would need to migrate data first
+            await m.deleteTable('setup_elements');
+            await m.createTable(setupElements);
+          }
+          if (from == 5 && to == 6) {
+            // Force recreate setup_elements table to ensure setupId column exists
+            await m.deleteTable('setup_elements');
+            await m.createTable(setupElements);
+          }
+          if (from == 6 && to == 7) {
+            // Add orderIndex column to SetupElements
+            await m.addColumn(setupElements,
+                setupElements.orderIndex as GeneratedColumn<Object>);
+          }
+          if (from == 1 && to == 3) {
+            await m.createTable(setups);
+            await m.createTable(study);
+          }
+          if (from == 1 && to == 4) {
+            await m.createTable(setups);
+            await m.createTable(study);
+            await m.createTable(timeStudy);
+          }
+          if (from == 1 && to == 5) {
+            await m.createTable(setups);
+            await m.createTable(study);
+            await m.createTable(timeStudy);
+            await m.deleteTable('setup_elements');
+            await m.createTable(setupElements);
+          }
+          if (from == 1 && to == 6) {
+            await m.createTable(setups);
+            await m.createTable(study);
+            await m.createTable(timeStudy);
+            await m.deleteTable('setup_elements');
+            await m.createTable(setupElements);
+          }
+          if (from == 2 && to == 4) {
+            await m.createTable(study);
+            await m.createTable(timeStudy);
+          }
+          if (from == 2 && to == 5) {
+            await m.createTable(study);
+            await m.createTable(timeStudy);
+            await m.deleteTable('setup_elements');
+            await m.createTable(setupElements);
+          }
+          if (from == 2 && to == 6) {
+            await m.createTable(study);
+            await m.createTable(timeStudy);
+            await m.deleteTable('setup_elements');
+            await m.createTable(setupElements);
+          }
+          if (from == 3 && to == 5) {
+            await m.createTable(timeStudy);
+            await m.deleteTable('setup_elements');
+            await m.createTable(setupElements);
+          }
+          if (from == 3 && to == 6) {
+            await m.createTable(timeStudy);
+            await m.deleteTable('setup_elements');
+            await m.createTable(setupElements);
+          }
+          if (from == 4 && to == 6) {
+            await m.deleteTable('setup_elements');
+            await m.createTable(setupElements);
+          }
+        },
+      );
 
   Future<int> insertPart(PartsCompanion part) => into(parts).insert(part);
   Future<int> upsertValueStream(ValueStreamsCompanion entry) async {
     return into(valueStreams).insertOnConflictUpdate(entry);
+  }
+
+  // Setup management methods
+  Future<int> insertSetup(SetupsCompanion setup) => into(setups).insert(setup);
+
+  Future<List<Setup>> getSetupsForProcessPart(int processPartId) {
+    return (select(setups)..where((s) => s.processPartId.equals(processPartId)))
+        .get();
+  }
+
+  Future<Setup?> getSetupById(int setupId) {
+    return (select(setups)..where((s) => s.id.equals(setupId)))
+        .getSingleOrNull();
+  }
+
+  // Study management methods
+  Future<int> insertStudy(StudyCompanion study) =>
+      into(this.study).insert(study);
+
+  Future<List<StudyData>> getStudiesForSetup(int setupId) {
+    return (select(study)..where((s) => s.setupId.equals(setupId))).get();
+  }
+
+  Future<StudyData?> getStudyById(int studyId) {
+    return (select(study)..where((s) => s.id.equals(studyId)))
+        .getSingleOrNull();
+  }
+
+  Future<List<StudyData>> getStudiesByObserver(String observerName) {
+    return (select(study)..where((s) => s.observerName.equals(observerName)))
+        .get();
+  }
+
+  // TimeStudy management methods
+  Future<int> insertTimeStudy(TimeStudyCompanion timeStudy) =>
+      into(this.timeStudy).insert(timeStudy);
+
+  Future<List<TimeStudyData>> getTimeStudiesForStudy(int studyId) {
+    return (select(timeStudy)..where((ts) => ts.studyId.equals(studyId))).get();
+  }
+
+  Future<List<TimeStudyData>> getTimeStudiesForSetupElement(
+      int setupElementId) {
+    return (select(timeStudy)
+          ..where((ts) => ts.setupElementId.equals(setupElementId)))
+        .get();
+  }
+
+  Future<TimeStudyData?> getTimeStudyById(int timeStudyId) {
+    return (select(timeStudy)..where((ts) => ts.id.equals(timeStudyId)))
+        .getSingleOrNull();
+  }
+
+  // SetupElements management methods
+  Future<int> insertSetupElement(SetupElementsCompanion setupElement) =>
+      into(setupElements).insert(setupElement);
+
+  Future<List<SetupElement>> getSetupElementsForSetup(int setupId) {
+    return (select(setupElements)..where((se) => se.setupId.equals(setupId)))
+        .get();
+  }
+
+  Future<List<SetupElement>> getSetupElementsForProcessPart(int processPartId) {
+    return (select(setupElements)
+          ..where((se) => se.processPartId.equals(processPartId)))
+        .get();
+  }
+
+  Future<SetupElement?> getSetupElementById(int setupElementId) {
+    return (select(setupElements)..where((se) => se.id.equals(setupElementId)))
+        .getSingleOrNull();
+  }
+
+  Future<void> deleteSetupElement(int setupElementId) {
+    return (delete(setupElements)..where((se) => se.id.equals(setupElementId)))
+        .go();
+  }
+
+  Future<void> updateSetupElement(
+      int setupElementId, SetupElementsCompanion companion) {
+    return (update(setupElements)..where((se) => se.id.equals(setupElementId)))
+        .write(companion);
   }
 
   // Add the method here:

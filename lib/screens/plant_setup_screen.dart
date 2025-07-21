@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import '../models/organization_data.dart' as org_data;
 import '../widgets/app_footer.dart';
 import '../database_provider.dart';
@@ -28,6 +29,7 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
   bool _isLoading = false;
   late PlantRepository _repository;
   bool _hasUnsavedChanges = false;
+  Timer? _autoSaveTimer;
 
   @override
   void initState() {
@@ -49,6 +51,18 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
         _hasUnsavedChanges = true;
       });
     }
+    // Auto-save after a short delay to avoid excessive saves
+    _triggerAutoSave();
+  }
+
+  void _triggerAutoSave() {
+    // Cancel any existing timer
+    _autoSaveTimer?.cancel();
+
+    // Start a new timer for auto-save after 1 second of inactivity
+    _autoSaveTimer = Timer(const Duration(seconds: 1), () {
+      _saveCurrentPlantDetails();
+    });
   }
 
   void _markAsSaved() {
@@ -271,6 +285,11 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
   Future<void> _loadInitialData() async {
     final db = await DatabaseProvider.getInstance();
     _repository = PlantRepository(db);
+
+    // Load all plants from database into OrganizationData.plants
+    final dbPlants = await _repository.getAllPlants();
+    org_data.OrganizationData.plants = dbPlants;
+
     // Load data for the initially selected plant
     if (mounted) {
       await _loadSelectedPlantData();
@@ -280,7 +299,17 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
   void _ensurePlantDataInitialized(List<org_data.PlantData> plants) {
     for (final plant in plants) {
       plantValueStreams.putIfAbsent(plant.name, () => <String>[]);
-      _controllers.putIfAbsent(plant.name, () => TextEditingController());
+      if (!_controllers.containsKey(plant.name)) {
+        final controller = TextEditingController();
+        // Add listener to value stream controller for auto-save on text changes
+        controller.addListener(() {
+          // Only trigger auto-save if the field is not empty and user is actively typing
+          if (controller.text.isNotEmpty) {
+            _markAsChanged();
+          }
+        });
+        _controllers[plant.name] = controller;
+      }
     }
   }
 
@@ -363,6 +392,7 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
 
             final shouldPop = await _onWillPop();
             if (shouldPop && mounted) {
+              // ignore: use_build_context_synchronously
               Navigator.of(context).pop();
             }
           },
@@ -385,31 +415,34 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const SizedBox(width: 24),
-                          // Plant list
-                          PlantList(
-                            plants: plants,
-                            selectedPlantIdx: _selectedPlantIdx,
-                            onPlantSelected: (idx) async {
-                              // 1. Save the current plant's details
-                              await _saveCurrentPlantDetails();
+                          // Plant list - aligned to top, takes only needed space
+                          Align(
+                            alignment: Alignment.topCenter,
+                            child: PlantList(
+                              plants: plants,
+                              selectedPlantIdx: _selectedPlantIdx,
+                              onPlantSelected: (idx) async {
+                                // 1. Save the current plant's details
+                                await _saveCurrentPlantDetails();
 
-                              // 2. Set loading state and update index
-                              setState(() {
-                                _selectedPlantIdx = idx;
-                                _isLoading = true;
-                              });
+                                // 2. Set loading state and update index
+                                setState(() {
+                                  _selectedPlantIdx = idx;
+                                  _isLoading = true;
+                                });
 
-                              // 3. Load data for the newly selected plant
-                              await _loadSelectedPlantData();
+                                // 3. Load data for the newly selected plant
+                                await _loadSelectedPlantData();
 
-                              // 4. Turn off loading state
-                              setState(() {
-                                _isLoading = false;
-                              });
-                            },
+                                // 4. Turn off loading state
+                                setState(() {
+                                  _isLoading = false;
+                                });
+                              },
+                            ),
                           ),
                           const SizedBox(width: 32),
-                          // Plant details panel
+                          // Plant details panel - takes remaining space
                           if (_isLoading)
                             const Expanded(
                               child: Center(child: CircularProgressIndicator()),
@@ -421,7 +454,7 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
                                 valueStreams:
                                     plantValueStreams[selectedPlant.name]!,
                                 controller: _controllers[selectedPlant.name]!,
-                                onAdd: () {
+                                onAdd: () async {
                                   final value =
                                       _controllers[selectedPlant.name]!
                                           .text
@@ -436,15 +469,19 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
                                       _controllers[selectedPlant.name]!.clear();
                                       _markAsChanged(); // Mark as changed when value stream is added
                                     });
+                                    // Auto-save immediately when value stream is added
+                                    await _saveCurrentPlantDetails();
                                   }
                                   // Do NOT reload or reset plant address fields here
                                 },
-                                onRemove: (idx) {
+                                onRemove: (idx) async {
                                   setState(() {
                                     plantValueStreams[selectedPlant.name]!
                                         .removeAt(idx);
                                     _markAsChanged(); // Mark as changed when value stream is removed
                                   });
+                                  // Auto-save immediately when value stream is removed
+                                  await _saveCurrentPlantDetails();
                                 },
                                 onPlantChanged: (updated) {
                                   // This now just updates the model in memory.
@@ -459,13 +496,54 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
                                     }
                                   });
                                 },
-                                onSave: _saveCurrentPlantDetails,
                                 // Pass down the controllers
                                 plantNameController: _plantNameController,
                                 streetController: _streetController,
                                 cityController: _cityController,
                                 stateController: _stateController,
                                 zipController: _zipController,
+                              ),
+                            )
+                          else
+                            Expanded(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.yellow[50],
+                                  borderRadius: BorderRadius.circular(12),
+                                  border:
+                                      Border.all(color: Colors.yellow[300]!),
+                                ),
+                                padding: const EdgeInsets.all(32),
+                                child: const Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.factory_outlined,
+                                        size: 64,
+                                        color: Colors.grey,
+                                      ),
+                                      SizedBox(height: 16),
+                                      Text(
+                                        'No Plants Available',
+                                        style: TextStyle(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                      SizedBox(height: 8),
+                                      Text(
+                                        'Please go to Organization Setup to add plants first.',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: Colors.grey,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
                         ],
@@ -511,6 +589,9 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
 
   @override
   void dispose() {
+    // Cancel auto-save timer
+    _autoSaveTimer?.cancel();
+
     // Remove listeners before disposing
     _plantNameController.removeListener(_markAsChanged);
     _streetController.removeListener(_markAsChanged);
