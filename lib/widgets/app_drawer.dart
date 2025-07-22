@@ -5,6 +5,8 @@ import '../screens/organization_setup_screen.dart';
 import '../screens/plant_setup_screen.dart';
 import '../screens/elements_input_screen.dart';
 import '../screens/time_observation_form.dart';
+import '../screens/setup_element_viewer.dart';
+import '../screens/task_study_viewer.dart';
 
 class AppDrawer extends StatefulWidget {
   const AppDrawer({super.key});
@@ -335,6 +337,32 @@ class _AppDrawerState extends State<AppDrawer> {
                       ? 'Requires: Company, Plant, Value Stream'
                       : 'Requires: Company, Plant, Value Stream, Process',
                 ),
+
+              // Setup Element Viewer - No requirements (view-only)
+              _buildEnabledListTile(
+                icon: Icons.view_list,
+                title: 'Setup Element Viewer',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const SetupElementViewerScreen()),
+                  );
+                },
+              ),
+
+              // Task Study Viewer - No requirements (view-only)
+              _buildEnabledListTile(
+                icon: Icons.assignment_outlined,
+                title: 'Task Study Viewer',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const TaskStudyViewerScreen()),
+                  );
+                },
+              ),
             ],
           ),
         ],

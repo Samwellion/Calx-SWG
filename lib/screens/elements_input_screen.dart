@@ -648,37 +648,6 @@ class _ElementsInputScreenState extends State<ElementsInputScreen> {
                                                   return;
                                                 }
 
-                                                // Check if element with same name already exists for this setup
-                                                final existingElement = await (db
-                                                        .select(
-                                                            db.setupElements)
-                                                      ..where((tbl) =>
-                                                          tbl.processPartId.equals(
-                                                              processPartId!) &
-                                                          tbl.setupId.equals(
-                                                              setup.id) &
-                                                          tbl.elementName.equals(
-                                                              newElementNameController
-                                                                  .text)))
-                                                    .getSingleOrNull();
-
-                                                if (existingElement != null) {
-                                                  // Show error message for duplicate element name
-                                                  if (mounted) {
-                                                    ScaffoldMessenger.of(
-                                                        // ignore: use_build_context_synchronously
-                                                        context).showSnackBar(
-                                                      SnackBar(
-                                                        content: Text(
-                                                            'Element "${newElementNameController.text}" already exists in this setup'),
-                                                        backgroundColor:
-                                                            Colors.orange,
-                                                      ),
-                                                    );
-                                                  }
-                                                  return;
-                                                }
-
                                                 // Get the count of existing elements to set the order index
                                                 final existingElements = await (db
                                                         .select(
@@ -802,7 +771,9 @@ class _ElementsInputScreenState extends State<ElementsInputScreen> {
     if (processPartId != null && setupName != null) {
       // Get the setup ID first
       final existingSetup = await (db.select(db.setups)
-            ..where((setup) => setup.setupName.equals(setupName!)))
+            ..where((setup) =>
+                setup.processPartId.equals(processPartId!) &
+                setup.setupName.equals(setupName!)))
           .getSingleOrNull();
 
       if (existingSetup != null) {

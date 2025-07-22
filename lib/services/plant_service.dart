@@ -198,12 +198,12 @@ class PlantService {
   /// Add a value stream to a plant
   Future<void> addValueStreamToPlant(
       int plantId, String valueStreamName) async {
-    await _db.into(_db.valueStreams).insert(
-          db.ValueStreamsCompanion(
-            plantId: drift.Value(plantId),
-            name: drift.Value(valueStreamName),
-          ),
-        );
+    await _db.upsertValueStream(
+      db.ValueStreamsCompanion(
+        plantId: drift.Value(plantId),
+        name: drift.Value(valueStreamName),
+      ),
+    );
   }
 
   /// Remove a value stream from a plant
@@ -244,12 +244,12 @@ class PlantService {
 
     // Insert new value streams
     for (final vsName in valueStreamNames) {
-      await _db.into(_db.valueStreams).insert(
-            db.ValueStreamsCompanion(
-              plantId: drift.Value(plantId),
-              name: drift.Value(vsName),
-            ),
-          );
+      await _db.upsertValueStream(
+        db.ValueStreamsCompanion(
+          plantId: drift.Value(plantId),
+          name: drift.Value(vsName),
+        ),
+      );
     }
   }
 

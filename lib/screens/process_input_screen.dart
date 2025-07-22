@@ -5,6 +5,7 @@ import '../database_provider.dart';
 import '../widgets/selection_display_card.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/app_footer.dart';
+import '../utils/error_handler.dart';
 
 class ProcessInputScreen extends StatefulWidget {
   final int valueStreamId;
@@ -99,21 +100,27 @@ class _ProcessInputScreenState extends State<ProcessInputScreen> {
     }
     setState(() => _saving = true);
     try {
-      await db.into(db.processes).insert(
-            ProcessesCompanion(
-              valueStreamId: drift.Value(widget.valueStreamId),
-              processName: drift.Value(processName),
-              processDescription: drift.Value(
-                  processDescription.isEmpty ? null : processDescription),
-            ),
-          );
+      await db.upsertProcess(
+        ProcessesCompanion(
+          valueStreamId: drift.Value(widget.valueStreamId),
+          processName: drift.Value(processName),
+          processDescription: drift.Value(
+              processDescription.isEmpty ? null : processDescription),
+        ),
+      );
+
       await _loadProcesses();
       _processNameController.clear();
       _processDescriptionController.clear();
+
+      if (mounted) {
+        ErrorHandler.showSuccessSnackbar(
+            context, 'Process "$processName" saved successfully!');
+      }
     } catch (e) {
-      setState(() {
-        _error = 'Failed to save process: $e';
-      });
+      if (mounted) {
+        ErrorHandler.showConstraintErrorDialog(context, e);
+      }
     } finally {
       setState(() => _saving = false);
     }

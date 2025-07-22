@@ -122,7 +122,9 @@ class _ElementListCardState extends State<ElementListCard> {
     try {
       // First get the setup ID
       final setup = await (db.select(db.setups)
-            ..where((setup) => setup.setupName.equals(widget.setupName!)))
+            ..where((setup) =>
+                setup.processPartId.equals(widget.processPartId!) &
+                setup.setupName.equals(widget.setupName!)))
           .getSingleOrNull();
 
       if (setup != null) {
