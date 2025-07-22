@@ -63,6 +63,51 @@ class TimeObservationTableState extends State<TimeObservationTable> {
     return data;
   }
 
+  // Get complete table data including comments and lowest repeatable times
+  List<Map<String, dynamic>> getCompleteTableData() {
+    List<Map<String, dynamic>> data = [];
+    for (int i = 0; i < _rows.length; i++) {
+      final row = _rows[i];
+      final element = row['element'] as String;
+      final times = row['times'] as List<Duration>;
+
+      if (element.isNotEmpty && times.isNotEmpty) {
+        // Calculate the observed time
+        Duration observedTime = times.reduce((a, b) => a < b ? a : b);
+
+        // Get comments from controller
+        String? comments = _commentsControllers[i]?.text;
+        if (comments != null && comments.trim().isEmpty) {
+          comments = null;
+        }
+
+        // Get lowest repeatable time
+        String? lowestRepeatableTime;
+        String? overrideTime;
+        final lowestRepeatable = row['lowestRepeatable'];
+
+        if (lowestRepeatable != null) {
+          if (lowestRepeatable is Duration) {
+            lowestRepeatableTime = timeToString(lowestRepeatable);
+          } else {
+            // This is an override time entered by user
+            overrideTime = lowestRepeatable.toString();
+          }
+        }
+
+        data.add({
+          'elementName': element,
+          'observedTime': _formatDuration(observedTime),
+          'times': times.map((t) => _formatDuration(t)).toList(),
+          'comments': comments,
+          'lowestRepeatableTime': lowestRepeatableTime,
+          'overrideTime': overrideTime,
+        });
+      }
+    }
+    return data;
+  }
+
   // Helper method to format duration to HH:MM:SS string
   String _formatDuration(Duration duration) {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
@@ -457,38 +502,15 @@ class TimeObservationTableState extends State<TimeObservationTable> {
                                 decoration: BoxDecoration(
                                   border:
                                       Border.all(color: Colors.grey.shade300),
-                                  color: Colors.white,
+                                  color: Colors.grey[
+                                      50], // Light grey to indicate read-only
                                 ),
-                                child: TextField(
-                                  controller: controller,
-                                  focusNode: focusNode,
-                                  maxLines: null,
-                                  minLines: 1,
-                                  textInputAction: TextInputAction.done,
-                                  decoration: const InputDecoration(
-                                    border: InputBorder.none,
-                                    hintText: 'Enter element',
-                                    isDense: true,
-                                    contentPadding: EdgeInsets.symmetric(
-                                        vertical: 8, horizontal: 4),
+                                child: Text(
+                                  row['element'] ?? '',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.black87,
                                   ),
-                                  onSubmitted: (value) {
-                                    setState(() {
-                                      row['element'] = value;
-                                      if (rowIdx == _rows.length - 1 &&
-                                          value.trim().isNotEmpty) {
-                                        _rows.add({
-                                          'element': '',
-                                          'times': <Duration>[]
-                                        });
-                                        _focusRowIndex = _rows.length - 1;
-                                      }
-                                      _updateFooterTotals();
-                                    });
-                                  },
-                                  onChanged: (value) {
-                                    row['element'] = value;
-                                  },
                                 ),
                               ),
                             ),

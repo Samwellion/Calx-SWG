@@ -5,6 +5,7 @@ import '../database_provider.dart';
 import '../widgets/selection_display_card.dart';
 import '../widgets/app_footer.dart';
 import '../widgets/app_drawer.dart';
+import '../utils/error_handler.dart';
 
 class PartInputScreen extends StatefulWidget {
   final int valueStreamId;
@@ -106,22 +107,32 @@ class _PartInputScreenState extends State<PartInputScreen> {
     }
     setState(() => _saving = true);
     try {
+      // Get the organization ID from the company name
+      final organizationId = await db.upsertOrganization(widget.companyName);
+
       await db.insertPart(
         PartsCompanion.insert(
           valueStreamId: widget.valueStreamId,
+          organizationId: organizationId,
           partNumber: partNumber,
           partDescription: partDescription.isEmpty
               ? drift.Value.absent()
               : drift.Value(partDescription),
         ),
       );
+
       await _loadParts();
       _partNumberController.clear();
       _partDescriptionController.clear();
+
+      if (mounted) {
+        ErrorHandler.showSuccessSnackbar(
+            context, 'Part "$partNumber" saved successfully!');
+      }
     } catch (e) {
-      setState(() {
-        _error = 'Failed to save part: $e';
-      });
+      if (mounted) {
+        ErrorHandler.showConstraintErrorDialog(context, e);
+      }
     } finally {
       setState(() => _saving = false);
     }

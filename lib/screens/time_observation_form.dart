@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../widgets/header_text_box.dart';
+import '../widgets/detailed_selection_display_card.dart';
 import '../control_buttons.dart';
 import '../logic/simple_stopwatch.dart';
 import '../database_provider.dart';
 import 'package:drift/drift.dart' as drift;
 import '../widgets/app_drawer.dart';
+import '../widgets/app_footer.dart';
 import '../time_observation_table.dart';
 import '../logic/app_database.dart';
 
@@ -105,6 +106,7 @@ class _TimeObservationFormState extends State<TimeObservationForm> {
   String? _selectedPartNumber;
   bool _loadingParts = true;
   String? _partsError;
+  String? _currentSetupName;
 
   @override
   void initState() {
@@ -116,6 +118,12 @@ class _TimeObservationFormState extends State<TimeObservationForm> {
       });
     });
     _loadParts();
+
+    // Load setup name if we have an initial part number
+    if (widget.initialPartNumber != null) {
+      _loadSetupName();
+    }
+
     // If initialElements are provided, load them into the table
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.initialElements != null && _tableKey.currentState != null) {
@@ -137,11 +145,14 @@ class _TimeObservationFormState extends State<TimeObservationForm> {
       ).get();
       setState(() {
         _parts = result.map((row) => row.data).toList();
-        if (_parts.isNotEmpty) {
+        if (_parts.isNotEmpty && _selectedPartNumber == null) {
           _selectedPartNumber = _parts[0]['part_number'];
         }
         _loadingParts = false;
       });
+
+      // Load setup name after parts are loaded
+      await _loadSetupName();
     } catch (e) {
       setState(() {
         _partsError = 'Failed to load parts: $e';
@@ -161,6 +172,48 @@ class _TimeObservationFormState extends State<TimeObservationForm> {
       return valueStreams.first.data['id'] as int;
     }
     return -1;
+  }
+
+  Future<void> _loadSetupName() async {
+    if (_selectedPartNumber == null) {
+      setState(() {
+        _currentSetupName = null;
+      });
+      return;
+    }
+
+    try {
+      final db = await DatabaseProvider.getInstance();
+
+      // Query to get the setup name based on process and part
+      final result = await db.customSelect(
+        '''
+        SELECT s.setup_name 
+        FROM setups s
+        JOIN process_parts pp ON s.process_part_id = pp.id
+        JOIN processes p ON pp.process_id = p.id
+        WHERE p.process_name = ? AND pp.part_number = ?
+        LIMIT 1
+        ''',
+        variables: [
+          drift.Variable.withString(widget.processName),
+          drift.Variable.withString(_selectedPartNumber!),
+        ],
+      ).get();
+
+      setState(() {
+        if (result.isNotEmpty) {
+          _currentSetupName = result.first.data['setup_name'] as String?;
+        } else {
+          // Fallback to "Standard" if no setup is found
+          _currentSetupName = 'Standard';
+        }
+      });
+    } catch (e) {
+      setState(() {
+        _currentSetupName = 'Standard'; // Fallback
+      });
+    }
   }
 
   @override
@@ -220,8 +273,13 @@ class _TimeObservationFormState extends State<TimeObservationForm> {
         throw Exception('No part number selected');
       }
 
-      final observedTimesData = _tableKey.currentState?.getObservedTimesData();
-      if (observedTimesData == null || observedTimesData.isEmpty) {
+      final tableState = _tableKey.currentState;
+      if (tableState == null) {
+        throw Exception('Table state not available');
+      }
+
+      final completeTableData = tableState.getCompleteTableData();
+      if (completeTableData.isEmpty) {
         throw Exception('No observed times data to save');
       }
 
@@ -244,10 +302,33 @@ class _TimeObservationFormState extends State<TimeObservationForm> {
         throw Exception('Process part not found');
       }
 
-      // Update each element's time in the SetupElements table
-      for (final data in observedTimesData) {
+      // Get the setup for this process part
+      final setup = await (db.select(db.setups)
+            ..where((s) => s.processPartId.equals(processPart.id)))
+          .getSingleOrNull();
+      if (setup == null) {
+        throw Exception('Setup not found for this process part');
+      }
+
+      // Create a new Study record
+      final now = DateTime.now();
+      final studyId = await db.insertStudy(StudyCompanion.insert(
+        setupId: setup.id,
+        date: now,
+        time: now,
+        observerName: _observerNameController.text.trim(),
+      ));
+
+      int totalTimeRecords = 0;
+
+      // Process each element's data
+      for (final data in completeTableData) {
         final elementName = data['elementName'] as String;
         final observedTime = data['observedTime'] as String;
+        final times = data['times'] as List<String>;
+        final comments = data['comments'] as String?;
+        final lowestRepeatableTime = data['lowestRepeatableTime'] as String?;
+        final overrideTime = data['overrideTime'] as String?;
 
         // Find the setup element by process part ID and element name
         final setupElement = await (db.select(db.setupElements)
@@ -257,12 +338,52 @@ class _TimeObservationFormState extends State<TimeObservationForm> {
             .getSingleOrNull();
 
         if (setupElement != null) {
-          // Update the existing element with the observed time
-          await (db.update(db.setupElements)
-                ..where((se) => se.id.equals(setupElement.id)))
-              .write(SetupElementsCompanion(
-            time: drift.Value(observedTime),
+          // Parse current time and new observed time for comparison
+          final currentTime = setupElement.time;
+          bool shouldUpdate = false;
+
+          if (currentTime.isEmpty || currentTime == '00:00:00') {
+            // Update if current time is zero or empty
+            shouldUpdate = true;
+          } else {
+            // Parse times to compare (assuming HH:MM:SS format)
+            final currentDuration = _parseTimeString(currentTime);
+            final newDuration = _parseTimeString(observedTime);
+
+            // Update if new time is less than current time
+            if (newDuration != null &&
+                currentDuration != null &&
+                newDuration < currentDuration) {
+              shouldUpdate = true;
+            }
+          }
+
+          if (shouldUpdate) {
+            await (db.update(db.setupElements)
+                  ..where((se) => se.id.equals(setupElement.id)))
+                .write(SetupElementsCompanion(
+              time: drift.Value(observedTime),
+            ));
+          }
+        }
+
+        // Create TaskStudy record for this element
+        await db.insertTaskStudy(TaskStudyCompanion.insert(
+          studyId: studyId,
+          taskName: elementName,
+          lrt: lowestRepeatableTime ?? 'N/A',
+          overrideTime: drift.Value(overrideTime),
+          comments: drift.Value(comments),
+        ));
+
+        // Create TimeStudy records for each lap time
+        for (final lapTime in times) {
+          await db.insertTimeStudy(TimeStudyCompanion.insert(
+            studyId: studyId,
+            taskName: elementName,
+            iterationTime: lapTime,
           ));
+          totalTimeRecords++;
         }
       }
 
@@ -270,7 +391,7 @@ class _TimeObservationFormState extends State<TimeObservationForm> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-                'Saved ${observedTimesData.length} element times to database'),
+                'Saved study with ${completeTableData.length} elements and created $totalTimeRecords time records'),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 3),
           ),
@@ -297,6 +418,22 @@ class _TimeObservationFormState extends State<TimeObservationForm> {
       _lapTime = current;
     });
     _tableKey.currentState?.insertTime(diff);
+  }
+
+  // Helper method to parse time string in HH:MM:SS format to Duration
+  Duration? _parseTimeString(String timeString) {
+    try {
+      final parts = timeString.split(':');
+      if (parts.length == 3) {
+        final hours = int.parse(parts[0]);
+        final minutes = int.parse(parts[1]);
+        final seconds = int.parse(parts[2]);
+        return Duration(hours: hours, minutes: minutes, seconds: seconds);
+      }
+    } catch (e) {
+      // Return null if parsing fails
+    }
+    return null;
   }
 
   @override
@@ -357,105 +494,81 @@ class _TimeObservationFormState extends State<TimeObservationForm> {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Left: Timer and controls
-                            Expanded(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  TimerDisplay(
-                                    elapsed: _elapsed,
-                                    lapTime: _lapTime,
-                                    isCompact: isKeyboardVisible,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  ControlButtons(
-                                    onStart:
-                                        observerNameNotEmpty ? _start : null,
-                                    onStop: _stop,
-                                    onReset:
-                                        _resetToPreStart, // Use the new reset method
-                                    onMarkLap: _markLap,
-                                    onSave: _saveObservedTimes,
-                                    running: _simpleStopwatch.isRunning,
-                                    isInitial: _isInitial,
-                                    hasStopped: _hasStopped,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            // Right: Company/Plant/Value Stream and Part dropdown
-                            Padding(
-                              padding: const EdgeInsets.only(left: 24.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Wrap(
-                                    spacing: 8.0,
-                                    runSpacing: 8.0,
+                            // Left: Part number and Observer Name
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Part number at top left
+                                if (_selectedPartNumber != null) ...[
+                                  Row(
                                     children: [
-                                      HeaderTextBox(
-                                          label: 'Company', value: companyName),
-                                      HeaderTextBox(
-                                          label: 'Plant', value: plantName),
-                                      HeaderTextBox(
-                                          label: 'Value Stream',
-                                          value: valueStreamName),
-                                      HeaderTextBox(
-                                          label: 'Process', value: processName),
+                                      const Text('Part: ',
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16)),
+                                      Text(_selectedPartNumber!,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16)),
                                     ],
                                   ),
-                                  const SizedBox(height: 12),
-                                  if (_loadingParts)
-                                    const Center(
-                                        child: CircularProgressIndicator())
-                                  else if (_partsError != null)
-                                    Text(_partsError!,
-                                        style:
-                                            const TextStyle(color: Colors.red))
-                                  else if (_parts.isNotEmpty)
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Text('Part: ',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold)),
-                                        DropdownButton<String>(
-                                          value: _selectedPartNumber,
-                                          items: _parts.map((part) {
-                                            final partNum =
-                                                part['part_number'] ?? '';
-                                            final desc =
-                                                part['part_description'] ?? '';
-                                            return DropdownMenuItem<String>(
-                                              value: partNum,
-                                              child: Row(
-                                                children: [
-                                                  Text(partNum,
-                                                      style: const TextStyle(
-                                                          fontWeight:
-                                                              FontWeight.bold)),
-                                                  if (desc.isNotEmpty) ...[
-                                                    const SizedBox(width: 12),
-                                                    Text(desc,
-                                                        style: const TextStyle(
-                                                            color: Colors
-                                                                .black54)),
-                                                  ]
-                                                ],
-                                              ),
-                                            );
-                                          }).toList(),
-                                          onChanged: (value) {
-                                            setState(() {
-                                              _selectedPartNumber = value;
-                                              // Optionally, you can use selected['part_description'] here if needed
-                                            });
-                                          },
-                                        ),
-                                      ],
-                                    ),
+                                  const SizedBox(height: 8),
                                 ],
-                              ),
+                                // Observer Name below part number
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Observer Name',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Container(
+                                      constraints: const BoxConstraints(
+                                        maxWidth: 300,
+                                        minWidth: 200,
+                                      ),
+                                      child: TextField(
+                                        controller: _observerNameController,
+                                        decoration: const InputDecoration(
+                                          border: OutlineInputBorder(),
+                                          isDense: true,
+                                          contentPadding: EdgeInsets.symmetric(
+                                              vertical: 8, horizontal: 12),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(width: 24),
+                            // Timer and buttons side by side, aligned to top
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                TimerDisplay(
+                                  elapsed: _elapsed,
+                                  lapTime: _lapTime,
+                                  isCompact: isKeyboardVisible,
+                                ),
+                                const SizedBox(width: 16), // Normal spacing
+                                ControlButtons(
+                                  onStart: observerNameNotEmpty ? _start : null,
+                                  onStop: _stop,
+                                  onReset: _resetToPreStart,
+                                  onMarkLap: _markLap,
+                                  onSave: _saveObservedTimes,
+                                  running: _simpleStopwatch.isRunning,
+                                  isInitial: _isInitial,
+                                  hasStopped: _hasStopped,
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -482,41 +595,6 @@ class _TimeObservationFormState extends State<TimeObservationForm> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Padding(
-                                      padding:
-                                          const EdgeInsets.only(bottom: 8.0),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          const Text(
-                                            'Observer Name',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16,
-                                            ),
-                                          ),
-                                          Container(
-                                            constraints: const BoxConstraints(
-                                              maxWidth: 300,
-                                              minWidth: 200,
-                                            ),
-                                            child: TextField(
-                                              controller:
-                                                  _observerNameController,
-                                              decoration: const InputDecoration(
-                                                border: OutlineInputBorder(),
-                                                isDense: true,
-                                                contentPadding:
-                                                    EdgeInsets.symmetric(
-                                                        vertical: 10,
-                                                        horizontal: 12),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
                                     Expanded(
                                       child: TimeObservationTable(
                                         key: _tableKey,
@@ -529,51 +607,42 @@ class _TimeObservationFormState extends State<TimeObservationForm> {
                           ),
                         ),
                       ),
-                      // Footer container with back button
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 12, horizontal: 16),
-                        decoration: BoxDecoration(
-                          color: Colors.yellow[100],
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.08),
-                              blurRadius: 8,
-                              offset: const Offset(0, -2),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: [
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.yellow[300],
-                                foregroundColor: Colors.black,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 32, vertical: 16),
-                                textStyle: const TextStyle(
-                                    fontSize: 18, fontWeight: FontWeight.bold),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12)),
-                                elevation: 6,
-                              ),
-                              onPressed: () {
-                                Navigator.of(context).pop();
-                              },
-                              child: const Text('Back to Home'),
-                            ),
-                          ],
-                        ),
-                      ),
+                      // Footer using AppFooter widget
+                      const AppFooter(),
                     ],
                   ),
                 ),
               ),
             ),
           ),
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {
+            showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return Dialog(
+                  child: Container(
+                    constraints: const BoxConstraints(
+                      maxWidth: 500,
+                      maxHeight: 350,
+                    ),
+                    child: DetailedSelectionDisplayCard(
+                      companyName: widget.companyName,
+                      plantName: widget.plantName,
+                      valueStreamName: widget.valueStreamName,
+                      processName: widget.processName,
+                      partNumber: _selectedPartNumber,
+                      setupName: _currentSetupName ?? 'Standard',
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+          backgroundColor: Theme.of(context).primaryColor,
+          foregroundColor: Colors.white,
+          child: const Icon(Icons.info),
         ),
       ),
     );

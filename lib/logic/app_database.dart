@@ -1,10 +1,17 @@
 import 'package:drift/drift.dart';
 part 'app_database.g.dart';
 
+// Value Stream table: stores value stream information for each plant
+// Ensures value stream names are unique within each plant
 class ValueStreams extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get plantId => integer()();
   TextColumn get name => text()();
+
+  @override
+  List<String> get customConstraints => [
+        'UNIQUE(plant_id, name)' // Prevent duplicate value stream names per plant
+      ];
 }
 
 class SetupElements extends Table {
@@ -31,11 +38,21 @@ class Study extends Table {
   TextColumn get observerName => text()();
 }
 
+class TaskStudy extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get studyId => integer().references(Study, #id)();
+  TextColumn get taskName => text()();
+  TextColumn get lrt => text()(); // LRT time in HH:MM:SS format
+  TextColumn get overrideTime =>
+      text().nullable()(); // Override time in HH:MM:SS format
+  TextColumn get comments => text().nullable()();
+}
+
 class TimeStudy extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get studyId => integer().references(Study, #id)();
-  IntColumn get setupElementId => integer().references(SetupElements, #id)();
-  TextColumn get time => text()(); // Format: HH:MM:SS
+  TextColumn get taskName => text()();
+  TextColumn get iterationTime => text()(); // IterationTime in HH:MM:SS format
 }
 
 @DriftDatabase(tables: [
@@ -48,6 +65,7 @@ class TimeStudy extends Table {
   SetupElements,
   Setups,
   Study,
+  TaskStudy,
   TimeStudy
 ])
 class AppDatabase extends _$AppDatabase {
@@ -57,14 +75,24 @@ class AppDatabase extends _$AppDatabase {
           ..where((o) => o.name.equals(name)))
         .getSingleOrNull();
     if (existing != null) return existing.id;
-    return into(organizations)
-        .insert(OrganizationsCompanion(name: Value(name)));
+
+    try {
+      return await into(organizations)
+          .insert(OrganizationsCompanion(name: Value(name)));
+    } catch (e) {
+      // Handle unique constraint violation - another process may have inserted the same name
+      final existing = await (select(organizations)
+            ..where((o) => o.name.equals(name)))
+          .getSingleOrNull();
+      if (existing != null) return existing.id;
+      rethrow; // Re-throw if it's a different error
+    }
   }
 
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -72,6 +100,69 @@ class AppDatabase extends _$AppDatabase {
           return m.createAll();
         },
         onUpgrade: (Migrator m, int from, int to) async {
+          print('Migrating database from version $from to $to');
+
+          // Force complete recreation for version 14
+          if (to >= 14) {
+            print('Performing complete database recreation for schema v14...');
+            await m.deleteTable('parts');
+            await m.deleteTable('processes');
+            await m.deleteTable('value_streams');
+            await m.deleteTable('plants');
+            await m.deleteTable('organizations');
+            await m.deleteTable('setup_elements');
+            await m.deleteTable('setups');
+            await m.deleteTable('study');
+            await m.deleteTable('task_study');
+            await m.deleteTable('time_study');
+            await m.deleteTable('process_parts');
+
+            // Recreate all tables with current schema
+            await m.createAll();
+            print('Database recreation completed with all constraints');
+            return;
+          }
+
+          // Force complete recreation for version 13
+          if (to >= 13) {
+            print('Performing complete database recreation for schema v13...');
+            await m.deleteTable('parts');
+            await m.deleteTable('processes');
+            await m.deleteTable('value_streams');
+            await m.deleteTable('plants');
+            await m.deleteTable('organizations');
+            await m.deleteTable('setup_elements');
+            await m.deleteTable('setups');
+            await m.deleteTable('study');
+            await m.deleteTable('time_study');
+            await m.deleteTable('process_parts');
+
+            // Recreate all tables with current schema
+            await m.createAll();
+            print('Database recreation completed with all constraints');
+            return;
+          }
+
+          // Handle any migration by recreating all tables if we're going to version 12
+          if (to == 12) {
+            // Drop all tables and recreate them with the latest schema
+            await m.deleteTable('parts');
+            await m.deleteTable('processes');
+            await m.deleteTable('value_streams');
+            await m.deleteTable('plants');
+            await m.deleteTable('organizations');
+            await m.deleteTable('setup_elements');
+            await m.deleteTable('setups');
+            await m.deleteTable('study');
+            await m.deleteTable('time_study');
+            await m.deleteTable('process_parts');
+
+            // Recreate all tables with current schema
+            await m.createAll();
+            return;
+          }
+
+          // Legacy migrations for incremental updates
           if (from == 1 && to == 2) {
             await m.createTable(setups);
           }
@@ -97,6 +188,36 @@ class AppDatabase extends _$AppDatabase {
             // Add orderIndex column to SetupElements
             await m.addColumn(setupElements,
                 setupElements.orderIndex as GeneratedColumn<Object>);
+          }
+          if (from == 7 && to == 8) {
+            // Add organizationId column to Parts table and unique constraint
+            // This requires recreating the table to add the constraint
+            await m.deleteTable('parts');
+            await m.createTable(parts);
+          }
+          if (from == 8 && to == 9) {
+            // Add unique constraint to organization name
+            // This requires recreating the table to add the constraint
+            await m.deleteTable('organizations');
+            await m.createTable(organizations);
+          }
+          if (from == 9 && to == 10) {
+            // Add unique constraint to plant name per organization
+            // This requires recreating the table to add the constraint
+            await m.deleteTable('plants');
+            await m.createTable(plants);
+          }
+          if (from == 10 && to == 11) {
+            // Add unique constraint to value stream name per plant
+            // This requires recreating the table to add the constraint
+            await m.deleteTable('value_streams');
+            await m.createTable(valueStreams);
+          }
+          if (from == 11 && to == 12) {
+            // Add unique constraint to process name per value stream
+            // This requires recreating the table to add the constraint
+            await m.deleteTable('processes');
+            await m.createTable(processes);
           }
           if (from == 1 && to == 3) {
             await m.createTable(setups);
@@ -155,8 +276,15 @@ class AppDatabase extends _$AppDatabase {
       );
 
   Future<int> insertPart(PartsCompanion part) => into(parts).insert(part);
+
+  // Upsert value stream - handles unique constraint on (plant_id, name)
   Future<int> upsertValueStream(ValueStreamsCompanion entry) async {
     return into(valueStreams).insertOnConflictUpdate(entry);
+  }
+
+  // Upsert process - handles unique constraint on (value_stream_id, process_name)
+  Future<int> upsertProcess(ProcessesCompanion entry) async {
+    return into(processes).insertOnConflictUpdate(entry);
   }
 
   // Setup management methods
@@ -198,16 +326,31 @@ class AppDatabase extends _$AppDatabase {
     return (select(timeStudy)..where((ts) => ts.studyId.equals(studyId))).get();
   }
 
-  Future<List<TimeStudyData>> getTimeStudiesForSetupElement(
-      int setupElementId) {
-    return (select(timeStudy)
-          ..where((ts) => ts.setupElementId.equals(setupElementId)))
-        .get();
-  }
-
   Future<TimeStudyData?> getTimeStudyById(int timeStudyId) {
     return (select(timeStudy)..where((ts) => ts.id.equals(timeStudyId)))
         .getSingleOrNull();
+  }
+
+  // TaskStudy management methods
+  Future<int> insertTaskStudy(TaskStudyCompanion taskStudy) =>
+      into(this.taskStudy).insert(taskStudy);
+
+  Future<List<TaskStudyData>> getTaskStudiesForStudy(int studyId) {
+    return (select(taskStudy)..where((ts) => ts.studyId.equals(studyId))).get();
+  }
+
+  Future<TaskStudyData?> getTaskStudyById(int taskStudyId) {
+    return (select(taskStudy)..where((ts) => ts.id.equals(taskStudyId)))
+        .getSingleOrNull();
+  }
+
+  Future<void> updateTaskStudy(int taskStudyId, TaskStudyCompanion companion) {
+    return (update(taskStudy)..where((ts) => ts.id.equals(taskStudyId)))
+        .write(companion);
+  }
+
+  Future<void> deleteTaskStudy(int taskStudyId) {
+    return (delete(taskStudy)..where((ts) => ts.id.equals(taskStudyId))).go();
   }
 
   // SetupElements management methods
@@ -267,16 +410,41 @@ class AppDatabase extends _$AppDatabase {
         ),
       );
     } else {
-      await into(plants).insert(
-        PlantsCompanion.insert(
-          organizationId: organizationId,
-          name: name,
-          street: street,
-          city: city,
-          state: state,
-          zip: zip,
-        ),
-      );
+      try {
+        await into(plants).insert(
+          PlantsCompanion.insert(
+            organizationId: organizationId,
+            name: name,
+            street: street,
+            city: city,
+            state: state,
+            zip: zip,
+          ),
+        );
+      } catch (e) {
+        // Handle unique constraint violation - another process may have inserted the same plant name
+        final existing = await (select(plants)
+              ..where((tbl) =>
+                  tbl.organizationId.equals(organizationId) &
+                  tbl.name.equals(name)))
+            .getSingleOrNull();
+        if (existing != null) {
+          // Update the existing plant with new information
+          await (update(plants)..where((tbl) => tbl.id.equals(existing.id)))
+              .write(
+            PlantsCompanion(
+              organizationId: Value(organizationId),
+              name: Value(name),
+              street: Value(street),
+              city: Value(city),
+              state: Value(state),
+              zip: Value(zip),
+            ),
+          );
+        } else {
+          rethrow; // Re-throw if it's a different error
+        }
+      }
     }
   }
 }
@@ -289,30 +457,45 @@ class ProcessParts extends Table {
 }
 
 // Process table: associates a process with a value stream
+// Ensures process names are unique within each value stream
 class Processes extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get valueStreamId => integer().references(ValueStreams, #id)();
   TextColumn get processName => text().named('process_name')();
   TextColumn get processDescription =>
       text().named('process_description').nullable()();
+
+  @override
+  List<String> get customConstraints => [
+        'UNIQUE(value_stream_id, process_name)' // Prevent duplicate process names per value stream
+      ];
 }
 
 // Part table: associates a part with a value stream
+// Ensures part numbers are unique within each organization/company
 class Parts extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get valueStreamId => integer().references(ValueStreams, #id)();
+  IntColumn get organizationId => integer().references(Organizations, #id)();
   TextColumn get partNumber => text()();
   TextColumn get partDescription => text().nullable()();
+
+  @override
+  List<String> get customConstraints => [
+        'UNIQUE(organization_id, part_number)' // Prevent duplicate part numbers per company
+      ];
 }
 
+// Organization/Company table: stores company information
+// Ensures company names are unique across the system
 @DataClassName('Organization')
 class Organizations extends Table {
   IntColumn get id => integer().autoIncrement()();
-  TextColumn get name => text().named('Org_Name')();
+  TextColumn get name => text().named('Org_Name').unique()();
 }
 
-// Removed duplicate Plants table definition to resolve naming conflict.
-
+// Plant table: stores plant information for each organization
+// Ensures plant names are unique within each company
 @DataClassName('PlantData')
 class Plants extends Table {
   IntColumn get id => integer().autoIncrement()();
@@ -322,4 +505,9 @@ class Plants extends Table {
   TextColumn get city => text()();
   TextColumn get state => text()();
   TextColumn get zip => text()();
+
+  @override
+  List<String> get customConstraints => [
+        'UNIQUE(organization_id, name)' // Prevent duplicate plant names per company
+      ];
 }

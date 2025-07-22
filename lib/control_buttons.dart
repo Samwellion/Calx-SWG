@@ -40,7 +40,7 @@ class ControlButtons extends StatelessWidget {
             foregroundColor: Colors.black,
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             textStyle:
-                const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                const TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             elevation: 6,
@@ -61,7 +61,7 @@ class ControlButtons extends StatelessWidget {
             foregroundColor: Colors.black,
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             textStyle:
-                const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                const TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             elevation: 6,
@@ -77,7 +77,7 @@ class ControlButtons extends StatelessWidget {
               foregroundColor: Colors.black,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               textStyle:
-                  const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  const TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
               elevation: 6,
@@ -95,7 +95,7 @@ class ControlButtons extends StatelessWidget {
               foregroundColor: hasStopped ? Colors.black : Colors.grey[600],
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               textStyle:
-                  const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  const TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
               elevation: hasStopped ? 6 : 2,

@@ -722,285 +722,6 @@ class ProcessPartsCompanion extends UpdateCompanion<ProcessPart> {
   }
 }
 
-class $PartsTable extends Parts with TableInfo<$PartsTable, Part> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $PartsTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
-  @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
-      'id', aliasedName, false,
-      hasAutoIncrement: true,
-      type: DriftSqlType.int,
-      requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
-  static const VerificationMeta _valueStreamIdMeta =
-      const VerificationMeta('valueStreamId');
-  @override
-  late final GeneratedColumn<int> valueStreamId = GeneratedColumn<int>(
-      'value_stream_id', aliasedName, false,
-      type: DriftSqlType.int,
-      requiredDuringInsert: true,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('REFERENCES value_streams (id)'));
-  static const VerificationMeta _partNumberMeta =
-      const VerificationMeta('partNumber');
-  @override
-  late final GeneratedColumn<String> partNumber = GeneratedColumn<String>(
-      'part_number', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _partDescriptionMeta =
-      const VerificationMeta('partDescription');
-  @override
-  late final GeneratedColumn<String> partDescription = GeneratedColumn<String>(
-      'part_description', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
-  @override
-  List<GeneratedColumn> get $columns =>
-      [id, valueStreamId, partNumber, partDescription];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'parts';
-  @override
-  VerificationContext validateIntegrity(Insertable<Part> instance,
-      {bool isInserting = false}) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    }
-    if (data.containsKey('value_stream_id')) {
-      context.handle(
-          _valueStreamIdMeta,
-          valueStreamId.isAcceptableOrUnknown(
-              data['value_stream_id']!, _valueStreamIdMeta));
-    } else if (isInserting) {
-      context.missing(_valueStreamIdMeta);
-    }
-    if (data.containsKey('part_number')) {
-      context.handle(
-          _partNumberMeta,
-          partNumber.isAcceptableOrUnknown(
-              data['part_number']!, _partNumberMeta));
-    } else if (isInserting) {
-      context.missing(_partNumberMeta);
-    }
-    if (data.containsKey('part_description')) {
-      context.handle(
-          _partDescriptionMeta,
-          partDescription.isAcceptableOrUnknown(
-              data['part_description']!, _partDescriptionMeta));
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {id};
-  @override
-  Part map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return Part(
-      id: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
-      valueStreamId: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}value_stream_id'])!,
-      partNumber: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}part_number'])!,
-      partDescription: attachedDatabase.typeMapping.read(
-          DriftSqlType.string, data['${effectivePrefix}part_description']),
-    );
-  }
-
-  @override
-  $PartsTable createAlias(String alias) {
-    return $PartsTable(attachedDatabase, alias);
-  }
-}
-
-class Part extends DataClass implements Insertable<Part> {
-  final int id;
-  final int valueStreamId;
-  final String partNumber;
-  final String? partDescription;
-  const Part(
-      {required this.id,
-      required this.valueStreamId,
-      required this.partNumber,
-      this.partDescription});
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
-    map['value_stream_id'] = Variable<int>(valueStreamId);
-    map['part_number'] = Variable<String>(partNumber);
-    if (!nullToAbsent || partDescription != null) {
-      map['part_description'] = Variable<String>(partDescription);
-    }
-    return map;
-  }
-
-  PartsCompanion toCompanion(bool nullToAbsent) {
-    return PartsCompanion(
-      id: Value(id),
-      valueStreamId: Value(valueStreamId),
-      partNumber: Value(partNumber),
-      partDescription: partDescription == null && nullToAbsent
-          ? const Value.absent()
-          : Value(partDescription),
-    );
-  }
-
-  factory Part.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return Part(
-      id: serializer.fromJson<int>(json['id']),
-      valueStreamId: serializer.fromJson<int>(json['valueStreamId']),
-      partNumber: serializer.fromJson<String>(json['partNumber']),
-      partDescription: serializer.fromJson<String?>(json['partDescription']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
-      'valueStreamId': serializer.toJson<int>(valueStreamId),
-      'partNumber': serializer.toJson<String>(partNumber),
-      'partDescription': serializer.toJson<String?>(partDescription),
-    };
-  }
-
-  Part copyWith(
-          {int? id,
-          int? valueStreamId,
-          String? partNumber,
-          Value<String?> partDescription = const Value.absent()}) =>
-      Part(
-        id: id ?? this.id,
-        valueStreamId: valueStreamId ?? this.valueStreamId,
-        partNumber: partNumber ?? this.partNumber,
-        partDescription: partDescription.present
-            ? partDescription.value
-            : this.partDescription,
-      );
-  Part copyWithCompanion(PartsCompanion data) {
-    return Part(
-      id: data.id.present ? data.id.value : this.id,
-      valueStreamId: data.valueStreamId.present
-          ? data.valueStreamId.value
-          : this.valueStreamId,
-      partNumber:
-          data.partNumber.present ? data.partNumber.value : this.partNumber,
-      partDescription: data.partDescription.present
-          ? data.partDescription.value
-          : this.partDescription,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('Part(')
-          ..write('id: $id, ')
-          ..write('valueStreamId: $valueStreamId, ')
-          ..write('partNumber: $partNumber, ')
-          ..write('partDescription: $partDescription')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode =>
-      Object.hash(id, valueStreamId, partNumber, partDescription);
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is Part &&
-          other.id == this.id &&
-          other.valueStreamId == this.valueStreamId &&
-          other.partNumber == this.partNumber &&
-          other.partDescription == this.partDescription);
-}
-
-class PartsCompanion extends UpdateCompanion<Part> {
-  final Value<int> id;
-  final Value<int> valueStreamId;
-  final Value<String> partNumber;
-  final Value<String?> partDescription;
-  const PartsCompanion({
-    this.id = const Value.absent(),
-    this.valueStreamId = const Value.absent(),
-    this.partNumber = const Value.absent(),
-    this.partDescription = const Value.absent(),
-  });
-  PartsCompanion.insert({
-    this.id = const Value.absent(),
-    required int valueStreamId,
-    required String partNumber,
-    this.partDescription = const Value.absent(),
-  })  : valueStreamId = Value(valueStreamId),
-        partNumber = Value(partNumber);
-  static Insertable<Part> custom({
-    Expression<int>? id,
-    Expression<int>? valueStreamId,
-    Expression<String>? partNumber,
-    Expression<String>? partDescription,
-  }) {
-    return RawValuesInsertable({
-      if (id != null) 'id': id,
-      if (valueStreamId != null) 'value_stream_id': valueStreamId,
-      if (partNumber != null) 'part_number': partNumber,
-      if (partDescription != null) 'part_description': partDescription,
-    });
-  }
-
-  PartsCompanion copyWith(
-      {Value<int>? id,
-      Value<int>? valueStreamId,
-      Value<String>? partNumber,
-      Value<String?>? partDescription}) {
-    return PartsCompanion(
-      id: id ?? this.id,
-      valueStreamId: valueStreamId ?? this.valueStreamId,
-      partNumber: partNumber ?? this.partNumber,
-      partDescription: partDescription ?? this.partDescription,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (id.present) {
-      map['id'] = Variable<int>(id.value);
-    }
-    if (valueStreamId.present) {
-      map['value_stream_id'] = Variable<int>(valueStreamId.value);
-    }
-    if (partNumber.present) {
-      map['part_number'] = Variable<String>(partNumber.value);
-    }
-    if (partDescription.present) {
-      map['part_description'] = Variable<String>(partDescription.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('PartsCompanion(')
-          ..write('id: $id, ')
-          ..write('valueStreamId: $valueStreamId, ')
-          ..write('partNumber: $partNumber, ')
-          ..write('partDescription: $partDescription')
-          ..write(')'))
-        .toString();
-  }
-}
-
 class $OrganizationsTable extends Organizations
     with TableInfo<$OrganizationsTable, Organization> {
   @override
@@ -1020,7 +741,9 @@ class $OrganizationsTable extends Organizations
   @override
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
       'Org_Name', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'));
   @override
   List<GeneratedColumn> get $columns => [id, name];
   @override
@@ -1173,6 +896,329 @@ class OrganizationsCompanion extends UpdateCompanion<Organization> {
     return (StringBuffer('OrganizationsCompanion(')
           ..write('id: $id, ')
           ..write('name: $name')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PartsTable extends Parts with TableInfo<$PartsTable, Part> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PartsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _valueStreamIdMeta =
+      const VerificationMeta('valueStreamId');
+  @override
+  late final GeneratedColumn<int> valueStreamId = GeneratedColumn<int>(
+      'value_stream_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES value_streams (id)'));
+  static const VerificationMeta _organizationIdMeta =
+      const VerificationMeta('organizationId');
+  @override
+  late final GeneratedColumn<int> organizationId = GeneratedColumn<int>(
+      'organization_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES organizations (id)'));
+  static const VerificationMeta _partNumberMeta =
+      const VerificationMeta('partNumber');
+  @override
+  late final GeneratedColumn<String> partNumber = GeneratedColumn<String>(
+      'part_number', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _partDescriptionMeta =
+      const VerificationMeta('partDescription');
+  @override
+  late final GeneratedColumn<String> partDescription = GeneratedColumn<String>(
+      'part_description', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, valueStreamId, organizationId, partNumber, partDescription];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'parts';
+  @override
+  VerificationContext validateIntegrity(Insertable<Part> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('value_stream_id')) {
+      context.handle(
+          _valueStreamIdMeta,
+          valueStreamId.isAcceptableOrUnknown(
+              data['value_stream_id']!, _valueStreamIdMeta));
+    } else if (isInserting) {
+      context.missing(_valueStreamIdMeta);
+    }
+    if (data.containsKey('organization_id')) {
+      context.handle(
+          _organizationIdMeta,
+          organizationId.isAcceptableOrUnknown(
+              data['organization_id']!, _organizationIdMeta));
+    } else if (isInserting) {
+      context.missing(_organizationIdMeta);
+    }
+    if (data.containsKey('part_number')) {
+      context.handle(
+          _partNumberMeta,
+          partNumber.isAcceptableOrUnknown(
+              data['part_number']!, _partNumberMeta));
+    } else if (isInserting) {
+      context.missing(_partNumberMeta);
+    }
+    if (data.containsKey('part_description')) {
+      context.handle(
+          _partDescriptionMeta,
+          partDescription.isAcceptableOrUnknown(
+              data['part_description']!, _partDescriptionMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Part map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Part(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      valueStreamId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}value_stream_id'])!,
+      organizationId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}organization_id'])!,
+      partNumber: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}part_number'])!,
+      partDescription: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}part_description']),
+    );
+  }
+
+  @override
+  $PartsTable createAlias(String alias) {
+    return $PartsTable(attachedDatabase, alias);
+  }
+}
+
+class Part extends DataClass implements Insertable<Part> {
+  final int id;
+  final int valueStreamId;
+  final int organizationId;
+  final String partNumber;
+  final String? partDescription;
+  const Part(
+      {required this.id,
+      required this.valueStreamId,
+      required this.organizationId,
+      required this.partNumber,
+      this.partDescription});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['value_stream_id'] = Variable<int>(valueStreamId);
+    map['organization_id'] = Variable<int>(organizationId);
+    map['part_number'] = Variable<String>(partNumber);
+    if (!nullToAbsent || partDescription != null) {
+      map['part_description'] = Variable<String>(partDescription);
+    }
+    return map;
+  }
+
+  PartsCompanion toCompanion(bool nullToAbsent) {
+    return PartsCompanion(
+      id: Value(id),
+      valueStreamId: Value(valueStreamId),
+      organizationId: Value(organizationId),
+      partNumber: Value(partNumber),
+      partDescription: partDescription == null && nullToAbsent
+          ? const Value.absent()
+          : Value(partDescription),
+    );
+  }
+
+  factory Part.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Part(
+      id: serializer.fromJson<int>(json['id']),
+      valueStreamId: serializer.fromJson<int>(json['valueStreamId']),
+      organizationId: serializer.fromJson<int>(json['organizationId']),
+      partNumber: serializer.fromJson<String>(json['partNumber']),
+      partDescription: serializer.fromJson<String?>(json['partDescription']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'valueStreamId': serializer.toJson<int>(valueStreamId),
+      'organizationId': serializer.toJson<int>(organizationId),
+      'partNumber': serializer.toJson<String>(partNumber),
+      'partDescription': serializer.toJson<String?>(partDescription),
+    };
+  }
+
+  Part copyWith(
+          {int? id,
+          int? valueStreamId,
+          int? organizationId,
+          String? partNumber,
+          Value<String?> partDescription = const Value.absent()}) =>
+      Part(
+        id: id ?? this.id,
+        valueStreamId: valueStreamId ?? this.valueStreamId,
+        organizationId: organizationId ?? this.organizationId,
+        partNumber: partNumber ?? this.partNumber,
+        partDescription: partDescription.present
+            ? partDescription.value
+            : this.partDescription,
+      );
+  Part copyWithCompanion(PartsCompanion data) {
+    return Part(
+      id: data.id.present ? data.id.value : this.id,
+      valueStreamId: data.valueStreamId.present
+          ? data.valueStreamId.value
+          : this.valueStreamId,
+      organizationId: data.organizationId.present
+          ? data.organizationId.value
+          : this.organizationId,
+      partNumber:
+          data.partNumber.present ? data.partNumber.value : this.partNumber,
+      partDescription: data.partDescription.present
+          ? data.partDescription.value
+          : this.partDescription,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Part(')
+          ..write('id: $id, ')
+          ..write('valueStreamId: $valueStreamId, ')
+          ..write('organizationId: $organizationId, ')
+          ..write('partNumber: $partNumber, ')
+          ..write('partDescription: $partDescription')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id, valueStreamId, organizationId, partNumber, partDescription);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Part &&
+          other.id == this.id &&
+          other.valueStreamId == this.valueStreamId &&
+          other.organizationId == this.organizationId &&
+          other.partNumber == this.partNumber &&
+          other.partDescription == this.partDescription);
+}
+
+class PartsCompanion extends UpdateCompanion<Part> {
+  final Value<int> id;
+  final Value<int> valueStreamId;
+  final Value<int> organizationId;
+  final Value<String> partNumber;
+  final Value<String?> partDescription;
+  const PartsCompanion({
+    this.id = const Value.absent(),
+    this.valueStreamId = const Value.absent(),
+    this.organizationId = const Value.absent(),
+    this.partNumber = const Value.absent(),
+    this.partDescription = const Value.absent(),
+  });
+  PartsCompanion.insert({
+    this.id = const Value.absent(),
+    required int valueStreamId,
+    required int organizationId,
+    required String partNumber,
+    this.partDescription = const Value.absent(),
+  })  : valueStreamId = Value(valueStreamId),
+        organizationId = Value(organizationId),
+        partNumber = Value(partNumber);
+  static Insertable<Part> custom({
+    Expression<int>? id,
+    Expression<int>? valueStreamId,
+    Expression<int>? organizationId,
+    Expression<String>? partNumber,
+    Expression<String>? partDescription,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (valueStreamId != null) 'value_stream_id': valueStreamId,
+      if (organizationId != null) 'organization_id': organizationId,
+      if (partNumber != null) 'part_number': partNumber,
+      if (partDescription != null) 'part_description': partDescription,
+    });
+  }
+
+  PartsCompanion copyWith(
+      {Value<int>? id,
+      Value<int>? valueStreamId,
+      Value<int>? organizationId,
+      Value<String>? partNumber,
+      Value<String?>? partDescription}) {
+    return PartsCompanion(
+      id: id ?? this.id,
+      valueStreamId: valueStreamId ?? this.valueStreamId,
+      organizationId: organizationId ?? this.organizationId,
+      partNumber: partNumber ?? this.partNumber,
+      partDescription: partDescription ?? this.partDescription,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (valueStreamId.present) {
+      map['value_stream_id'] = Variable<int>(valueStreamId.value);
+    }
+    if (organizationId.present) {
+      map['organization_id'] = Variable<int>(organizationId.value);
+    }
+    if (partNumber.present) {
+      map['part_number'] = Variable<String>(partNumber.value);
+    }
+    if (partDescription.present) {
+      map['part_description'] = Variable<String>(partDescription.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PartsCompanion(')
+          ..write('id: $id, ')
+          ..write('valueStreamId: $valueStreamId, ')
+          ..write('organizationId: $organizationId, ')
+          ..write('partNumber: $partNumber, ')
+          ..write('partDescription: $partDescription')
           ..write(')'))
         .toString();
   }
@@ -2473,6 +2519,352 @@ class StudyCompanion extends UpdateCompanion<StudyData> {
   }
 }
 
+class $TaskStudyTable extends TaskStudy
+    with TableInfo<$TaskStudyTable, TaskStudyData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TaskStudyTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _studyIdMeta =
+      const VerificationMeta('studyId');
+  @override
+  late final GeneratedColumn<int> studyId = GeneratedColumn<int>(
+      'study_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES study (id)'));
+  static const VerificationMeta _taskNameMeta =
+      const VerificationMeta('taskName');
+  @override
+  late final GeneratedColumn<String> taskName = GeneratedColumn<String>(
+      'task_name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _lrtMeta = const VerificationMeta('lrt');
+  @override
+  late final GeneratedColumn<String> lrt = GeneratedColumn<String>(
+      'lrt', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _overrideTimeMeta =
+      const VerificationMeta('overrideTime');
+  @override
+  late final GeneratedColumn<String> overrideTime = GeneratedColumn<String>(
+      'override_time', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _commentsMeta =
+      const VerificationMeta('comments');
+  @override
+  late final GeneratedColumn<String> comments = GeneratedColumn<String>(
+      'comments', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, studyId, taskName, lrt, overrideTime, comments];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'task_study';
+  @override
+  VerificationContext validateIntegrity(Insertable<TaskStudyData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('study_id')) {
+      context.handle(_studyIdMeta,
+          studyId.isAcceptableOrUnknown(data['study_id']!, _studyIdMeta));
+    } else if (isInserting) {
+      context.missing(_studyIdMeta);
+    }
+    if (data.containsKey('task_name')) {
+      context.handle(_taskNameMeta,
+          taskName.isAcceptableOrUnknown(data['task_name']!, _taskNameMeta));
+    } else if (isInserting) {
+      context.missing(_taskNameMeta);
+    }
+    if (data.containsKey('lrt')) {
+      context.handle(
+          _lrtMeta, lrt.isAcceptableOrUnknown(data['lrt']!, _lrtMeta));
+    } else if (isInserting) {
+      context.missing(_lrtMeta);
+    }
+    if (data.containsKey('override_time')) {
+      context.handle(
+          _overrideTimeMeta,
+          overrideTime.isAcceptableOrUnknown(
+              data['override_time']!, _overrideTimeMeta));
+    }
+    if (data.containsKey('comments')) {
+      context.handle(_commentsMeta,
+          comments.isAcceptableOrUnknown(data['comments']!, _commentsMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  TaskStudyData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TaskStudyData(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      studyId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}study_id'])!,
+      taskName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}task_name'])!,
+      lrt: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}lrt'])!,
+      overrideTime: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}override_time']),
+      comments: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}comments']),
+    );
+  }
+
+  @override
+  $TaskStudyTable createAlias(String alias) {
+    return $TaskStudyTable(attachedDatabase, alias);
+  }
+}
+
+class TaskStudyData extends DataClass implements Insertable<TaskStudyData> {
+  final int id;
+  final int studyId;
+  final String taskName;
+  final String lrt;
+  final String? overrideTime;
+  final String? comments;
+  const TaskStudyData(
+      {required this.id,
+      required this.studyId,
+      required this.taskName,
+      required this.lrt,
+      this.overrideTime,
+      this.comments});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['study_id'] = Variable<int>(studyId);
+    map['task_name'] = Variable<String>(taskName);
+    map['lrt'] = Variable<String>(lrt);
+    if (!nullToAbsent || overrideTime != null) {
+      map['override_time'] = Variable<String>(overrideTime);
+    }
+    if (!nullToAbsent || comments != null) {
+      map['comments'] = Variable<String>(comments);
+    }
+    return map;
+  }
+
+  TaskStudyCompanion toCompanion(bool nullToAbsent) {
+    return TaskStudyCompanion(
+      id: Value(id),
+      studyId: Value(studyId),
+      taskName: Value(taskName),
+      lrt: Value(lrt),
+      overrideTime: overrideTime == null && nullToAbsent
+          ? const Value.absent()
+          : Value(overrideTime),
+      comments: comments == null && nullToAbsent
+          ? const Value.absent()
+          : Value(comments),
+    );
+  }
+
+  factory TaskStudyData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TaskStudyData(
+      id: serializer.fromJson<int>(json['id']),
+      studyId: serializer.fromJson<int>(json['studyId']),
+      taskName: serializer.fromJson<String>(json['taskName']),
+      lrt: serializer.fromJson<String>(json['lrt']),
+      overrideTime: serializer.fromJson<String?>(json['overrideTime']),
+      comments: serializer.fromJson<String?>(json['comments']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'studyId': serializer.toJson<int>(studyId),
+      'taskName': serializer.toJson<String>(taskName),
+      'lrt': serializer.toJson<String>(lrt),
+      'overrideTime': serializer.toJson<String?>(overrideTime),
+      'comments': serializer.toJson<String?>(comments),
+    };
+  }
+
+  TaskStudyData copyWith(
+          {int? id,
+          int? studyId,
+          String? taskName,
+          String? lrt,
+          Value<String?> overrideTime = const Value.absent(),
+          Value<String?> comments = const Value.absent()}) =>
+      TaskStudyData(
+        id: id ?? this.id,
+        studyId: studyId ?? this.studyId,
+        taskName: taskName ?? this.taskName,
+        lrt: lrt ?? this.lrt,
+        overrideTime:
+            overrideTime.present ? overrideTime.value : this.overrideTime,
+        comments: comments.present ? comments.value : this.comments,
+      );
+  TaskStudyData copyWithCompanion(TaskStudyCompanion data) {
+    return TaskStudyData(
+      id: data.id.present ? data.id.value : this.id,
+      studyId: data.studyId.present ? data.studyId.value : this.studyId,
+      taskName: data.taskName.present ? data.taskName.value : this.taskName,
+      lrt: data.lrt.present ? data.lrt.value : this.lrt,
+      overrideTime: data.overrideTime.present
+          ? data.overrideTime.value
+          : this.overrideTime,
+      comments: data.comments.present ? data.comments.value : this.comments,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TaskStudyData(')
+          ..write('id: $id, ')
+          ..write('studyId: $studyId, ')
+          ..write('taskName: $taskName, ')
+          ..write('lrt: $lrt, ')
+          ..write('overrideTime: $overrideTime, ')
+          ..write('comments: $comments')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, studyId, taskName, lrt, overrideTime, comments);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TaskStudyData &&
+          other.id == this.id &&
+          other.studyId == this.studyId &&
+          other.taskName == this.taskName &&
+          other.lrt == this.lrt &&
+          other.overrideTime == this.overrideTime &&
+          other.comments == this.comments);
+}
+
+class TaskStudyCompanion extends UpdateCompanion<TaskStudyData> {
+  final Value<int> id;
+  final Value<int> studyId;
+  final Value<String> taskName;
+  final Value<String> lrt;
+  final Value<String?> overrideTime;
+  final Value<String?> comments;
+  const TaskStudyCompanion({
+    this.id = const Value.absent(),
+    this.studyId = const Value.absent(),
+    this.taskName = const Value.absent(),
+    this.lrt = const Value.absent(),
+    this.overrideTime = const Value.absent(),
+    this.comments = const Value.absent(),
+  });
+  TaskStudyCompanion.insert({
+    this.id = const Value.absent(),
+    required int studyId,
+    required String taskName,
+    required String lrt,
+    this.overrideTime = const Value.absent(),
+    this.comments = const Value.absent(),
+  })  : studyId = Value(studyId),
+        taskName = Value(taskName),
+        lrt = Value(lrt);
+  static Insertable<TaskStudyData> custom({
+    Expression<int>? id,
+    Expression<int>? studyId,
+    Expression<String>? taskName,
+    Expression<String>? lrt,
+    Expression<String>? overrideTime,
+    Expression<String>? comments,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (studyId != null) 'study_id': studyId,
+      if (taskName != null) 'task_name': taskName,
+      if (lrt != null) 'lrt': lrt,
+      if (overrideTime != null) 'override_time': overrideTime,
+      if (comments != null) 'comments': comments,
+    });
+  }
+
+  TaskStudyCompanion copyWith(
+      {Value<int>? id,
+      Value<int>? studyId,
+      Value<String>? taskName,
+      Value<String>? lrt,
+      Value<String?>? overrideTime,
+      Value<String?>? comments}) {
+    return TaskStudyCompanion(
+      id: id ?? this.id,
+      studyId: studyId ?? this.studyId,
+      taskName: taskName ?? this.taskName,
+      lrt: lrt ?? this.lrt,
+      overrideTime: overrideTime ?? this.overrideTime,
+      comments: comments ?? this.comments,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (studyId.present) {
+      map['study_id'] = Variable<int>(studyId.value);
+    }
+    if (taskName.present) {
+      map['task_name'] = Variable<String>(taskName.value);
+    }
+    if (lrt.present) {
+      map['lrt'] = Variable<String>(lrt.value);
+    }
+    if (overrideTime.present) {
+      map['override_time'] = Variable<String>(overrideTime.value);
+    }
+    if (comments.present) {
+      map['comments'] = Variable<String>(comments.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TaskStudyCompanion(')
+          ..write('id: $id, ')
+          ..write('studyId: $studyId, ')
+          ..write('taskName: $taskName, ')
+          ..write('lrt: $lrt, ')
+          ..write('overrideTime: $overrideTime, ')
+          ..write('comments: $comments')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $TimeStudyTable extends TimeStudy
     with TableInfo<$TimeStudyTable, TimeStudyData> {
   @override
@@ -2497,22 +2889,20 @@ class $TimeStudyTable extends TimeStudy
       requiredDuringInsert: true,
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('REFERENCES study (id)'));
-  static const VerificationMeta _setupElementIdMeta =
-      const VerificationMeta('setupElementId');
+  static const VerificationMeta _taskNameMeta =
+      const VerificationMeta('taskName');
   @override
-  late final GeneratedColumn<int> setupElementId = GeneratedColumn<int>(
-      'setup_element_id', aliasedName, false,
-      type: DriftSqlType.int,
-      requiredDuringInsert: true,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('REFERENCES setup_elements (id)'));
-  static const VerificationMeta _timeMeta = const VerificationMeta('time');
+  late final GeneratedColumn<String> taskName = GeneratedColumn<String>(
+      'task_name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _iterationTimeMeta =
+      const VerificationMeta('iterationTime');
   @override
-  late final GeneratedColumn<String> time = GeneratedColumn<String>(
-      'time', aliasedName, false,
+  late final GeneratedColumn<String> iterationTime = GeneratedColumn<String>(
+      'iteration_time', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
   @override
-  List<GeneratedColumn> get $columns => [id, studyId, setupElementId, time];
+  List<GeneratedColumn> get $columns => [id, studyId, taskName, iterationTime];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -2532,19 +2922,19 @@ class $TimeStudyTable extends TimeStudy
     } else if (isInserting) {
       context.missing(_studyIdMeta);
     }
-    if (data.containsKey('setup_element_id')) {
-      context.handle(
-          _setupElementIdMeta,
-          setupElementId.isAcceptableOrUnknown(
-              data['setup_element_id']!, _setupElementIdMeta));
+    if (data.containsKey('task_name')) {
+      context.handle(_taskNameMeta,
+          taskName.isAcceptableOrUnknown(data['task_name']!, _taskNameMeta));
     } else if (isInserting) {
-      context.missing(_setupElementIdMeta);
+      context.missing(_taskNameMeta);
     }
-    if (data.containsKey('time')) {
+    if (data.containsKey('iteration_time')) {
       context.handle(
-          _timeMeta, time.isAcceptableOrUnknown(data['time']!, _timeMeta));
+          _iterationTimeMeta,
+          iterationTime.isAcceptableOrUnknown(
+              data['iteration_time']!, _iterationTimeMeta));
     } else if (isInserting) {
-      context.missing(_timeMeta);
+      context.missing(_iterationTimeMeta);
     }
     return context;
   }
@@ -2559,10 +2949,10 @@ class $TimeStudyTable extends TimeStudy
           .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
       studyId: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}study_id'])!,
-      setupElementId: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}setup_element_id'])!,
-      time: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}time'])!,
+      taskName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}task_name'])!,
+      iterationTime: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}iteration_time'])!,
     );
   }
 
@@ -2575,20 +2965,20 @@ class $TimeStudyTable extends TimeStudy
 class TimeStudyData extends DataClass implements Insertable<TimeStudyData> {
   final int id;
   final int studyId;
-  final int setupElementId;
-  final String time;
+  final String taskName;
+  final String iterationTime;
   const TimeStudyData(
       {required this.id,
       required this.studyId,
-      required this.setupElementId,
-      required this.time});
+      required this.taskName,
+      required this.iterationTime});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['study_id'] = Variable<int>(studyId);
-    map['setup_element_id'] = Variable<int>(setupElementId);
-    map['time'] = Variable<String>(time);
+    map['task_name'] = Variable<String>(taskName);
+    map['iteration_time'] = Variable<String>(iterationTime);
     return map;
   }
 
@@ -2596,8 +2986,8 @@ class TimeStudyData extends DataClass implements Insertable<TimeStudyData> {
     return TimeStudyCompanion(
       id: Value(id),
       studyId: Value(studyId),
-      setupElementId: Value(setupElementId),
-      time: Value(time),
+      taskName: Value(taskName),
+      iterationTime: Value(iterationTime),
     );
   }
 
@@ -2607,8 +2997,8 @@ class TimeStudyData extends DataClass implements Insertable<TimeStudyData> {
     return TimeStudyData(
       id: serializer.fromJson<int>(json['id']),
       studyId: serializer.fromJson<int>(json['studyId']),
-      setupElementId: serializer.fromJson<int>(json['setupElementId']),
-      time: serializer.fromJson<String>(json['time']),
+      taskName: serializer.fromJson<String>(json['taskName']),
+      iterationTime: serializer.fromJson<String>(json['iterationTime']),
     );
   }
   @override
@@ -2617,27 +3007,27 @@ class TimeStudyData extends DataClass implements Insertable<TimeStudyData> {
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'studyId': serializer.toJson<int>(studyId),
-      'setupElementId': serializer.toJson<int>(setupElementId),
-      'time': serializer.toJson<String>(time),
+      'taskName': serializer.toJson<String>(taskName),
+      'iterationTime': serializer.toJson<String>(iterationTime),
     };
   }
 
   TimeStudyData copyWith(
-          {int? id, int? studyId, int? setupElementId, String? time}) =>
+          {int? id, int? studyId, String? taskName, String? iterationTime}) =>
       TimeStudyData(
         id: id ?? this.id,
         studyId: studyId ?? this.studyId,
-        setupElementId: setupElementId ?? this.setupElementId,
-        time: time ?? this.time,
+        taskName: taskName ?? this.taskName,
+        iterationTime: iterationTime ?? this.iterationTime,
       );
   TimeStudyData copyWithCompanion(TimeStudyCompanion data) {
     return TimeStudyData(
       id: data.id.present ? data.id.value : this.id,
       studyId: data.studyId.present ? data.studyId.value : this.studyId,
-      setupElementId: data.setupElementId.present
-          ? data.setupElementId.value
-          : this.setupElementId,
-      time: data.time.present ? data.time.value : this.time,
+      taskName: data.taskName.present ? data.taskName.value : this.taskName,
+      iterationTime: data.iterationTime.present
+          ? data.iterationTime.value
+          : this.iterationTime,
     );
   }
 
@@ -2646,67 +3036,67 @@ class TimeStudyData extends DataClass implements Insertable<TimeStudyData> {
     return (StringBuffer('TimeStudyData(')
           ..write('id: $id, ')
           ..write('studyId: $studyId, ')
-          ..write('setupElementId: $setupElementId, ')
-          ..write('time: $time')
+          ..write('taskName: $taskName, ')
+          ..write('iterationTime: $iterationTime')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, studyId, setupElementId, time);
+  int get hashCode => Object.hash(id, studyId, taskName, iterationTime);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is TimeStudyData &&
           other.id == this.id &&
           other.studyId == this.studyId &&
-          other.setupElementId == this.setupElementId &&
-          other.time == this.time);
+          other.taskName == this.taskName &&
+          other.iterationTime == this.iterationTime);
 }
 
 class TimeStudyCompanion extends UpdateCompanion<TimeStudyData> {
   final Value<int> id;
   final Value<int> studyId;
-  final Value<int> setupElementId;
-  final Value<String> time;
+  final Value<String> taskName;
+  final Value<String> iterationTime;
   const TimeStudyCompanion({
     this.id = const Value.absent(),
     this.studyId = const Value.absent(),
-    this.setupElementId = const Value.absent(),
-    this.time = const Value.absent(),
+    this.taskName = const Value.absent(),
+    this.iterationTime = const Value.absent(),
   });
   TimeStudyCompanion.insert({
     this.id = const Value.absent(),
     required int studyId,
-    required int setupElementId,
-    required String time,
+    required String taskName,
+    required String iterationTime,
   })  : studyId = Value(studyId),
-        setupElementId = Value(setupElementId),
-        time = Value(time);
+        taskName = Value(taskName),
+        iterationTime = Value(iterationTime);
   static Insertable<TimeStudyData> custom({
     Expression<int>? id,
     Expression<int>? studyId,
-    Expression<int>? setupElementId,
-    Expression<String>? time,
+    Expression<String>? taskName,
+    Expression<String>? iterationTime,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (studyId != null) 'study_id': studyId,
-      if (setupElementId != null) 'setup_element_id': setupElementId,
-      if (time != null) 'time': time,
+      if (taskName != null) 'task_name': taskName,
+      if (iterationTime != null) 'iteration_time': iterationTime,
     });
   }
 
   TimeStudyCompanion copyWith(
       {Value<int>? id,
       Value<int>? studyId,
-      Value<int>? setupElementId,
-      Value<String>? time}) {
+      Value<String>? taskName,
+      Value<String>? iterationTime}) {
     return TimeStudyCompanion(
       id: id ?? this.id,
       studyId: studyId ?? this.studyId,
-      setupElementId: setupElementId ?? this.setupElementId,
-      time: time ?? this.time,
+      taskName: taskName ?? this.taskName,
+      iterationTime: iterationTime ?? this.iterationTime,
     );
   }
 
@@ -2719,11 +3109,11 @@ class TimeStudyCompanion extends UpdateCompanion<TimeStudyData> {
     if (studyId.present) {
       map['study_id'] = Variable<int>(studyId.value);
     }
-    if (setupElementId.present) {
-      map['setup_element_id'] = Variable<int>(setupElementId.value);
+    if (taskName.present) {
+      map['task_name'] = Variable<String>(taskName.value);
     }
-    if (time.present) {
-      map['time'] = Variable<String>(time.value);
+    if (iterationTime.present) {
+      map['iteration_time'] = Variable<String>(iterationTime.value);
     }
     return map;
   }
@@ -2733,8 +3123,8 @@ class TimeStudyCompanion extends UpdateCompanion<TimeStudyData> {
     return (StringBuffer('TimeStudyCompanion(')
           ..write('id: $id, ')
           ..write('studyId: $studyId, ')
-          ..write('setupElementId: $setupElementId, ')
-          ..write('time: $time')
+          ..write('taskName: $taskName, ')
+          ..write('iterationTime: $iterationTime')
           ..write(')'))
         .toString();
   }
@@ -2746,12 +3136,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ValueStreamsTable valueStreams = $ValueStreamsTable(this);
   late final $ProcessesTable processes = $ProcessesTable(this);
   late final $ProcessPartsTable processParts = $ProcessPartsTable(this);
-  late final $PartsTable parts = $PartsTable(this);
   late final $OrganizationsTable organizations = $OrganizationsTable(this);
+  late final $PartsTable parts = $PartsTable(this);
   late final $PlantsTable plants = $PlantsTable(this);
   late final $SetupsTable setups = $SetupsTable(this);
   late final $SetupElementsTable setupElements = $SetupElementsTable(this);
   late final $StudyTable study = $StudyTable(this);
+  late final $TaskStudyTable taskStudy = $TaskStudyTable(this);
   late final $TimeStudyTable timeStudy = $TimeStudyTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -2761,12 +3152,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         valueStreams,
         processes,
         processParts,
-        parts,
         organizations,
+        parts,
         plants,
         setups,
         setupElements,
         study,
+        taskStudy,
         timeStudy
       ];
 }
@@ -3777,15 +4169,222 @@ typedef $$ProcessPartsTableProcessedTableManager = ProcessedTableManager<
     ProcessPart,
     PrefetchHooks Function(
         {bool processId, bool setupsRefs, bool setupElementsRefs})>;
+typedef $$OrganizationsTableCreateCompanionBuilder = OrganizationsCompanion
+    Function({
+  Value<int> id,
+  required String name,
+});
+typedef $$OrganizationsTableUpdateCompanionBuilder = OrganizationsCompanion
+    Function({
+  Value<int> id,
+  Value<String> name,
+});
+
+final class $$OrganizationsTableReferences
+    extends BaseReferences<_$AppDatabase, $OrganizationsTable, Organization> {
+  $$OrganizationsTableReferences(
+      super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$PartsTable, List<Part>> _partsRefsTable(
+          _$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(db.parts,
+          aliasName: $_aliasNameGenerator(
+              db.organizations.id, db.parts.organizationId));
+
+  $$PartsTableProcessedTableManager get partsRefs {
+    final manager = $$PartsTableTableManager($_db, $_db.parts)
+        .filter((f) => f.organizationId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_partsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+}
+
+class $$OrganizationsTableFilterComposer
+    extends Composer<_$AppDatabase, $OrganizationsTable> {
+  $$OrganizationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnFilters(column));
+
+  Expression<bool> partsRefs(
+      Expression<bool> Function($$PartsTableFilterComposer f) f) {
+    final $$PartsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.parts,
+        getReferencedColumn: (t) => t.organizationId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$PartsTableFilterComposer(
+              $db: $db,
+              $table: $db.parts,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+}
+
+class $$OrganizationsTableOrderingComposer
+    extends Composer<_$AppDatabase, $OrganizationsTable> {
+  $$OrganizationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnOrderings(column));
+}
+
+class $$OrganizationsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $OrganizationsTable> {
+  $$OrganizationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  Expression<T> partsRefs<T extends Object>(
+      Expression<T> Function($$PartsTableAnnotationComposer a) f) {
+    final $$PartsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.parts,
+        getReferencedColumn: (t) => t.organizationId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$PartsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.parts,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+}
+
+class $$OrganizationsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $OrganizationsTable,
+    Organization,
+    $$OrganizationsTableFilterComposer,
+    $$OrganizationsTableOrderingComposer,
+    $$OrganizationsTableAnnotationComposer,
+    $$OrganizationsTableCreateCompanionBuilder,
+    $$OrganizationsTableUpdateCompanionBuilder,
+    (Organization, $$OrganizationsTableReferences),
+    Organization,
+    PrefetchHooks Function({bool partsRefs})> {
+  $$OrganizationsTableTableManager(_$AppDatabase db, $OrganizationsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$OrganizationsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$OrganizationsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$OrganizationsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> name = const Value.absent(),
+          }) =>
+              OrganizationsCompanion(
+            id: id,
+            name: name,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String name,
+          }) =>
+              OrganizationsCompanion.insert(
+            id: id,
+            name: name,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$OrganizationsTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({partsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (partsRefs) db.parts],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (partsRefs)
+                    await $_getPrefetchedData<Organization, $OrganizationsTable,
+                            Part>(
+                        currentTable: table,
+                        referencedTable:
+                            $$OrganizationsTableReferences._partsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$OrganizationsTableReferences(db, table, p0)
+                                .partsRefs,
+                        referencedItemsForCurrentItem:
+                            (item, referencedItems) => referencedItems
+                                .where((e) => e.organizationId == item.id),
+                        typedResults: items)
+                ];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$OrganizationsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $OrganizationsTable,
+    Organization,
+    $$OrganizationsTableFilterComposer,
+    $$OrganizationsTableOrderingComposer,
+    $$OrganizationsTableAnnotationComposer,
+    $$OrganizationsTableCreateCompanionBuilder,
+    $$OrganizationsTableUpdateCompanionBuilder,
+    (Organization, $$OrganizationsTableReferences),
+    Organization,
+    PrefetchHooks Function({bool partsRefs})>;
 typedef $$PartsTableCreateCompanionBuilder = PartsCompanion Function({
   Value<int> id,
   required int valueStreamId,
+  required int organizationId,
   required String partNumber,
   Value<String?> partDescription,
 });
 typedef $$PartsTableUpdateCompanionBuilder = PartsCompanion Function({
   Value<int> id,
   Value<int> valueStreamId,
+  Value<int> organizationId,
   Value<String> partNumber,
   Value<String?> partDescription,
 });
@@ -3804,6 +4403,21 @@ final class $$PartsTableReferences
     final manager = $$ValueStreamsTableTableManager($_db, $_db.valueStreams)
         .filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_valueStreamIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+
+  static $OrganizationsTable _organizationIdTable(_$AppDatabase db) =>
+      db.organizations.createAlias(
+          $_aliasNameGenerator(db.parts.organizationId, db.organizations.id));
+
+  $$OrganizationsTableProcessedTableManager get organizationId {
+    final $_column = $_itemColumn<int>('organization_id')!;
+
+    final manager = $$OrganizationsTableTableManager($_db, $_db.organizations)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_organizationIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: [item]));
@@ -3840,6 +4454,26 @@ class $$PartsTableFilterComposer extends Composer<_$AppDatabase, $PartsTable> {
             $$ValueStreamsTableFilterComposer(
               $db: $db,
               $table: $db.valueStreams,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$OrganizationsTableFilterComposer get organizationId {
+    final $$OrganizationsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.organizationId,
+        referencedTable: $db.organizations,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$OrganizationsTableFilterComposer(
+              $db: $db,
+              $table: $db.organizations,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -3887,6 +4521,26 @@ class $$PartsTableOrderingComposer
             ));
     return composer;
   }
+
+  $$OrganizationsTableOrderingComposer get organizationId {
+    final $$OrganizationsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.organizationId,
+        referencedTable: $db.organizations,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$OrganizationsTableOrderingComposer(
+              $db: $db,
+              $table: $db.organizations,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 }
 
 class $$PartsTableAnnotationComposer
@@ -3926,6 +4580,26 @@ class $$PartsTableAnnotationComposer
             ));
     return composer;
   }
+
+  $$OrganizationsTableAnnotationComposer get organizationId {
+    final $$OrganizationsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.organizationId,
+        referencedTable: $db.organizations,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$OrganizationsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.organizations,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 }
 
 class $$PartsTableTableManager extends RootTableManager<
@@ -3939,7 +4613,7 @@ class $$PartsTableTableManager extends RootTableManager<
     $$PartsTableUpdateCompanionBuilder,
     (Part, $$PartsTableReferences),
     Part,
-    PrefetchHooks Function({bool valueStreamId})> {
+    PrefetchHooks Function({bool valueStreamId, bool organizationId})> {
   $$PartsTableTableManager(_$AppDatabase db, $PartsTable table)
       : super(TableManagerState(
           db: db,
@@ -3953,24 +4627,28 @@ class $$PartsTableTableManager extends RootTableManager<
           updateCompanionCallback: ({
             Value<int> id = const Value.absent(),
             Value<int> valueStreamId = const Value.absent(),
+            Value<int> organizationId = const Value.absent(),
             Value<String> partNumber = const Value.absent(),
             Value<String?> partDescription = const Value.absent(),
           }) =>
               PartsCompanion(
             id: id,
             valueStreamId: valueStreamId,
+            organizationId: organizationId,
             partNumber: partNumber,
             partDescription: partDescription,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
             required int valueStreamId,
+            required int organizationId,
             required String partNumber,
             Value<String?> partDescription = const Value.absent(),
           }) =>
               PartsCompanion.insert(
             id: id,
             valueStreamId: valueStreamId,
+            organizationId: organizationId,
             partNumber: partNumber,
             partDescription: partDescription,
           ),
@@ -3978,7 +4656,8 @@ class $$PartsTableTableManager extends RootTableManager<
               .map((e) =>
                   (e.readTable(table), $$PartsTableReferences(db, table, e)))
               .toList(),
-          prefetchHooksCallback: ({valueStreamId = false}) {
+          prefetchHooksCallback: (
+              {valueStreamId = false, organizationId = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [],
@@ -4005,6 +4684,16 @@ class $$PartsTableTableManager extends RootTableManager<
                         $$PartsTableReferences._valueStreamIdTable(db).id,
                   ) as T;
                 }
+                if (organizationId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.organizationId,
+                    referencedTable:
+                        $$PartsTableReferences._organizationIdTable(db),
+                    referencedColumn:
+                        $$PartsTableReferences._organizationIdTable(db).id,
+                  ) as T;
+                }
 
                 return state;
               },
@@ -4027,129 +4716,7 @@ typedef $$PartsTableProcessedTableManager = ProcessedTableManager<
     $$PartsTableUpdateCompanionBuilder,
     (Part, $$PartsTableReferences),
     Part,
-    PrefetchHooks Function({bool valueStreamId})>;
-typedef $$OrganizationsTableCreateCompanionBuilder = OrganizationsCompanion
-    Function({
-  Value<int> id,
-  required String name,
-});
-typedef $$OrganizationsTableUpdateCompanionBuilder = OrganizationsCompanion
-    Function({
-  Value<int> id,
-  Value<String> name,
-});
-
-class $$OrganizationsTableFilterComposer
-    extends Composer<_$AppDatabase, $OrganizationsTable> {
-  $$OrganizationsTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<int> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get name => $composableBuilder(
-      column: $table.name, builder: (column) => ColumnFilters(column));
-}
-
-class $$OrganizationsTableOrderingComposer
-    extends Composer<_$AppDatabase, $OrganizationsTable> {
-  $$OrganizationsTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<int> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get name => $composableBuilder(
-      column: $table.name, builder: (column) => ColumnOrderings(column));
-}
-
-class $$OrganizationsTableAnnotationComposer
-    extends Composer<_$AppDatabase, $OrganizationsTable> {
-  $$OrganizationsTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<int> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get name =>
-      $composableBuilder(column: $table.name, builder: (column) => column);
-}
-
-class $$OrganizationsTableTableManager extends RootTableManager<
-    _$AppDatabase,
-    $OrganizationsTable,
-    Organization,
-    $$OrganizationsTableFilterComposer,
-    $$OrganizationsTableOrderingComposer,
-    $$OrganizationsTableAnnotationComposer,
-    $$OrganizationsTableCreateCompanionBuilder,
-    $$OrganizationsTableUpdateCompanionBuilder,
-    (
-      Organization,
-      BaseReferences<_$AppDatabase, $OrganizationsTable, Organization>
-    ),
-    Organization,
-    PrefetchHooks Function()> {
-  $$OrganizationsTableTableManager(_$AppDatabase db, $OrganizationsTable table)
-      : super(TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$OrganizationsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$OrganizationsTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$OrganizationsTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            Value<String> name = const Value.absent(),
-          }) =>
-              OrganizationsCompanion(
-            id: id,
-            name: name,
-          ),
-          createCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            required String name,
-          }) =>
-              OrganizationsCompanion.insert(
-            id: id,
-            name: name,
-          ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
-              .toList(),
-          prefetchHooksCallback: null,
-        ));
-}
-
-typedef $$OrganizationsTableProcessedTableManager = ProcessedTableManager<
-    _$AppDatabase,
-    $OrganizationsTable,
-    Organization,
-    $$OrganizationsTableFilterComposer,
-    $$OrganizationsTableOrderingComposer,
-    $$OrganizationsTableAnnotationComposer,
-    $$OrganizationsTableCreateCompanionBuilder,
-    $$OrganizationsTableUpdateCompanionBuilder,
-    (
-      Organization,
-      BaseReferences<_$AppDatabase, $OrganizationsTable, Organization>
-    ),
-    Organization,
-    PrefetchHooks Function()>;
+    PrefetchHooks Function({bool valueStreamId, bool organizationId})>;
 typedef $$PlantsTableCreateCompanionBuilder = PlantsCompanion Function({
   Value<int> id,
   required int organizationId,
@@ -4776,21 +5343,6 @@ final class $$SetupElementsTableReferences
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: [item]));
   }
-
-  static MultiTypedResultKey<$TimeStudyTable, List<TimeStudyData>>
-      _timeStudyRefsTable(_$AppDatabase db) =>
-          MultiTypedResultKey.fromTable(db.timeStudy,
-              aliasName: $_aliasNameGenerator(
-                  db.setupElements.id, db.timeStudy.setupElementId));
-
-  $$TimeStudyTableProcessedTableManager get timeStudyRefs {
-    final manager = $$TimeStudyTableTableManager($_db, $_db.timeStudy)
-        .filter((f) => f.setupElementId.id.sqlEquals($_itemColumn<int>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(_timeStudyRefsTable($_db));
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: cache));
-  }
 }
 
 class $$SetupElementsTableFilterComposer
@@ -4855,27 +5407,6 @@ class $$SetupElementsTableFilterComposer
                   $removeJoinBuilderFromRootComposer,
             ));
     return composer;
-  }
-
-  Expression<bool> timeStudyRefs(
-      Expression<bool> Function($$TimeStudyTableFilterComposer f) f) {
-    final $$TimeStudyTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.timeStudy,
-        getReferencedColumn: (t) => t.setupElementId,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$TimeStudyTableFilterComposer(
-              $db: $db,
-              $table: $db.timeStudy,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
   }
 }
 
@@ -5008,27 +5539,6 @@ class $$SetupElementsTableAnnotationComposer
             ));
     return composer;
   }
-
-  Expression<T> timeStudyRefs<T extends Object>(
-      Expression<T> Function($$TimeStudyTableAnnotationComposer a) f) {
-    final $$TimeStudyTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.timeStudy,
-        getReferencedColumn: (t) => t.setupElementId,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$TimeStudyTableAnnotationComposer(
-              $db: $db,
-              $table: $db.timeStudy,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
 }
 
 class $$SetupElementsTableTableManager extends RootTableManager<
@@ -5042,8 +5552,7 @@ class $$SetupElementsTableTableManager extends RootTableManager<
     $$SetupElementsTableUpdateCompanionBuilder,
     (SetupElement, $$SetupElementsTableReferences),
     SetupElement,
-    PrefetchHooks Function(
-        {bool processPartId, bool setupId, bool timeStudyRefs})> {
+    PrefetchHooks Function({bool processPartId, bool setupId})> {
   $$SetupElementsTableTableManager(_$AppDatabase db, $SetupElementsTable table)
       : super(TableManagerState(
           db: db,
@@ -5096,11 +5605,10 @@ class $$SetupElementsTableTableManager extends RootTableManager<
                     $$SetupElementsTableReferences(db, table, e)
                   ))
               .toList(),
-          prefetchHooksCallback: (
-              {processPartId = false, setupId = false, timeStudyRefs = false}) {
+          prefetchHooksCallback: ({processPartId = false, setupId = false}) {
             return PrefetchHooks(
               db: db,
-              explicitlyWatchedTables: [if (timeStudyRefs) db.timeStudy],
+              explicitlyWatchedTables: [],
               addJoins: <
                   T extends TableManagerState<
                       dynamic,
@@ -5139,20 +5647,7 @@ class $$SetupElementsTableTableManager extends RootTableManager<
                 return state;
               },
               getPrefetchedDataCallback: (items) async {
-                return [
-                  if (timeStudyRefs)
-                    await $_getPrefetchedData<SetupElement, $SetupElementsTable, TimeStudyData>(
-                        currentTable: table,
-                        referencedTable: $$SetupElementsTableReferences
-                            ._timeStudyRefsTable(db),
-                        managerFromTypedResult: (p0) =>
-                            $$SetupElementsTableReferences(db, table, p0)
-                                .timeStudyRefs,
-                        referencedItemsForCurrentItem:
-                            (item, referencedItems) => referencedItems
-                                .where((e) => e.setupElementId == item.id),
-                        typedResults: items)
-                ];
+                return [];
               },
             );
           },
@@ -5170,8 +5665,7 @@ typedef $$SetupElementsTableProcessedTableManager = ProcessedTableManager<
     $$SetupElementsTableUpdateCompanionBuilder,
     (SetupElement, $$SetupElementsTableReferences),
     SetupElement,
-    PrefetchHooks Function(
-        {bool processPartId, bool setupId, bool timeStudyRefs})>;
+    PrefetchHooks Function({bool processPartId, bool setupId})>;
 typedef $$StudyTableCreateCompanionBuilder = StudyCompanion Function({
   Value<int> id,
   required int setupId,
@@ -5203,6 +5697,20 @@ final class $$StudyTableReferences
     if (item == null) return manager;
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: [item]));
+  }
+
+  static MultiTypedResultKey<$TaskStudyTable, List<TaskStudyData>>
+      _taskStudyRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+          db.taskStudy,
+          aliasName: $_aliasNameGenerator(db.study.id, db.taskStudy.studyId));
+
+  $$TaskStudyTableProcessedTableManager get taskStudyRefs {
+    final manager = $$TaskStudyTableTableManager($_db, $_db.taskStudy)
+        .filter((f) => f.studyId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_taskStudyRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
   }
 
   static MultiTypedResultKey<$TimeStudyTable, List<TimeStudyData>>
@@ -5258,6 +5766,27 @@ class $$StudyTableFilterComposer extends Composer<_$AppDatabase, $StudyTable> {
                   $removeJoinBuilderFromRootComposer,
             ));
     return composer;
+  }
+
+  Expression<bool> taskStudyRefs(
+      Expression<bool> Function($$TaskStudyTableFilterComposer f) f) {
+    final $$TaskStudyTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.taskStudy,
+        getReferencedColumn: (t) => t.studyId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$TaskStudyTableFilterComposer(
+              $db: $db,
+              $table: $db.taskStudy,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
   }
 
   Expression<bool> timeStudyRefs(
@@ -5366,6 +5895,27 @@ class $$StudyTableAnnotationComposer
     return composer;
   }
 
+  Expression<T> taskStudyRefs<T extends Object>(
+      Expression<T> Function($$TaskStudyTableAnnotationComposer a) f) {
+    final $$TaskStudyTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.taskStudy,
+        getReferencedColumn: (t) => t.studyId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$TaskStudyTableAnnotationComposer(
+              $db: $db,
+              $table: $db.taskStudy,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
   Expression<T> timeStudyRefs<T extends Object>(
       Expression<T> Function($$TimeStudyTableAnnotationComposer a) f) {
     final $$TimeStudyTableAnnotationComposer composer = $composerBuilder(
@@ -5399,7 +5949,8 @@ class $$StudyTableTableManager extends RootTableManager<
     $$StudyTableUpdateCompanionBuilder,
     (StudyData, $$StudyTableReferences),
     StudyData,
-    PrefetchHooks Function({bool setupId, bool timeStudyRefs})> {
+    PrefetchHooks Function(
+        {bool setupId, bool taskStudyRefs, bool timeStudyRefs})> {
   $$StudyTableTableManager(_$AppDatabase db, $StudyTable table)
       : super(TableManagerState(
           db: db,
@@ -5442,10 +5993,14 @@ class $$StudyTableTableManager extends RootTableManager<
               .map((e) =>
                   (e.readTable(table), $$StudyTableReferences(db, table, e)))
               .toList(),
-          prefetchHooksCallback: ({setupId = false, timeStudyRefs = false}) {
+          prefetchHooksCallback: (
+              {setupId = false, taskStudyRefs = false, timeStudyRefs = false}) {
             return PrefetchHooks(
               db: db,
-              explicitlyWatchedTables: [if (timeStudyRefs) db.timeStudy],
+              explicitlyWatchedTables: [
+                if (taskStudyRefs) db.taskStudy,
+                if (timeStudyRefs) db.timeStudy
+              ],
               addJoins: <
                   T extends TableManagerState<
                       dynamic,
@@ -5473,6 +6028,18 @@ class $$StudyTableTableManager extends RootTableManager<
               },
               getPrefetchedDataCallback: (items) async {
                 return [
+                  if (taskStudyRefs)
+                    await $_getPrefetchedData<StudyData, $StudyTable,
+                            TaskStudyData>(
+                        currentTable: table,
+                        referencedTable:
+                            $$StudyTableReferences._taskStudyRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$StudyTableReferences(db, table, p0).taskStudyRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.studyId == item.id),
+                        typedResults: items),
                   if (timeStudyRefs)
                     await $_getPrefetchedData<StudyData, $StudyTable,
                             TimeStudyData>(
@@ -5503,26 +6070,31 @@ typedef $$StudyTableProcessedTableManager = ProcessedTableManager<
     $$StudyTableUpdateCompanionBuilder,
     (StudyData, $$StudyTableReferences),
     StudyData,
-    PrefetchHooks Function({bool setupId, bool timeStudyRefs})>;
-typedef $$TimeStudyTableCreateCompanionBuilder = TimeStudyCompanion Function({
+    PrefetchHooks Function(
+        {bool setupId, bool taskStudyRefs, bool timeStudyRefs})>;
+typedef $$TaskStudyTableCreateCompanionBuilder = TaskStudyCompanion Function({
   Value<int> id,
   required int studyId,
-  required int setupElementId,
-  required String time,
+  required String taskName,
+  required String lrt,
+  Value<String?> overrideTime,
+  Value<String?> comments,
 });
-typedef $$TimeStudyTableUpdateCompanionBuilder = TimeStudyCompanion Function({
+typedef $$TaskStudyTableUpdateCompanionBuilder = TaskStudyCompanion Function({
   Value<int> id,
   Value<int> studyId,
-  Value<int> setupElementId,
-  Value<String> time,
+  Value<String> taskName,
+  Value<String> lrt,
+  Value<String?> overrideTime,
+  Value<String?> comments,
 });
 
-final class $$TimeStudyTableReferences
-    extends BaseReferences<_$AppDatabase, $TimeStudyTable, TimeStudyData> {
-  $$TimeStudyTableReferences(super.$_db, super.$_table, super.$_typedResult);
+final class $$TaskStudyTableReferences
+    extends BaseReferences<_$AppDatabase, $TaskStudyTable, TaskStudyData> {
+  $$TaskStudyTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
   static $StudyTable _studyIdTable(_$AppDatabase db) => db.study
-      .createAlias($_aliasNameGenerator(db.timeStudy.studyId, db.study.id));
+      .createAlias($_aliasNameGenerator(db.taskStudy.studyId, db.study.id));
 
   $$StudyTableProcessedTableManager get studyId {
     final $_column = $_itemColumn<int>('study_id')!;
@@ -5534,26 +6106,11 @@ final class $$TimeStudyTableReferences
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: [item]));
   }
-
-  static $SetupElementsTable _setupElementIdTable(_$AppDatabase db) =>
-      db.setupElements.createAlias($_aliasNameGenerator(
-          db.timeStudy.setupElementId, db.setupElements.id));
-
-  $$SetupElementsTableProcessedTableManager get setupElementId {
-    final $_column = $_itemColumn<int>('setup_element_id')!;
-
-    final manager = $$SetupElementsTableTableManager($_db, $_db.setupElements)
-        .filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_setupElementIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: [item]));
-  }
 }
 
-class $$TimeStudyTableFilterComposer
-    extends Composer<_$AppDatabase, $TimeStudyTable> {
-  $$TimeStudyTableFilterComposer({
+class $$TaskStudyTableFilterComposer
+    extends Composer<_$AppDatabase, $TaskStudyTable> {
+  $$TaskStudyTableFilterComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -5563,8 +6120,17 @@ class $$TimeStudyTableFilterComposer
   ColumnFilters<int> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get time => $composableBuilder(
-      column: $table.time, builder: (column) => ColumnFilters(column));
+  ColumnFilters<String> get taskName => $composableBuilder(
+      column: $table.taskName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get lrt => $composableBuilder(
+      column: $table.lrt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get overrideTime => $composableBuilder(
+      column: $table.overrideTime, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get comments => $composableBuilder(
+      column: $table.comments, builder: (column) => ColumnFilters(column));
 
   $$StudyTableFilterComposer get studyId {
     final $$StudyTableFilterComposer composer = $composerBuilder(
@@ -5585,19 +6151,271 @@ class $$TimeStudyTableFilterComposer
             ));
     return composer;
   }
+}
 
-  $$SetupElementsTableFilterComposer get setupElementId {
-    final $$SetupElementsTableFilterComposer composer = $composerBuilder(
+class $$TaskStudyTableOrderingComposer
+    extends Composer<_$AppDatabase, $TaskStudyTable> {
+  $$TaskStudyTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get taskName => $composableBuilder(
+      column: $table.taskName, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get lrt => $composableBuilder(
+      column: $table.lrt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get overrideTime => $composableBuilder(
+      column: $table.overrideTime,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get comments => $composableBuilder(
+      column: $table.comments, builder: (column) => ColumnOrderings(column));
+
+  $$StudyTableOrderingComposer get studyId {
+    final $$StudyTableOrderingComposer composer = $composerBuilder(
         composer: this,
-        getCurrentColumn: (t) => t.setupElementId,
-        referencedTable: $db.setupElements,
+        getCurrentColumn: (t) => t.studyId,
+        referencedTable: $db.study,
         getReferencedColumn: (t) => t.id,
         builder: (joinBuilder,
                 {$addJoinBuilderToRootComposer,
                 $removeJoinBuilderFromRootComposer}) =>
-            $$SetupElementsTableFilterComposer(
+            $$StudyTableOrderingComposer(
               $db: $db,
-              $table: $db.setupElements,
+              $table: $db.study,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$TaskStudyTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TaskStudyTable> {
+  $$TaskStudyTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get taskName =>
+      $composableBuilder(column: $table.taskName, builder: (column) => column);
+
+  GeneratedColumn<String> get lrt =>
+      $composableBuilder(column: $table.lrt, builder: (column) => column);
+
+  GeneratedColumn<String> get overrideTime => $composableBuilder(
+      column: $table.overrideTime, builder: (column) => column);
+
+  GeneratedColumn<String> get comments =>
+      $composableBuilder(column: $table.comments, builder: (column) => column);
+
+  $$StudyTableAnnotationComposer get studyId {
+    final $$StudyTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.studyId,
+        referencedTable: $db.study,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$StudyTableAnnotationComposer(
+              $db: $db,
+              $table: $db.study,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$TaskStudyTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $TaskStudyTable,
+    TaskStudyData,
+    $$TaskStudyTableFilterComposer,
+    $$TaskStudyTableOrderingComposer,
+    $$TaskStudyTableAnnotationComposer,
+    $$TaskStudyTableCreateCompanionBuilder,
+    $$TaskStudyTableUpdateCompanionBuilder,
+    (TaskStudyData, $$TaskStudyTableReferences),
+    TaskStudyData,
+    PrefetchHooks Function({bool studyId})> {
+  $$TaskStudyTableTableManager(_$AppDatabase db, $TaskStudyTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TaskStudyTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TaskStudyTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TaskStudyTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<int> studyId = const Value.absent(),
+            Value<String> taskName = const Value.absent(),
+            Value<String> lrt = const Value.absent(),
+            Value<String?> overrideTime = const Value.absent(),
+            Value<String?> comments = const Value.absent(),
+          }) =>
+              TaskStudyCompanion(
+            id: id,
+            studyId: studyId,
+            taskName: taskName,
+            lrt: lrt,
+            overrideTime: overrideTime,
+            comments: comments,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required int studyId,
+            required String taskName,
+            required String lrt,
+            Value<String?> overrideTime = const Value.absent(),
+            Value<String?> comments = const Value.absent(),
+          }) =>
+              TaskStudyCompanion.insert(
+            id: id,
+            studyId: studyId,
+            taskName: taskName,
+            lrt: lrt,
+            overrideTime: overrideTime,
+            comments: comments,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$TaskStudyTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({studyId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (studyId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.studyId,
+                    referencedTable:
+                        $$TaskStudyTableReferences._studyIdTable(db),
+                    referencedColumn:
+                        $$TaskStudyTableReferences._studyIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$TaskStudyTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $TaskStudyTable,
+    TaskStudyData,
+    $$TaskStudyTableFilterComposer,
+    $$TaskStudyTableOrderingComposer,
+    $$TaskStudyTableAnnotationComposer,
+    $$TaskStudyTableCreateCompanionBuilder,
+    $$TaskStudyTableUpdateCompanionBuilder,
+    (TaskStudyData, $$TaskStudyTableReferences),
+    TaskStudyData,
+    PrefetchHooks Function({bool studyId})>;
+typedef $$TimeStudyTableCreateCompanionBuilder = TimeStudyCompanion Function({
+  Value<int> id,
+  required int studyId,
+  required String taskName,
+  required String iterationTime,
+});
+typedef $$TimeStudyTableUpdateCompanionBuilder = TimeStudyCompanion Function({
+  Value<int> id,
+  Value<int> studyId,
+  Value<String> taskName,
+  Value<String> iterationTime,
+});
+
+final class $$TimeStudyTableReferences
+    extends BaseReferences<_$AppDatabase, $TimeStudyTable, TimeStudyData> {
+  $$TimeStudyTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $StudyTable _studyIdTable(_$AppDatabase db) => db.study
+      .createAlias($_aliasNameGenerator(db.timeStudy.studyId, db.study.id));
+
+  $$StudyTableProcessedTableManager get studyId {
+    final $_column = $_itemColumn<int>('study_id')!;
+
+    final manager = $$StudyTableTableManager($_db, $_db.study)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_studyIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$TimeStudyTableFilterComposer
+    extends Composer<_$AppDatabase, $TimeStudyTable> {
+  $$TimeStudyTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get taskName => $composableBuilder(
+      column: $table.taskName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get iterationTime => $composableBuilder(
+      column: $table.iterationTime, builder: (column) => ColumnFilters(column));
+
+  $$StudyTableFilterComposer get studyId {
+    final $$StudyTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.studyId,
+        referencedTable: $db.study,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$StudyTableFilterComposer(
+              $db: $db,
+              $table: $db.study,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -5619,8 +6437,12 @@ class $$TimeStudyTableOrderingComposer
   ColumnOrderings<int> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get time => $composableBuilder(
-      column: $table.time, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<String> get taskName => $composableBuilder(
+      column: $table.taskName, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get iterationTime => $composableBuilder(
+      column: $table.iterationTime,
+      builder: (column) => ColumnOrderings(column));
 
   $$StudyTableOrderingComposer get studyId {
     final $$StudyTableOrderingComposer composer = $composerBuilder(
@@ -5634,26 +6456,6 @@ class $$TimeStudyTableOrderingComposer
             $$StudyTableOrderingComposer(
               $db: $db,
               $table: $db.study,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  $$SetupElementsTableOrderingComposer get setupElementId {
-    final $$SetupElementsTableOrderingComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.setupElementId,
-        referencedTable: $db.setupElements,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$SetupElementsTableOrderingComposer(
-              $db: $db,
-              $table: $db.setupElements,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -5675,8 +6477,11 @@ class $$TimeStudyTableAnnotationComposer
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get time =>
-      $composableBuilder(column: $table.time, builder: (column) => column);
+  GeneratedColumn<String> get taskName =>
+      $composableBuilder(column: $table.taskName, builder: (column) => column);
+
+  GeneratedColumn<String> get iterationTime => $composableBuilder(
+      column: $table.iterationTime, builder: (column) => column);
 
   $$StudyTableAnnotationComposer get studyId {
     final $$StudyTableAnnotationComposer composer = $composerBuilder(
@@ -5697,26 +6502,6 @@ class $$TimeStudyTableAnnotationComposer
             ));
     return composer;
   }
-
-  $$SetupElementsTableAnnotationComposer get setupElementId {
-    final $$SetupElementsTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.setupElementId,
-        referencedTable: $db.setupElements,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$SetupElementsTableAnnotationComposer(
-              $db: $db,
-              $table: $db.setupElements,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
 }
 
 class $$TimeStudyTableTableManager extends RootTableManager<
@@ -5730,7 +6515,7 @@ class $$TimeStudyTableTableManager extends RootTableManager<
     $$TimeStudyTableUpdateCompanionBuilder,
     (TimeStudyData, $$TimeStudyTableReferences),
     TimeStudyData,
-    PrefetchHooks Function({bool studyId, bool setupElementId})> {
+    PrefetchHooks Function({bool studyId})> {
   $$TimeStudyTableTableManager(_$AppDatabase db, $TimeStudyTable table)
       : super(TableManagerState(
           db: db,
@@ -5744,26 +6529,26 @@ class $$TimeStudyTableTableManager extends RootTableManager<
           updateCompanionCallback: ({
             Value<int> id = const Value.absent(),
             Value<int> studyId = const Value.absent(),
-            Value<int> setupElementId = const Value.absent(),
-            Value<String> time = const Value.absent(),
+            Value<String> taskName = const Value.absent(),
+            Value<String> iterationTime = const Value.absent(),
           }) =>
               TimeStudyCompanion(
             id: id,
             studyId: studyId,
-            setupElementId: setupElementId,
-            time: time,
+            taskName: taskName,
+            iterationTime: iterationTime,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
             required int studyId,
-            required int setupElementId,
-            required String time,
+            required String taskName,
+            required String iterationTime,
           }) =>
               TimeStudyCompanion.insert(
             id: id,
             studyId: studyId,
-            setupElementId: setupElementId,
-            time: time,
+            taskName: taskName,
+            iterationTime: iterationTime,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (
@@ -5771,7 +6556,7 @@ class $$TimeStudyTableTableManager extends RootTableManager<
                     $$TimeStudyTableReferences(db, table, e)
                   ))
               .toList(),
-          prefetchHooksCallback: ({studyId = false, setupElementId = false}) {
+          prefetchHooksCallback: ({studyId = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [],
@@ -5798,16 +6583,6 @@ class $$TimeStudyTableTableManager extends RootTableManager<
                         $$TimeStudyTableReferences._studyIdTable(db).id,
                   ) as T;
                 }
-                if (setupElementId) {
-                  state = state.withJoin(
-                    currentTable: table,
-                    currentColumn: table.setupElementId,
-                    referencedTable:
-                        $$TimeStudyTableReferences._setupElementIdTable(db),
-                    referencedColumn:
-                        $$TimeStudyTableReferences._setupElementIdTable(db).id,
-                  ) as T;
-                }
 
                 return state;
               },
@@ -5830,7 +6605,7 @@ typedef $$TimeStudyTableProcessedTableManager = ProcessedTableManager<
     $$TimeStudyTableUpdateCompanionBuilder,
     (TimeStudyData, $$TimeStudyTableReferences),
     TimeStudyData,
-    PrefetchHooks Function({bool studyId, bool setupElementId})>;
+    PrefetchHooks Function({bool studyId})>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -5841,10 +6616,10 @@ class $AppDatabaseManager {
       $$ProcessesTableTableManager(_db, _db.processes);
   $$ProcessPartsTableTableManager get processParts =>
       $$ProcessPartsTableTableManager(_db, _db.processParts);
-  $$PartsTableTableManager get parts =>
-      $$PartsTableTableManager(_db, _db.parts);
   $$OrganizationsTableTableManager get organizations =>
       $$OrganizationsTableTableManager(_db, _db.organizations);
+  $$PartsTableTableManager get parts =>
+      $$PartsTableTableManager(_db, _db.parts);
   $$PlantsTableTableManager get plants =>
       $$PlantsTableTableManager(_db, _db.plants);
   $$SetupsTableTableManager get setups =>
@@ -5853,6 +6628,8 @@ class $AppDatabaseManager {
       $$SetupElementsTableTableManager(_db, _db.setupElements);
   $$StudyTableTableManager get study =>
       $$StudyTableTableManager(_db, _db.study);
+  $$TaskStudyTableTableManager get taskStudy =>
+      $$TaskStudyTableTableManager(_db, _db.taskStudy);
   $$TimeStudyTableTableManager get timeStudy =>
       $$TimeStudyTableTableManager(_db, _db.timeStudy);
 }
