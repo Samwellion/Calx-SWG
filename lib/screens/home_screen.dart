@@ -344,7 +344,8 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     final Map<String, Map<String, dynamic>> grouped = {};
     for (final pp in processParts) {
       final setupElementsWithSetup = await (db.select(db.setupElements)
-            ..where((tbl) => tbl.processPartId.equals(pp.id)))
+            ..where((tbl) => tbl.processPartId.equals(pp.id))
+            ..orderBy([(tbl) => drift.OrderingTerm.asc(tbl.orderIndex)]))
           .join([
         drift.leftOuterJoin(
             db.setups, db.setups.id.equalsExp(db.setupElements.setupId))

@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import '../models/organization_data.dart' as org_data;
 import '../widgets/app_footer.dart';
+import '../widgets/app_drawer.dart';
 import '../database_provider.dart';
 import '../logic/plant_repository.dart';
 import '../widgets/plant_details_panel.dart';
 import '../widgets/plant_list.dart';
-import '../screens/home_screen.dart';
-import '../screens/organization_setup_screen.dart';
 
 // Global map to hold plant name -> value streams (one-to-many)
 Map<String, List<String>> plantValueStreams = {};
@@ -118,145 +117,6 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
     } else {
       return true; // Allow navigation without saving
     }
-  }
-
-  // Custom navigation handler for drawer
-  Future<void> _handleNavigation(VoidCallback navigationAction) async {
-    final canNavigate = await _onWillPop();
-    if (canNavigate) {
-      navigationAction();
-    }
-  }
-
-  Widget _buildCustomDrawer() {
-    return Drawer(
-      backgroundColor: Colors.white,
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: <Widget>[
-          GestureDetector(
-            onTap: () {
-              _handleNavigation(() {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const HomeScreen()),
-                );
-              });
-            },
-            child: DrawerHeader(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-              ),
-              child: Row(
-                children: [
-                  Image.asset(
-                    'assets/images/calx_logo.png',
-                    height: 60,
-                    width: 60,
-                    fit: BoxFit.contain,
-                  ),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                    child: Text(
-                      'Calx LLC Industrial Tools',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 24,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.home),
-            title: const Text('Home'),
-            onTap: () {
-              _handleNavigation(() {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const HomeScreen()),
-                );
-              });
-            },
-          ),
-          ExpansionTile(
-            leading: const Icon(Icons.business),
-            title: const Text('Organizational Setup'),
-            children: <Widget>[
-              ListTile(
-                leading: const Icon(Icons.account_tree),
-                title: const Text('Organization Setup'),
-                contentPadding: const EdgeInsets.only(left: 72.0, right: 16.0),
-                onTap: () {
-                  _handleNavigation(() {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) =>
-                              const OrganizationSetupScreen()),
-                    );
-                  });
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.location_city),
-                title: const Text('Plant & Value Stream Setup'),
-                contentPadding: const EdgeInsets.only(left: 72.0, right: 16.0),
-                onTap: () {
-                  // This navigates to the same screen, so just close the drawer
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.precision_manufacturing),
-                title: const Text('Part Number Setup'),
-                contentPadding: const EdgeInsets.only(left: 72.0, right: 16.0),
-                onTap: () {
-                  Navigator.pop(context); // Close the drawer first
-                  _showPartSetupDialog();
-                },
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showPartSetupDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Part Number Setup'),
-          content: const Text(
-            'To access Part Number Setup, please first select a Company, Plant, and Value Stream from the Home screen.',
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Go to Home'),
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-                _handleNavigation(() {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => const HomeScreen()),
-                  );
-                });
-              },
-            ),
-            TextButton(
-              child: const Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-              },
-            ),
-          ],
-        );
-      },
-    );
   }
 
   Future<void> _saveCurrentPlantDetails() async {
@@ -401,7 +261,7 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
               title: const Text('Plant Setup'),
               backgroundColor: Colors.white,
             ),
-            drawer: _buildCustomDrawer(),
+            drawer: const AppDrawer(),
             backgroundColor: Colors.yellow[100],
             resizeToAvoidBottomInset: true,
             body: LayoutBuilder(

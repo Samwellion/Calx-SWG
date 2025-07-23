@@ -54,42 +54,66 @@ class _SetupElementViewerScreenState extends State<SetupElementViewerScreen> {
 
       // Get all setups first
       final allSetups = await db.select(db.setups).get();
+      print('DEBUG: Found ${allSetups.length} setups in database');
 
       List<SetupInfo> setups = [];
 
       for (final setup in allSetups) {
-        // Get process part info for this setup
-        final processPart = await (db.select(db.processParts)
-              ..where((pp) => pp.id.equals(setup.processPartId)))
-            .getSingleOrNull();
+        try {
+          // Get process part info for this setup
+          final processPart = await (db.select(db.processParts)
+                ..where((pp) => pp.id.equals(setup.processPartId)))
+              .getSingleOrNull();
 
-        if (processPart == null) continue;
+          if (processPart == null) {
+            print(
+                'DEBUG: No process part found for setup ${setup.setupName} (processPartId: ${setup.processPartId})');
+            continue;
+          }
 
-        // Get all elements for this setup
-        final elements = await (db.select(db.setupElements)
-              ..where((e) => e.setupId.equals(setup.id))
-              ..orderBy([(e) => OrderingTerm(expression: e.orderIndex)]))
-            .get();
+          // Get all elements for this setup
+          final elements = await (db.select(db.setupElements)
+                ..where((e) => e.setupId.equals(setup.id))
+                ..orderBy([(e) => OrderingTerm(expression: e.orderIndex)]))
+              .get();
 
-        if (elements.isEmpty) continue;
+          if (elements.isEmpty) {
+            print('DEBUG: No elements found for setup ${setup.setupName}');
+            continue;
+          }
 
-        // Get study info for observer name (if available)
-        final study = await (db.select(db.study)
-              ..where((s) => s.setupId.equals(setup.id)))
-            .getSingleOrNull();
+          // Get study info for observer name (if available) - use first() to handle multiple studies
+          final studies = await (db.select(db.study)
+                ..where((s) => s.setupId.equals(setup.id)))
+              .get();
+          final study = studies.isNotEmpty ? studies.first : null;
 
-        // Use the first element's setup date/time as the setup date
-        final setupDateTime =
-            elements.isNotEmpty ? elements.first.setupDateTime : DateTime.now();
+          if (studies.length > 1) {
+            print(
+                'DEBUG: Multiple studies found for setup ${setup.setupName}, using first one');
+          }
 
-        setups.add(SetupInfo(
-          setupId: setup.id,
-          setupName: setup.setupName,
-          partNumber: processPart.partNumber,
-          setupDateTime: setupDateTime,
-          observerName: study?.observerName ?? 'Unknown',
-          elements: elements,
-        ));
+          // Use the first element's setup date/time as the setup date
+          final setupDateTime = elements.isNotEmpty
+              ? elements.first.setupDateTime
+              : DateTime.now();
+
+          setups.add(SetupInfo(
+            setupId: setup.id,
+            setupName: setup.setupName,
+            partNumber: processPart.partNumber,
+            setupDateTime: setupDateTime,
+            observerName: study?.observerName ?? 'Unknown',
+            elements: elements,
+          ));
+
+          print(
+              'DEBUG: Successfully loaded setup ${setup.setupName} with ${elements.length} elements');
+        } catch (e) {
+          print('DEBUG: Error loading setup ${setup.setupName}: $e');
+          // Continue with next setup instead of failing completely
+          continue;
+        }
       }
 
       // Sort by setup date (most recent first)
@@ -99,7 +123,10 @@ class _SetupElementViewerScreenState extends State<SetupElementViewerScreen> {
         _setups = setups;
         _isLoading = false;
       });
+
+      print('DEBUG: Successfully loaded ${setups.length} setups');
     } catch (e) {
+      print('DEBUG: General error in _loadSetups: $e');
       setState(() {
         _error = 'Error loading setups: $e';
         _isLoading = false;
@@ -298,7 +325,7 @@ class _SetupElementViewerScreenState extends State<SetupElementViewerScreen> {
           elevation: isSelected ? 4 : 1,
           child: ListTile(
             title: Text(
-              setup.setupName,
+              '${setup.setupName} - ${setup.partNumber}',
               style: TextStyle(
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 fontSize: 16,
@@ -306,17 +333,16 @@ class _SetupElementViewerScreenState extends State<SetupElementViewerScreen> {
             ),
             subtitle: Padding(
               padding: const EdgeInsets.only(top: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  _buildInfoRow('Part Number:', setup.partNumber),
-                  const SizedBox(height: 4),
-                  _buildInfoRow('Date:',
-                      '${setup.setupDateTime.day}/${setup.setupDateTime.month}/${setup.setupDateTime.year}'),
-                  const SizedBox(height: 4),
-                  _buildInfoRow('Observer:', setup.observerName),
-                  const SizedBox(height: 4),
-                  _buildInfoRow('Elements:', '${setup.elements.length}'),
+                  Expanded(
+                    child: _buildInfoRow('Date:',
+                        '${setup.setupDateTime.month}/${setup.setupDateTime.day}/${setup.setupDateTime.year}'),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildInfoRow('Observer:', setup.observerName),
+                  ),
                 ],
               ),
             ),
@@ -416,7 +442,7 @@ class _SetupElementViewerScreenState extends State<SetupElementViewerScreen> {
                   ),
                   Expanded(
                     child: _buildHeaderInfo('Date',
-                        '${setup.setupDateTime.day}/${setup.setupDateTime.month}/${setup.setupDateTime.year} at ${setup.setupDateTime.hour}:${setup.setupDateTime.minute.toString().padLeft(2, '0')}'),
+                        '${setup.setupDateTime.month}/${setup.setupDateTime.day}/${setup.setupDateTime.year} at ${setup.setupDateTime.hour}:${setup.setupDateTime.minute.toString().padLeft(2, '0')}'),
                   ),
                 ],
               ),

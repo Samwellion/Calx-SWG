@@ -7,6 +7,7 @@ import '../screens/elements_input_screen.dart';
 import '../screens/time_observation_form.dart';
 import '../screens/setup_element_viewer.dart';
 import '../screens/task_study_viewer.dart';
+import '../screens/time_study_viewer.dart';
 
 class AppDrawer extends StatefulWidget {
   const AppDrawer({super.key});
@@ -337,7 +338,14 @@ class _AppDrawerState extends State<AppDrawer> {
                       ? 'Requires: Company, Plant, Value Stream'
                       : 'Requires: Company, Plant, Value Stream, Process',
                 ),
+            ],
+          ),
 
+          // Data Viewers
+          ExpansionTile(
+            leading: const Icon(Icons.visibility),
+            title: const Text('Data Viewers'),
+            children: <Widget>[
               // Setup Element Viewer - No requirements (view-only)
               _buildEnabledListTile(
                 icon: Icons.view_list,
@@ -360,6 +368,19 @@ class _AppDrawerState extends State<AppDrawer> {
                     context,
                     MaterialPageRoute(
                         builder: (context) => const TaskStudyViewerScreen()),
+                  );
+                },
+              ),
+
+              // Time Study Viewer - No requirements (view-only)
+              _buildEnabledListTile(
+                icon: Icons.timer_outlined,
+                title: 'Time Study Viewer',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const TimeStudyViewerScreen()),
                   );
                 },
               ),

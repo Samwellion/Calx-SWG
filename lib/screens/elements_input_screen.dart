@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:drift/drift.dart' as drift;
 
 import '../widgets/app_footer.dart';
+import '../widgets/app_drawer.dart';
 import '../widgets/detailed_selection_display_card.dart';
 import '../widgets/element_list_card.dart';
-import '../screens/home_screen.dart';
-import '../screens/organization_setup_screen.dart';
-import '../screens/plant_setup_screen.dart';
 
 import '../logic/app_database.dart';
 import '../database_provider.dart';
@@ -125,7 +123,8 @@ class _ElementsInputScreenState extends State<ElementsInputScreen> {
     final elements = await (db.select(db.setupElements)
           ..where((tbl) =>
               tbl.processPartId.equals(processPartId!) &
-              tbl.setupId.equals(setup.id)))
+              tbl.setupId.equals(setup.id))
+          ..orderBy([(tbl) => drift.OrderingTerm.asc(tbl.orderIndex)]))
         .get();
 
     setState(() {
@@ -499,7 +498,7 @@ class _ElementsInputScreenState extends State<ElementsInputScreen> {
           title: const Text('Element Input'),
           backgroundColor: Colors.white,
         ),
-        drawer: _buildCustomDrawer(),
+        drawer: const AppDrawer(),
         backgroundColor: Colors.yellow[100],
         floatingActionButton: FloatingActionButton(
           heroTag: "setup",
@@ -780,7 +779,8 @@ class _ElementsInputScreenState extends State<ElementsInputScreen> {
         final elements = await (db.select(db.setupElements)
               ..where((tbl) =>
                   tbl.processPartId.equals(processPartId!) &
-                  tbl.setupId.equals(existingSetup.id)))
+                  tbl.setupId.equals(existingSetup.id))
+              ..orderBy([(tbl) => drift.OrderingTerm.asc(tbl.orderIndex)]))
             .get();
 
         setState(() {
@@ -788,152 +788,5 @@ class _ElementsInputScreenState extends State<ElementsInputScreen> {
         });
       }
     }
-  }
-
-  // Build custom drawer with navigation protection
-  Widget _buildCustomDrawer() {
-    return Drawer(
-      backgroundColor: Colors.white,
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: <Widget>[
-          GestureDetector(
-            onTap: () async {
-              Navigator.pop(context); // Close drawer
-              final shouldNavigate = await _handleNavigation();
-              if (shouldNavigate && mounted) {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const HomeScreen()),
-                );
-              }
-            },
-            child: DrawerHeader(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-              ),
-              child: Row(
-                children: [
-                  Image.asset(
-                    'assets/images/calx_logo.png',
-                    height: 60,
-                    width: 60,
-                    fit: BoxFit.contain,
-                  ),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                    child: Text(
-                      'Calx LLC Industrial Tools',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 24,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.home),
-            title: const Text('Home'),
-            onTap: () async {
-              Navigator.pop(context); // Close drawer
-              final shouldNavigate = await _handleNavigation();
-              if (shouldNavigate && mounted) {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const HomeScreen()),
-                );
-              }
-            },
-          ),
-          ExpansionTile(
-            leading: const Icon(Icons.business),
-            title: const Text('Organizational Setup'),
-            children: <Widget>[
-              ListTile(
-                leading: const Icon(Icons.account_tree),
-                title: const Text('Organization Setup'),
-                contentPadding: const EdgeInsets.only(left: 72.0, right: 16.0),
-                onTap: () async {
-                  Navigator.pop(context); // Close drawer
-                  final shouldNavigate = await _handleNavigation();
-                  if (shouldNavigate && mounted) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) =>
-                              const OrganizationSetupScreen()),
-                    );
-                  }
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.location_city),
-                title: const Text('Plant & Value Stream Setup'),
-                contentPadding: const EdgeInsets.only(left: 72.0, right: 16.0),
-                onTap: () async {
-                  Navigator.pop(context); // Close drawer
-                  final shouldNavigate = await _handleNavigation();
-                  if (shouldNavigate && mounted) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const PlantSetupScreen()),
-                    );
-                  }
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.precision_manufacturing),
-                title: const Text('Part Number Setup'),
-                contentPadding: const EdgeInsets.only(left: 72.0, right: 16.0),
-                onTap: () {
-                  Navigator.pop(context); // Close the drawer
-                  _showPartSetupDialog();
-                },
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showPartSetupDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Part Number Setup'),
-          content: const Text(
-            'To access Part Number Setup, please first select a Company, Plant, and Value Stream from the Home screen.',
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Go to Home'),
-              onPressed: () async {
-                Navigator.of(context).pop(); // Close dialog
-                final shouldNavigate = await _handleNavigation();
-                if (shouldNavigate && mounted) {
-                  Navigator.pushReplacement(
-                    // ignore: use_build_context_synchronously
-                    context,
-                    MaterialPageRoute(builder: (context) => const HomeScreen()),
-                  );
-                }
-              },
-            ),
-            TextButton(
-              child: const Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-              },
-            ),
-          ],
-        );
-      },
-    );
   }
 }

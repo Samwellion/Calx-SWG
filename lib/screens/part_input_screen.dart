@@ -58,10 +58,31 @@ class _PartInputScreenState extends State<PartInputScreen> {
       _error = null;
     });
     try {
+      // First, verify the value stream exists and get the correct ID by name
+      // This handles cases where the ID might be stale after app restart
+      final valueStreamCheck = await db.customSelect(
+        '''SELECT vs.id, vs.name 
+           FROM value_streams vs 
+           JOIN plants p ON vs.plant_id = p.id 
+           WHERE vs.name = ? AND p.name = ?''',
+        variables: [
+          drift.Variable.withString(widget.valueStreamName),
+          drift.Variable.withString(widget.plantName),
+        ],
+      ).get();
+
+      int actualValueStreamId = widget.valueStreamId;
+
+      if (valueStreamCheck.isNotEmpty) {
+        actualValueStreamId = valueStreamCheck.first.data['id'] as int;
+      } else {}
+
+      // Query parts using the correct value stream ID
       final result = await db.customSelect(
         'SELECT id, part_number, part_description FROM parts WHERE value_stream_id = ?',
-        variables: [drift.Variable.withInt(widget.valueStreamId)],
+        variables: [drift.Variable.withInt(actualValueStreamId)],
       ).get();
+
       setState(() {
         _parts = result.map((row) => row.data).toList();
         _editingStates = {for (var part in _parts) part['id']: false};
@@ -75,6 +96,71 @@ class _PartInputScreenState extends State<PartInputScreen> {
         };
         _loading = false;
       });
+
+      if (_parts.isNotEmpty) {
+      } else {
+        final totalParts =
+            await db.customSelect('SELECT COUNT(*) as count FROM parts').get();
+
+        // Let's see what value_stream_ids the existing parts are using
+        final existingParts = await db
+            .customSelect('SELECT part_number, value_stream_id FROM parts')
+            .get();
+        for (final part in existingParts) {}
+
+        // Let's also check all value streams to see which ones exist
+        final allValueStreams = await db
+            .customSelect('SELECT id, name, plant_id FROM value_streams')
+            .get();
+        for (final vs in allValueStreams) {}
+
+        // Check for orphaned parts (parts with value_stream_id that no longer exists)
+        final orphanedParts = await db
+            .customSelect('''SELECT p.id, p.part_number, p.value_stream_id 
+             FROM parts p 
+             LEFT JOIN value_streams vs ON p.value_stream_id = vs.id 
+             WHERE vs.id IS NULL''').get();
+
+        if (orphanedParts.isNotEmpty) {
+          // Ask user if they want to fix the orphaned parts by updating them to current value stream
+          if (mounted) {
+            final shouldFix = await showDialog<bool>(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Data Repair Needed'),
+                content: Text(
+                    'Found ${orphanedParts.length} saved parts that are referencing an old value stream configuration.\n\n'
+                    'Would you like to update these parts to use the current "${widget.valueStreamName}" value stream?\n\n'
+                    'Parts to update: ${orphanedParts.map((p) => p.data['part_number']).join(', ')}'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text('Cancel'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    child: const Text('Update Parts'),
+                  ),
+                ],
+              ),
+            );
+
+            if (shouldFix == true) {
+              // Update orphaned parts to use the current value stream ID
+              for (final orphanPart in orphanedParts) {
+                await db.customStatement(
+                  'UPDATE parts SET value_stream_id = ? WHERE id = ?',
+                  [actualValueStreamId, orphanPart.data['id']],
+                );
+              }
+
+              // Reload the parts after fixing
+              _loadParts();
+              return;
+            }
+          }
+        }
+      }
     } catch (e) {
       setState(() {
         _error = 'Failed to load parts: $e';

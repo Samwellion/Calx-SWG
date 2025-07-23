@@ -57,10 +57,45 @@ class _ProcessInputScreenState extends State<ProcessInputScreen> {
       _error = null;
     });
     try {
+      // Debug logging to identify the issue
+      print(
+          'DEBUG: Loading processes for valueStreamId: ${widget.valueStreamId}');
+      print('DEBUG: ValueStream name: ${widget.valueStreamName}');
+      print('DEBUG: Plant name: ${widget.plantName}');
+
+      // First, verify the value stream exists and get the correct ID by name
+      // This handles cases where the ID might be stale after app restart
+      final valueStreamCheck = await db.customSelectQuery(
+        '''SELECT vs.id, vs.name 
+           FROM value_streams vs 
+           JOIN plants p ON vs.plant_id = p.id 
+           WHERE vs.name = ? AND p.name = ?''',
+        variables: [
+          drift.Variable.withString(widget.valueStreamName),
+          drift.Variable.withString(widget.plantName),
+        ],
+      ).get();
+
+      int actualValueStreamId = widget.valueStreamId;
+
+      if (valueStreamCheck.isNotEmpty) {
+        actualValueStreamId = valueStreamCheck.first.data['id'] as int;
+        print(
+            'DEBUG: Found value stream by name. Actual ID: $actualValueStreamId');
+      } else {
+        print(
+            'DEBUG: Value stream not found by name, using passed ID: $actualValueStreamId');
+      }
+
+      // Query processes using the correct value stream ID
       final result = await db.customSelectQuery(
         'SELECT id, process_name, process_description FROM processes WHERE value_stream_id = ?',
-        variables: [drift.Variable.withInt(widget.valueStreamId)],
+        variables: [drift.Variable.withInt(actualValueStreamId)],
       ).get();
+
+      print(
+          'DEBUG: Found ${result.length} processes for value stream ID $actualValueStreamId');
+
       setState(() {
         _processes = result.map((row) => row.data).toList();
         _editingStates = {for (var process in _processes) process['id']: false};
@@ -71,7 +106,74 @@ class _ProcessInputScreenState extends State<ProcessInputScreen> {
         };
         _loading = false;
       });
+
+      if (_processes.isNotEmpty) {
+        print(
+            'DEBUG: Processes loaded successfully. First process: ${_processes[0]}');
+      } else {
+        print(
+            'DEBUG: No processes found - checking if any processes exist in database...');
+        final totalProcesses = await db
+            .customSelectQuery('SELECT COUNT(*) as count FROM processes')
+            .get();
+        print(
+            'DEBUG: Total processes in database: ${totalProcesses.first.data['count']}');
+
+        // Check for orphaned processes (processes with value_stream_id that no longer exists)
+        final orphanedProcesses = await db.customSelectQuery(
+            '''SELECT p.id, p.process_name, p.value_stream_id 
+             FROM processes p 
+             LEFT JOIN value_streams vs ON p.value_stream_id = vs.id 
+             WHERE vs.id IS NULL''').get();
+
+        if (orphanedProcesses.isNotEmpty) {
+          print(
+              'DEBUG: Found ${orphanedProcesses.length} orphaned processes (referencing non-existent value_stream_ids)');
+
+          // Ask user if they want to fix the orphaned processes by updating them to current value stream
+          if (mounted) {
+            final shouldFix = await showDialog<bool>(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Data Repair Needed'),
+                content: Text(
+                    'Found ${orphanedProcesses.length} saved processes that are referencing an old value stream configuration.\n\n'
+                    'Would you like to update these processes to use the current "${widget.valueStreamName}" value stream?\n\n'
+                    'Processes to update: ${orphanedProcesses.map((p) => p.data['process_name']).join(', ')}'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text('Cancel'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    child: const Text('Update Processes'),
+                  ),
+                ],
+              ),
+            );
+
+            if (shouldFix == true) {
+              // Update orphaned processes to use the current value stream ID
+              for (final orphanProcess in orphanedProcesses) {
+                await db.customStatement(
+                  'UPDATE processes SET value_stream_id = ? WHERE id = ?',
+                  [actualValueStreamId, orphanProcess.data['id']],
+                );
+                print(
+                    'DEBUG: Updated process ${orphanProcess.data['process_name']} to use value_stream_id $actualValueStreamId');
+              }
+
+              print('DEBUG: Processes updated, reloading...');
+              // Reload the processes after fixing
+              _loadProcesses();
+              return;
+            }
+          }
+        }
+      }
     } catch (e) {
+      print('DEBUG: Error loading processes: $e');
       setState(() {
         _error = 'Failed to load processes: $e';
         _loading = false;

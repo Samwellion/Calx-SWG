@@ -4,41 +4,65 @@ import '../widgets/app_footer.dart';
 import '../database_provider.dart';
 import '../logic/app_database.dart';
 
-class StudyInfo {
+class TimeStudyInfo {
   final int studyId;
   final String setupName;
   final String partNumber;
   final DateTime studyDate;
   final String observerName;
-  final List<TaskStudyData> taskStudies;
+  final List<TimeStudyData> timeStudies;
+  final Map<String, List<String>> elementLaps; // taskName -> list of lap times
 
-  StudyInfo({
+  TimeStudyInfo({
     required this.studyId,
     required this.setupName,
     required this.partNumber,
     required this.studyDate,
     required this.observerName,
-    required this.taskStudies,
+    required this.timeStudies,
+    required this.elementLaps,
   });
 }
 
-class TaskStudyViewerScreen extends StatefulWidget {
-  const TaskStudyViewerScreen({super.key});
+class TimeStudyViewerScreen extends StatefulWidget {
+  const TimeStudyViewerScreen({super.key});
 
   @override
-  State<TaskStudyViewerScreen> createState() => _TaskStudyViewerScreenState();
+  State<TimeStudyViewerScreen> createState() => _TimeStudyViewerScreenState();
 }
 
-class _TaskStudyViewerScreenState extends State<TaskStudyViewerScreen> {
-  List<StudyInfo> _studies = [];
-  StudyInfo? _selectedStudy;
+class _TimeStudyViewerScreenState extends State<TimeStudyViewerScreen> {
+  List<TimeStudyInfo> _studies = [];
+  List<TimeStudyInfo> _filteredStudies = [];
+  TimeStudyInfo? _selectedStudy;
   bool _isLoading = true;
   String? _error;
+
+  // Filter controllers
+  final TextEditingController _partNumberFilterController =
+      TextEditingController();
+  final TextEditingController _setupNameFilterController =
+      TextEditingController();
+  final TextEditingController _observerFilterController =
+      TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _loadStudies();
+
+    // Add listeners to filter controllers
+    _partNumberFilterController.addListener(_applyFilters);
+    _setupNameFilterController.addListener(_applyFilters);
+    _observerFilterController.addListener(_applyFilters);
+  }
+
+  @override
+  void dispose() {
+    _partNumberFilterController.dispose();
+    _setupNameFilterController.dispose();
+    _observerFilterController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadStudies() async {
@@ -53,38 +77,58 @@ class _TaskStudyViewerScreenState extends State<TaskStudyViewerScreen> {
       // Get all studies first
       final allStudies = await db.select(db.study).get();
 
-      List<StudyInfo> studies = [];
+      List<TimeStudyInfo> studies = [];
 
       for (final study in allStudies) {
-        // Get setup info for this study
-        final setup = await (db.select(db.setups)
-              ..where((s) => s.id.equals(study.setupId)))
-            .getSingleOrNull();
+        try {
+          // Get setup info for this study
+          final setup = await (db.select(db.setups)
+                ..where((s) => s.id.equals(study.setupId)))
+              .getSingleOrNull();
 
-        if (setup == null) continue;
+          if (setup == null) {
+            continue;
+          }
 
-        // Get process part info for the setup
-        final processPart = await (db.select(db.processParts)
-              ..where((pp) => pp.id.equals(setup.processPartId)))
-            .getSingleOrNull();
+          // Get process part info for the setup
+          final processPart = await (db.select(db.processParts)
+                ..where((pp) => pp.id.equals(setup.processPartId)))
+              .getSingleOrNull();
 
-        if (processPart == null) continue;
+          if (processPart == null) {
+            continue;
+          }
 
-        // Get all task studies for this study
-        final taskStudies = await (db.select(db.taskStudy)
-              ..where((ts) => ts.studyId.equals(study.id)))
-            .get();
+          // Get all time studies for this study
+          final timeStudies = await (db.select(db.timeStudy)
+                ..where((ts) => ts.studyId.equals(study.id)))
+              .get();
 
-        if (taskStudies.isEmpty) continue;
+          if (timeStudies.isEmpty) {
+            continue;
+          }
 
-        studies.add(StudyInfo(
-          studyId: study.id,
-          setupName: setup.setupName,
-          partNumber: processPart.partNumber,
-          studyDate: study.date,
-          observerName: study.observerName,
-          taskStudies: taskStudies,
-        ));
+          // Group time studies by task name to organize laps
+          Map<String, List<String>> elementLaps = {};
+          for (final timeStudy in timeStudies) {
+            if (!elementLaps.containsKey(timeStudy.taskName)) {
+              elementLaps[timeStudy.taskName] = [];
+            }
+            elementLaps[timeStudy.taskName]!.add(timeStudy.iterationTime);
+          }
+
+          studies.add(TimeStudyInfo(
+            studyId: study.id,
+            setupName: setup.setupName,
+            partNumber: processPart.partNumber,
+            studyDate: study.date,
+            observerName: study.observerName,
+            timeStudies: timeStudies,
+            elementLaps: elementLaps,
+          ));
+        } catch (e) {
+          continue;
+        }
       }
 
       // Sort by study date (most recent first)
@@ -92,17 +136,51 @@ class _TaskStudyViewerScreenState extends State<TaskStudyViewerScreen> {
 
       setState(() {
         _studies = studies;
+        _filteredStudies = studies; // Initialize filtered list
         _isLoading = false;
       });
+      _applyFilters(); // Apply any existing filters
     } catch (e) {
       setState(() {
-        _error = 'Error loading task studies: $e';
+        _error = 'Error loading time studies: $e';
         _isLoading = false;
       });
     }
   }
 
-  void _selectStudy(StudyInfo study) {
+  void _applyFilters() {
+    setState(() {
+      _filteredStudies = _studies.where((study) {
+        final partNumberFilter = _partNumberFilterController.text.toLowerCase();
+        final setupNameFilter = _setupNameFilterController.text.toLowerCase();
+        final observerFilter = _observerFilterController.text.toLowerCase();
+
+        final matchesPartNumber = partNumberFilter.isEmpty ||
+            study.partNumber.toLowerCase().contains(partNumberFilter);
+        final matchesSetupName = setupNameFilter.isEmpty ||
+            study.setupName.toLowerCase().contains(setupNameFilter);
+        final matchesObserver = observerFilter.isEmpty ||
+            study.observerName.toLowerCase().contains(observerFilter);
+
+        return matchesPartNumber && matchesSetupName && matchesObserver;
+      }).toList();
+
+      // Clear selection if the selected study is no longer in filtered results
+      if (_selectedStudy != null &&
+          !_filteredStudies
+              .any((study) => study.studyId == _selectedStudy!.studyId)) {
+        _selectedStudy = null;
+      }
+    });
+  }
+
+  void _clearFilters() {
+    _partNumberFilterController.clear();
+    _setupNameFilterController.clear();
+    _observerFilterController.clear();
+  }
+
+  void _selectStudy(TimeStudyInfo study) {
     setState(() {
       _selectedStudy = study;
     });
@@ -112,7 +190,7 @@ class _TaskStudyViewerScreenState extends State<TaskStudyViewerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Task Study Viewer'),
+        title: const Text('Time Study Viewer'),
         backgroundColor: Colors.white,
       ),
       drawer: const AppDrawer(),
@@ -155,13 +233,64 @@ class _TaskStudyViewerScreenState extends State<TaskStudyViewerScreen> {
                                 ),
                               ),
                               child: const Text(
-                                'Task Studies',
+                                'Time Studies',
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
+                            // Filter Section
+                            Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                children: [
+                                  TextField(
+                                    controller: _partNumberFilterController,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Filter by Part Number',
+                                      prefixIcon: Icon(Icons.search),
+                                      border: OutlineInputBorder(),
+                                      isDense: true,
+                                    ),
+                                    onChanged: (value) => _applyFilters(),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  TextField(
+                                    controller: _setupNameFilterController,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Filter by Setup Name',
+                                      prefixIcon: Icon(Icons.search),
+                                      border: OutlineInputBorder(),
+                                      isDense: true,
+                                    ),
+                                    onChanged: (value) => _applyFilters(),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  TextField(
+                                    controller: _observerFilterController,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Filter by Observer',
+                                      prefixIcon: Icon(Icons.search),
+                                      border: OutlineInputBorder(),
+                                      isDense: true,
+                                    ),
+                                    onChanged: (value) => _applyFilters(),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      TextButton(
+                                        onPressed: _clearFilters,
+                                        child: const Text('Clear Filters'),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Divider(height: 1),
                             Expanded(
                               child: _buildStudiesList(),
                             ),
@@ -207,7 +336,7 @@ class _TaskStudyViewerScreenState extends State<TaskStudyViewerScreen> {
                               ),
                             ),
                             Expanded(
-                              child: _buildTaskStudyDetailsTable(),
+                              child: _buildTimeStudyDetailsTable(),
                             ),
                           ],
                         ),
@@ -269,7 +398,7 @@ class _TaskStudyViewerScreenState extends State<TaskStudyViewerScreen> {
             ),
             SizedBox(height: 16),
             Text(
-              'No task studies found',
+              'No time studies found',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey,
@@ -293,7 +422,7 @@ class _TaskStudyViewerScreenState extends State<TaskStudyViewerScreen> {
           elevation: isSelected ? 4 : 1,
           child: ListTile(
             title: Text(
-              study.setupName,
+              '${study.setupName} - ${study.partNumber}',
               style: TextStyle(
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 fontSize: 16,
@@ -301,17 +430,16 @@ class _TaskStudyViewerScreenState extends State<TaskStudyViewerScreen> {
             ),
             subtitle: Padding(
               padding: const EdgeInsets.only(top: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  _buildInfoRow('Part Number:', study.partNumber),
-                  const SizedBox(height: 4),
-                  _buildInfoRow('Date:',
-                      '${study.studyDate.month}/${study.studyDate.day}/${study.studyDate.year}'),
-                  const SizedBox(height: 4),
-                  _buildInfoRow('Observer:', study.observerName),
-                  const SizedBox(height: 4),
-                  _buildInfoRow('Tasks:', '${study.taskStudies.length}'),
+                  Expanded(
+                    child: _buildInfoRow('Date:',
+                        '${study.studyDate.month}/${study.studyDate.day}/${study.studyDate.year}'),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildInfoRow('Observer:', study.observerName),
+                  ),
                 ],
               ),
             ),
@@ -329,7 +457,7 @@ class _TaskStudyViewerScreenState extends State<TaskStudyViewerScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          width: 80,
+          width: 60,
           child: Text(
             label,
             style: const TextStyle(
@@ -352,7 +480,7 @@ class _TaskStudyViewerScreenState extends State<TaskStudyViewerScreen> {
     );
   }
 
-  Widget _buildTaskStudyDetailsTable() {
+  Widget _buildTimeStudyDetailsTable() {
     if (_selectedStudy == null) {
       return const Center(
         child: Column(
@@ -365,7 +493,7 @@ class _TaskStudyViewerScreenState extends State<TaskStudyViewerScreen> {
             ),
             SizedBox(height: 16),
             Text(
-              'Select a study to view task details',
+              'Select a study to view time details',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey,
@@ -418,11 +546,11 @@ class _TaskStudyViewerScreenState extends State<TaskStudyViewerScreen> {
             ],
           ),
         ),
-        // Task Studies Table
+        // Time Studies Table
         Expanded(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: _buildTaskStudiesTable(study.taskStudies),
+            child: _buildLapsTable(study.elementLaps),
           ),
         ),
       ],
@@ -453,11 +581,11 @@ class _TaskStudyViewerScreenState extends State<TaskStudyViewerScreen> {
     );
   }
 
-  Widget _buildTaskStudiesTable(List<TaskStudyData> taskStudies) {
-    if (taskStudies.isEmpty) {
+  Widget _buildLapsTable(Map<String, List<String>> elementLaps) {
+    if (elementLaps.isEmpty) {
       return const Center(
         child: Text(
-          'No task studies found for this study',
+          'No time studies found for this study',
           style: TextStyle(
             fontSize: 16,
             color: Colors.grey,
@@ -466,66 +594,61 @@ class _TaskStudyViewerScreenState extends State<TaskStudyViewerScreen> {
       );
     }
 
+    // Find the maximum number of laps across all elements
+    int maxLaps = elementLaps.values
+        .fold(0, (max, laps) => laps.length > max ? laps.length : max);
+
+    // Create column widths - element name gets more space, lap columns are equal
+    Map<int, TableColumnWidth> columnWidths = {
+      0: const FlexColumnWidth(3), // Element Name
+    };
+    for (int i = 1; i <= maxLaps; i++) {
+      columnWidths[i] = const FlexColumnWidth(1); // Lap columns
+    }
+
+    List<String> sortedElements = elementLaps.keys.toList()..sort();
+
     return SingleChildScrollView(
       child: Table(
         border: TableBorder.all(color: Colors.grey[300]!, width: 1),
-        columnWidths: const {
-          0: FlexColumnWidth(3), // Task Name
-          1: FlexColumnWidth(2), // LRT Time
-          2: FlexColumnWidth(2), // Override Time
-          3: FlexColumnWidth(3), // Comments
-        },
+        columnWidths: columnWidths,
         children: [
           // Header Row
           TableRow(
             decoration: BoxDecoration(
               color: Colors.yellow[100],
             ),
-            children: const [
-              TableCell(
+            children: [
+              const TableCell(
                 child: Padding(
                   padding: EdgeInsets.all(12),
                   child: Text(
-                    'Task Name',
+                    'Element Name',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
-              TableCell(
-                child: Padding(
-                  padding: EdgeInsets.all(12),
-                  child: Text(
-                    'LRT Time',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-              TableCell(
-                child: Padding(
-                  padding: EdgeInsets.all(12),
-                  child: Text(
-                    'Override Time',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-              TableCell(
-                child: Padding(
-                  padding: EdgeInsets.all(12),
-                  child: Text(
-                    'Comments',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+              ...List.generate(
+                maxLaps,
+                (index) => TableCell(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text(
+                      'Lap ${index + 1}',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ),
               ),
             ],
           ),
           // Data Rows
-          ...taskStudies.asMap().entries.map((entry) {
+          ...sortedElements.asMap().entries.map((entry) {
             final index = entry.key;
-            final task = entry.value;
+            final elementName = entry.value;
+            final laps = elementLaps[elementName]!;
+
             return TableRow(
               decoration: BoxDecoration(
                 color: index % 2 == 0 ? Colors.white : Colors.grey[50],
@@ -534,33 +657,20 @@ class _TaskStudyViewerScreenState extends State<TaskStudyViewerScreen> {
                 TableCell(
                   child: Padding(
                     padding: const EdgeInsets.all(12),
-                    child: Text(task.taskName),
+                    child: Text(elementName),
                   ),
                 ),
-                TableCell(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Text(
-                      task.lrt,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontFamily: 'monospace'),
+                ...List.generate(
+                  maxLaps,
+                  (lapIndex) => TableCell(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Text(
+                        lapIndex < laps.length ? laps[lapIndex] : '',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontFamily: 'monospace'),
+                      ),
                     ),
-                  ),
-                ),
-                TableCell(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Text(
-                      task.overrideTime ?? '-',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontFamily: 'monospace'),
-                    ),
-                  ),
-                ),
-                TableCell(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Text(task.comments ?? ''),
                   ),
                 ),
               ],

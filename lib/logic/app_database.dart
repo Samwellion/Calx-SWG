@@ -100,11 +100,8 @@ class AppDatabase extends _$AppDatabase {
           return m.createAll();
         },
         onUpgrade: (Migrator m, int from, int to) async {
-          print('Migrating database from version $from to $to');
-
           // Force complete recreation for version 14
           if (to >= 14) {
-            print('Performing complete database recreation for schema v14...');
             await m.deleteTable('parts');
             await m.deleteTable('processes');
             await m.deleteTable('value_streams');
@@ -119,13 +116,11 @@ class AppDatabase extends _$AppDatabase {
 
             // Recreate all tables with current schema
             await m.createAll();
-            print('Database recreation completed with all constraints');
             return;
           }
 
           // Force complete recreation for version 13
           if (to >= 13) {
-            print('Performing complete database recreation for schema v13...');
             await m.deleteTable('parts');
             await m.deleteTable('processes');
             await m.deleteTable('value_streams');
@@ -139,7 +134,6 @@ class AppDatabase extends _$AppDatabase {
 
             // Recreate all tables with current schema
             await m.createAll();
-            print('Database recreation completed with all constraints');
             return;
           }
 
