@@ -54,7 +54,6 @@ class _SetupElementViewerScreenState extends State<SetupElementViewerScreen> {
 
       // Get all setups first
       final allSetups = await db.select(db.setups).get();
-      print('DEBUG: Found ${allSetups.length} setups in database');
 
       List<SetupInfo> setups = [];
 
@@ -66,8 +65,6 @@ class _SetupElementViewerScreenState extends State<SetupElementViewerScreen> {
               .getSingleOrNull();
 
           if (processPart == null) {
-            print(
-                'DEBUG: No process part found for setup ${setup.setupName} (processPartId: ${setup.processPartId})');
             continue;
           }
 
@@ -78,7 +75,6 @@ class _SetupElementViewerScreenState extends State<SetupElementViewerScreen> {
               .get();
 
           if (elements.isEmpty) {
-            print('DEBUG: No elements found for setup ${setup.setupName}');
             continue;
           }
 
@@ -88,10 +84,7 @@ class _SetupElementViewerScreenState extends State<SetupElementViewerScreen> {
               .get();
           final study = studies.isNotEmpty ? studies.first : null;
 
-          if (studies.length > 1) {
-            print(
-                'DEBUG: Multiple studies found for setup ${setup.setupName}, using first one');
-          }
+          if (studies.length > 1) {}
 
           // Use the first element's setup date/time as the setup date
           final setupDateTime = elements.isNotEmpty
@@ -106,11 +99,7 @@ class _SetupElementViewerScreenState extends State<SetupElementViewerScreen> {
             observerName: study?.observerName ?? 'Unknown',
             elements: elements,
           ));
-
-          print(
-              'DEBUG: Successfully loaded setup ${setup.setupName} with ${elements.length} elements');
         } catch (e) {
-          print('DEBUG: Error loading setup ${setup.setupName}: $e');
           // Continue with next setup instead of failing completely
           continue;
         }
@@ -123,10 +112,7 @@ class _SetupElementViewerScreenState extends State<SetupElementViewerScreen> {
         _setups = setups;
         _isLoading = false;
       });
-
-      print('DEBUG: Successfully loaded ${setups.length} setups');
     } catch (e) {
-      print('DEBUG: General error in _loadSetups: $e');
       setState(() {
         _error = 'Error loading setups: $e';
         _isLoading = false;
@@ -187,7 +173,7 @@ class _SetupElementViewerScreenState extends State<SetupElementViewerScreen> {
                                 ),
                               ),
                               child: const Text(
-                                'Setups',
+                                'Time Studies',
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -231,7 +217,7 @@ class _SetupElementViewerScreenState extends State<SetupElementViewerScreen> {
                                 ),
                               ),
                               child: const Text(
-                                'Setup Details',
+                                'Time Study Summaries',
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,

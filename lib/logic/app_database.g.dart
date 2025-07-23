@@ -1876,6 +1876,23 @@ class $SetupElementsTable extends SetupElements
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
+  static const VerificationMeta _lrtMeta = const VerificationMeta('lrt');
+  @override
+  late final GeneratedColumn<String> lrt = GeneratedColumn<String>(
+      'lrt', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _overrideTimeMeta =
+      const VerificationMeta('overrideTime');
+  @override
+  late final GeneratedColumn<String> overrideTime = GeneratedColumn<String>(
+      'override_time', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _commentsMeta =
+      const VerificationMeta('comments');
+  @override
+  late final GeneratedColumn<String> comments = GeneratedColumn<String>(
+      'comments', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -1884,7 +1901,10 @@ class $SetupElementsTable extends SetupElements
         setupDateTime,
         elementName,
         time,
-        orderIndex
+        orderIndex,
+        lrt,
+        overrideTime,
+        comments
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1941,6 +1961,20 @@ class $SetupElementsTable extends SetupElements
           orderIndex.isAcceptableOrUnknown(
               data['order_index']!, _orderIndexMeta));
     }
+    if (data.containsKey('lrt')) {
+      context.handle(
+          _lrtMeta, lrt.isAcceptableOrUnknown(data['lrt']!, _lrtMeta));
+    }
+    if (data.containsKey('override_time')) {
+      context.handle(
+          _overrideTimeMeta,
+          overrideTime.isAcceptableOrUnknown(
+              data['override_time']!, _overrideTimeMeta));
+    }
+    if (data.containsKey('comments')) {
+      context.handle(_commentsMeta,
+          comments.isAcceptableOrUnknown(data['comments']!, _commentsMeta));
+    }
     return context;
   }
 
@@ -1964,6 +1998,12 @@ class $SetupElementsTable extends SetupElements
           .read(DriftSqlType.string, data['${effectivePrefix}time'])!,
       orderIndex: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}order_index'])!,
+      lrt: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}lrt']),
+      overrideTime: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}override_time']),
+      comments: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}comments']),
     );
   }
 
@@ -1981,6 +2021,9 @@ class SetupElement extends DataClass implements Insertable<SetupElement> {
   final String elementName;
   final String time;
   final int orderIndex;
+  final String? lrt;
+  final String? overrideTime;
+  final String? comments;
   const SetupElement(
       {required this.id,
       required this.processPartId,
@@ -1988,7 +2031,10 @@ class SetupElement extends DataClass implements Insertable<SetupElement> {
       required this.setupDateTime,
       required this.elementName,
       required this.time,
-      required this.orderIndex});
+      required this.orderIndex,
+      this.lrt,
+      this.overrideTime,
+      this.comments});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1999,6 +2045,15 @@ class SetupElement extends DataClass implements Insertable<SetupElement> {
     map['element_name'] = Variable<String>(elementName);
     map['time'] = Variable<String>(time);
     map['order_index'] = Variable<int>(orderIndex);
+    if (!nullToAbsent || lrt != null) {
+      map['lrt'] = Variable<String>(lrt);
+    }
+    if (!nullToAbsent || overrideTime != null) {
+      map['override_time'] = Variable<String>(overrideTime);
+    }
+    if (!nullToAbsent || comments != null) {
+      map['comments'] = Variable<String>(comments);
+    }
     return map;
   }
 
@@ -2011,6 +2066,13 @@ class SetupElement extends DataClass implements Insertable<SetupElement> {
       elementName: Value(elementName),
       time: Value(time),
       orderIndex: Value(orderIndex),
+      lrt: lrt == null && nullToAbsent ? const Value.absent() : Value(lrt),
+      overrideTime: overrideTime == null && nullToAbsent
+          ? const Value.absent()
+          : Value(overrideTime),
+      comments: comments == null && nullToAbsent
+          ? const Value.absent()
+          : Value(comments),
     );
   }
 
@@ -2025,6 +2087,9 @@ class SetupElement extends DataClass implements Insertable<SetupElement> {
       elementName: serializer.fromJson<String>(json['elementName']),
       time: serializer.fromJson<String>(json['time']),
       orderIndex: serializer.fromJson<int>(json['orderIndex']),
+      lrt: serializer.fromJson<String?>(json['lrt']),
+      overrideTime: serializer.fromJson<String?>(json['overrideTime']),
+      comments: serializer.fromJson<String?>(json['comments']),
     );
   }
   @override
@@ -2038,6 +2103,9 @@ class SetupElement extends DataClass implements Insertable<SetupElement> {
       'elementName': serializer.toJson<String>(elementName),
       'time': serializer.toJson<String>(time),
       'orderIndex': serializer.toJson<int>(orderIndex),
+      'lrt': serializer.toJson<String?>(lrt),
+      'overrideTime': serializer.toJson<String?>(overrideTime),
+      'comments': serializer.toJson<String?>(comments),
     };
   }
 
@@ -2048,7 +2116,10 @@ class SetupElement extends DataClass implements Insertable<SetupElement> {
           DateTime? setupDateTime,
           String? elementName,
           String? time,
-          int? orderIndex}) =>
+          int? orderIndex,
+          Value<String?> lrt = const Value.absent(),
+          Value<String?> overrideTime = const Value.absent(),
+          Value<String?> comments = const Value.absent()}) =>
       SetupElement(
         id: id ?? this.id,
         processPartId: processPartId ?? this.processPartId,
@@ -2057,6 +2128,10 @@ class SetupElement extends DataClass implements Insertable<SetupElement> {
         elementName: elementName ?? this.elementName,
         time: time ?? this.time,
         orderIndex: orderIndex ?? this.orderIndex,
+        lrt: lrt.present ? lrt.value : this.lrt,
+        overrideTime:
+            overrideTime.present ? overrideTime.value : this.overrideTime,
+        comments: comments.present ? comments.value : this.comments,
       );
   SetupElement copyWithCompanion(SetupElementsCompanion data) {
     return SetupElement(
@@ -2073,6 +2148,11 @@ class SetupElement extends DataClass implements Insertable<SetupElement> {
       time: data.time.present ? data.time.value : this.time,
       orderIndex:
           data.orderIndex.present ? data.orderIndex.value : this.orderIndex,
+      lrt: data.lrt.present ? data.lrt.value : this.lrt,
+      overrideTime: data.overrideTime.present
+          ? data.overrideTime.value
+          : this.overrideTime,
+      comments: data.comments.present ? data.comments.value : this.comments,
     );
   }
 
@@ -2085,14 +2165,17 @@ class SetupElement extends DataClass implements Insertable<SetupElement> {
           ..write('setupDateTime: $setupDateTime, ')
           ..write('elementName: $elementName, ')
           ..write('time: $time, ')
-          ..write('orderIndex: $orderIndex')
+          ..write('orderIndex: $orderIndex, ')
+          ..write('lrt: $lrt, ')
+          ..write('overrideTime: $overrideTime, ')
+          ..write('comments: $comments')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
-      id, processPartId, setupId, setupDateTime, elementName, time, orderIndex);
+  int get hashCode => Object.hash(id, processPartId, setupId, setupDateTime,
+      elementName, time, orderIndex, lrt, overrideTime, comments);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2103,7 +2186,10 @@ class SetupElement extends DataClass implements Insertable<SetupElement> {
           other.setupDateTime == this.setupDateTime &&
           other.elementName == this.elementName &&
           other.time == this.time &&
-          other.orderIndex == this.orderIndex);
+          other.orderIndex == this.orderIndex &&
+          other.lrt == this.lrt &&
+          other.overrideTime == this.overrideTime &&
+          other.comments == this.comments);
 }
 
 class SetupElementsCompanion extends UpdateCompanion<SetupElement> {
@@ -2114,6 +2200,9 @@ class SetupElementsCompanion extends UpdateCompanion<SetupElement> {
   final Value<String> elementName;
   final Value<String> time;
   final Value<int> orderIndex;
+  final Value<String?> lrt;
+  final Value<String?> overrideTime;
+  final Value<String?> comments;
   const SetupElementsCompanion({
     this.id = const Value.absent(),
     this.processPartId = const Value.absent(),
@@ -2122,6 +2211,9 @@ class SetupElementsCompanion extends UpdateCompanion<SetupElement> {
     this.elementName = const Value.absent(),
     this.time = const Value.absent(),
     this.orderIndex = const Value.absent(),
+    this.lrt = const Value.absent(),
+    this.overrideTime = const Value.absent(),
+    this.comments = const Value.absent(),
   });
   SetupElementsCompanion.insert({
     this.id = const Value.absent(),
@@ -2131,6 +2223,9 @@ class SetupElementsCompanion extends UpdateCompanion<SetupElement> {
     required String elementName,
     required String time,
     this.orderIndex = const Value.absent(),
+    this.lrt = const Value.absent(),
+    this.overrideTime = const Value.absent(),
+    this.comments = const Value.absent(),
   })  : processPartId = Value(processPartId),
         setupId = Value(setupId),
         setupDateTime = Value(setupDateTime),
@@ -2144,6 +2239,9 @@ class SetupElementsCompanion extends UpdateCompanion<SetupElement> {
     Expression<String>? elementName,
     Expression<String>? time,
     Expression<int>? orderIndex,
+    Expression<String>? lrt,
+    Expression<String>? overrideTime,
+    Expression<String>? comments,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2153,6 +2251,9 @@ class SetupElementsCompanion extends UpdateCompanion<SetupElement> {
       if (elementName != null) 'element_name': elementName,
       if (time != null) 'time': time,
       if (orderIndex != null) 'order_index': orderIndex,
+      if (lrt != null) 'lrt': lrt,
+      if (overrideTime != null) 'override_time': overrideTime,
+      if (comments != null) 'comments': comments,
     });
   }
 
@@ -2163,7 +2264,10 @@ class SetupElementsCompanion extends UpdateCompanion<SetupElement> {
       Value<DateTime>? setupDateTime,
       Value<String>? elementName,
       Value<String>? time,
-      Value<int>? orderIndex}) {
+      Value<int>? orderIndex,
+      Value<String?>? lrt,
+      Value<String?>? overrideTime,
+      Value<String?>? comments}) {
     return SetupElementsCompanion(
       id: id ?? this.id,
       processPartId: processPartId ?? this.processPartId,
@@ -2172,6 +2276,9 @@ class SetupElementsCompanion extends UpdateCompanion<SetupElement> {
       elementName: elementName ?? this.elementName,
       time: time ?? this.time,
       orderIndex: orderIndex ?? this.orderIndex,
+      lrt: lrt ?? this.lrt,
+      overrideTime: overrideTime ?? this.overrideTime,
+      comments: comments ?? this.comments,
     );
   }
 
@@ -2199,6 +2306,15 @@ class SetupElementsCompanion extends UpdateCompanion<SetupElement> {
     if (orderIndex.present) {
       map['order_index'] = Variable<int>(orderIndex.value);
     }
+    if (lrt.present) {
+      map['lrt'] = Variable<String>(lrt.value);
+    }
+    if (overrideTime.present) {
+      map['override_time'] = Variable<String>(overrideTime.value);
+    }
+    if (comments.present) {
+      map['comments'] = Variable<String>(comments.value);
+    }
     return map;
   }
 
@@ -2211,7 +2327,10 @@ class SetupElementsCompanion extends UpdateCompanion<SetupElement> {
           ..write('setupDateTime: $setupDateTime, ')
           ..write('elementName: $elementName, ')
           ..write('time: $time, ')
-          ..write('orderIndex: $orderIndex')
+          ..write('orderIndex: $orderIndex, ')
+          ..write('lrt: $lrt, ')
+          ..write('overrideTime: $overrideTime, ')
+          ..write('comments: $comments')
           ..write(')'))
         .toString();
   }
@@ -2519,352 +2638,6 @@ class StudyCompanion extends UpdateCompanion<StudyData> {
   }
 }
 
-class $TaskStudyTable extends TaskStudy
-    with TableInfo<$TaskStudyTable, TaskStudyData> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $TaskStudyTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
-  @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
-      'id', aliasedName, false,
-      hasAutoIncrement: true,
-      type: DriftSqlType.int,
-      requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
-  static const VerificationMeta _studyIdMeta =
-      const VerificationMeta('studyId');
-  @override
-  late final GeneratedColumn<int> studyId = GeneratedColumn<int>(
-      'study_id', aliasedName, false,
-      type: DriftSqlType.int,
-      requiredDuringInsert: true,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('REFERENCES study (id)'));
-  static const VerificationMeta _taskNameMeta =
-      const VerificationMeta('taskName');
-  @override
-  late final GeneratedColumn<String> taskName = GeneratedColumn<String>(
-      'task_name', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _lrtMeta = const VerificationMeta('lrt');
-  @override
-  late final GeneratedColumn<String> lrt = GeneratedColumn<String>(
-      'lrt', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _overrideTimeMeta =
-      const VerificationMeta('overrideTime');
-  @override
-  late final GeneratedColumn<String> overrideTime = GeneratedColumn<String>(
-      'override_time', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
-  static const VerificationMeta _commentsMeta =
-      const VerificationMeta('comments');
-  @override
-  late final GeneratedColumn<String> comments = GeneratedColumn<String>(
-      'comments', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
-  @override
-  List<GeneratedColumn> get $columns =>
-      [id, studyId, taskName, lrt, overrideTime, comments];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'task_study';
-  @override
-  VerificationContext validateIntegrity(Insertable<TaskStudyData> instance,
-      {bool isInserting = false}) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    }
-    if (data.containsKey('study_id')) {
-      context.handle(_studyIdMeta,
-          studyId.isAcceptableOrUnknown(data['study_id']!, _studyIdMeta));
-    } else if (isInserting) {
-      context.missing(_studyIdMeta);
-    }
-    if (data.containsKey('task_name')) {
-      context.handle(_taskNameMeta,
-          taskName.isAcceptableOrUnknown(data['task_name']!, _taskNameMeta));
-    } else if (isInserting) {
-      context.missing(_taskNameMeta);
-    }
-    if (data.containsKey('lrt')) {
-      context.handle(
-          _lrtMeta, lrt.isAcceptableOrUnknown(data['lrt']!, _lrtMeta));
-    } else if (isInserting) {
-      context.missing(_lrtMeta);
-    }
-    if (data.containsKey('override_time')) {
-      context.handle(
-          _overrideTimeMeta,
-          overrideTime.isAcceptableOrUnknown(
-              data['override_time']!, _overrideTimeMeta));
-    }
-    if (data.containsKey('comments')) {
-      context.handle(_commentsMeta,
-          comments.isAcceptableOrUnknown(data['comments']!, _commentsMeta));
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {id};
-  @override
-  TaskStudyData map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return TaskStudyData(
-      id: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
-      studyId: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}study_id'])!,
-      taskName: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}task_name'])!,
-      lrt: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}lrt'])!,
-      overrideTime: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}override_time']),
-      comments: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}comments']),
-    );
-  }
-
-  @override
-  $TaskStudyTable createAlias(String alias) {
-    return $TaskStudyTable(attachedDatabase, alias);
-  }
-}
-
-class TaskStudyData extends DataClass implements Insertable<TaskStudyData> {
-  final int id;
-  final int studyId;
-  final String taskName;
-  final String lrt;
-  final String? overrideTime;
-  final String? comments;
-  const TaskStudyData(
-      {required this.id,
-      required this.studyId,
-      required this.taskName,
-      required this.lrt,
-      this.overrideTime,
-      this.comments});
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
-    map['study_id'] = Variable<int>(studyId);
-    map['task_name'] = Variable<String>(taskName);
-    map['lrt'] = Variable<String>(lrt);
-    if (!nullToAbsent || overrideTime != null) {
-      map['override_time'] = Variable<String>(overrideTime);
-    }
-    if (!nullToAbsent || comments != null) {
-      map['comments'] = Variable<String>(comments);
-    }
-    return map;
-  }
-
-  TaskStudyCompanion toCompanion(bool nullToAbsent) {
-    return TaskStudyCompanion(
-      id: Value(id),
-      studyId: Value(studyId),
-      taskName: Value(taskName),
-      lrt: Value(lrt),
-      overrideTime: overrideTime == null && nullToAbsent
-          ? const Value.absent()
-          : Value(overrideTime),
-      comments: comments == null && nullToAbsent
-          ? const Value.absent()
-          : Value(comments),
-    );
-  }
-
-  factory TaskStudyData.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return TaskStudyData(
-      id: serializer.fromJson<int>(json['id']),
-      studyId: serializer.fromJson<int>(json['studyId']),
-      taskName: serializer.fromJson<String>(json['taskName']),
-      lrt: serializer.fromJson<String>(json['lrt']),
-      overrideTime: serializer.fromJson<String?>(json['overrideTime']),
-      comments: serializer.fromJson<String?>(json['comments']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
-      'studyId': serializer.toJson<int>(studyId),
-      'taskName': serializer.toJson<String>(taskName),
-      'lrt': serializer.toJson<String>(lrt),
-      'overrideTime': serializer.toJson<String?>(overrideTime),
-      'comments': serializer.toJson<String?>(comments),
-    };
-  }
-
-  TaskStudyData copyWith(
-          {int? id,
-          int? studyId,
-          String? taskName,
-          String? lrt,
-          Value<String?> overrideTime = const Value.absent(),
-          Value<String?> comments = const Value.absent()}) =>
-      TaskStudyData(
-        id: id ?? this.id,
-        studyId: studyId ?? this.studyId,
-        taskName: taskName ?? this.taskName,
-        lrt: lrt ?? this.lrt,
-        overrideTime:
-            overrideTime.present ? overrideTime.value : this.overrideTime,
-        comments: comments.present ? comments.value : this.comments,
-      );
-  TaskStudyData copyWithCompanion(TaskStudyCompanion data) {
-    return TaskStudyData(
-      id: data.id.present ? data.id.value : this.id,
-      studyId: data.studyId.present ? data.studyId.value : this.studyId,
-      taskName: data.taskName.present ? data.taskName.value : this.taskName,
-      lrt: data.lrt.present ? data.lrt.value : this.lrt,
-      overrideTime: data.overrideTime.present
-          ? data.overrideTime.value
-          : this.overrideTime,
-      comments: data.comments.present ? data.comments.value : this.comments,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('TaskStudyData(')
-          ..write('id: $id, ')
-          ..write('studyId: $studyId, ')
-          ..write('taskName: $taskName, ')
-          ..write('lrt: $lrt, ')
-          ..write('overrideTime: $overrideTime, ')
-          ..write('comments: $comments')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode =>
-      Object.hash(id, studyId, taskName, lrt, overrideTime, comments);
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is TaskStudyData &&
-          other.id == this.id &&
-          other.studyId == this.studyId &&
-          other.taskName == this.taskName &&
-          other.lrt == this.lrt &&
-          other.overrideTime == this.overrideTime &&
-          other.comments == this.comments);
-}
-
-class TaskStudyCompanion extends UpdateCompanion<TaskStudyData> {
-  final Value<int> id;
-  final Value<int> studyId;
-  final Value<String> taskName;
-  final Value<String> lrt;
-  final Value<String?> overrideTime;
-  final Value<String?> comments;
-  const TaskStudyCompanion({
-    this.id = const Value.absent(),
-    this.studyId = const Value.absent(),
-    this.taskName = const Value.absent(),
-    this.lrt = const Value.absent(),
-    this.overrideTime = const Value.absent(),
-    this.comments = const Value.absent(),
-  });
-  TaskStudyCompanion.insert({
-    this.id = const Value.absent(),
-    required int studyId,
-    required String taskName,
-    required String lrt,
-    this.overrideTime = const Value.absent(),
-    this.comments = const Value.absent(),
-  })  : studyId = Value(studyId),
-        taskName = Value(taskName),
-        lrt = Value(lrt);
-  static Insertable<TaskStudyData> custom({
-    Expression<int>? id,
-    Expression<int>? studyId,
-    Expression<String>? taskName,
-    Expression<String>? lrt,
-    Expression<String>? overrideTime,
-    Expression<String>? comments,
-  }) {
-    return RawValuesInsertable({
-      if (id != null) 'id': id,
-      if (studyId != null) 'study_id': studyId,
-      if (taskName != null) 'task_name': taskName,
-      if (lrt != null) 'lrt': lrt,
-      if (overrideTime != null) 'override_time': overrideTime,
-      if (comments != null) 'comments': comments,
-    });
-  }
-
-  TaskStudyCompanion copyWith(
-      {Value<int>? id,
-      Value<int>? studyId,
-      Value<String>? taskName,
-      Value<String>? lrt,
-      Value<String?>? overrideTime,
-      Value<String?>? comments}) {
-    return TaskStudyCompanion(
-      id: id ?? this.id,
-      studyId: studyId ?? this.studyId,
-      taskName: taskName ?? this.taskName,
-      lrt: lrt ?? this.lrt,
-      overrideTime: overrideTime ?? this.overrideTime,
-      comments: comments ?? this.comments,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (id.present) {
-      map['id'] = Variable<int>(id.value);
-    }
-    if (studyId.present) {
-      map['study_id'] = Variable<int>(studyId.value);
-    }
-    if (taskName.present) {
-      map['task_name'] = Variable<String>(taskName.value);
-    }
-    if (lrt.present) {
-      map['lrt'] = Variable<String>(lrt.value);
-    }
-    if (overrideTime.present) {
-      map['override_time'] = Variable<String>(overrideTime.value);
-    }
-    if (comments.present) {
-      map['comments'] = Variable<String>(comments.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('TaskStudyCompanion(')
-          ..write('id: $id, ')
-          ..write('studyId: $studyId, ')
-          ..write('taskName: $taskName, ')
-          ..write('lrt: $lrt, ')
-          ..write('overrideTime: $overrideTime, ')
-          ..write('comments: $comments')
-          ..write(')'))
-        .toString();
-  }
-}
-
 class $TimeStudyTable extends TimeStudy
     with TableInfo<$TimeStudyTable, TimeStudyData> {
   @override
@@ -3142,7 +2915,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SetupsTable setups = $SetupsTable(this);
   late final $SetupElementsTable setupElements = $SetupElementsTable(this);
   late final $StudyTable study = $StudyTable(this);
-  late final $TaskStudyTable taskStudy = $TaskStudyTable(this);
   late final $TimeStudyTable timeStudy = $TimeStudyTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -3158,7 +2930,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         setups,
         setupElements,
         study,
-        taskStudy,
         timeStudy
       ];
 }
@@ -5298,6 +5069,9 @@ typedef $$SetupElementsTableCreateCompanionBuilder = SetupElementsCompanion
   required String elementName,
   required String time,
   Value<int> orderIndex,
+  Value<String?> lrt,
+  Value<String?> overrideTime,
+  Value<String?> comments,
 });
 typedef $$SetupElementsTableUpdateCompanionBuilder = SetupElementsCompanion
     Function({
@@ -5308,6 +5082,9 @@ typedef $$SetupElementsTableUpdateCompanionBuilder = SetupElementsCompanion
   Value<String> elementName,
   Value<String> time,
   Value<int> orderIndex,
+  Value<String?> lrt,
+  Value<String?> overrideTime,
+  Value<String?> comments,
 });
 
 final class $$SetupElementsTableReferences
@@ -5368,6 +5145,15 @@ class $$SetupElementsTableFilterComposer
 
   ColumnFilters<int> get orderIndex => $composableBuilder(
       column: $table.orderIndex, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get lrt => $composableBuilder(
+      column: $table.lrt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get overrideTime => $composableBuilder(
+      column: $table.overrideTime, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get comments => $composableBuilder(
+      column: $table.comments, builder: (column) => ColumnFilters(column));
 
   $$ProcessPartsTableFilterComposer get processPartId {
     final $$ProcessPartsTableFilterComposer composer = $composerBuilder(
@@ -5435,6 +5221,16 @@ class $$SetupElementsTableOrderingComposer
   ColumnOrderings<int> get orderIndex => $composableBuilder(
       column: $table.orderIndex, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get lrt => $composableBuilder(
+      column: $table.lrt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get overrideTime => $composableBuilder(
+      column: $table.overrideTime,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get comments => $composableBuilder(
+      column: $table.comments, builder: (column) => ColumnOrderings(column));
+
   $$ProcessPartsTableOrderingComposer get processPartId {
     final $$ProcessPartsTableOrderingComposer composer = $composerBuilder(
         composer: this,
@@ -5499,6 +5295,15 @@ class $$SetupElementsTableAnnotationComposer
 
   GeneratedColumn<int> get orderIndex => $composableBuilder(
       column: $table.orderIndex, builder: (column) => column);
+
+  GeneratedColumn<String> get lrt =>
+      $composableBuilder(column: $table.lrt, builder: (column) => column);
+
+  GeneratedColumn<String> get overrideTime => $composableBuilder(
+      column: $table.overrideTime, builder: (column) => column);
+
+  GeneratedColumn<String> get comments =>
+      $composableBuilder(column: $table.comments, builder: (column) => column);
 
   $$ProcessPartsTableAnnotationComposer get processPartId {
     final $$ProcessPartsTableAnnotationComposer composer = $composerBuilder(
@@ -5571,6 +5376,9 @@ class $$SetupElementsTableTableManager extends RootTableManager<
             Value<String> elementName = const Value.absent(),
             Value<String> time = const Value.absent(),
             Value<int> orderIndex = const Value.absent(),
+            Value<String?> lrt = const Value.absent(),
+            Value<String?> overrideTime = const Value.absent(),
+            Value<String?> comments = const Value.absent(),
           }) =>
               SetupElementsCompanion(
             id: id,
@@ -5580,6 +5388,9 @@ class $$SetupElementsTableTableManager extends RootTableManager<
             elementName: elementName,
             time: time,
             orderIndex: orderIndex,
+            lrt: lrt,
+            overrideTime: overrideTime,
+            comments: comments,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -5589,6 +5400,9 @@ class $$SetupElementsTableTableManager extends RootTableManager<
             required String elementName,
             required String time,
             Value<int> orderIndex = const Value.absent(),
+            Value<String?> lrt = const Value.absent(),
+            Value<String?> overrideTime = const Value.absent(),
+            Value<String?> comments = const Value.absent(),
           }) =>
               SetupElementsCompanion.insert(
             id: id,
@@ -5598,6 +5412,9 @@ class $$SetupElementsTableTableManager extends RootTableManager<
             elementName: elementName,
             time: time,
             orderIndex: orderIndex,
+            lrt: lrt,
+            overrideTime: overrideTime,
+            comments: comments,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (
@@ -5699,20 +5516,6 @@ final class $$StudyTableReferences
         manager.$state.copyWith(prefetchedData: [item]));
   }
 
-  static MultiTypedResultKey<$TaskStudyTable, List<TaskStudyData>>
-      _taskStudyRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
-          db.taskStudy,
-          aliasName: $_aliasNameGenerator(db.study.id, db.taskStudy.studyId));
-
-  $$TaskStudyTableProcessedTableManager get taskStudyRefs {
-    final manager = $$TaskStudyTableTableManager($_db, $_db.taskStudy)
-        .filter((f) => f.studyId.id.sqlEquals($_itemColumn<int>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(_taskStudyRefsTable($_db));
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: cache));
-  }
-
   static MultiTypedResultKey<$TimeStudyTable, List<TimeStudyData>>
       _timeStudyRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
           db.timeStudy,
@@ -5766,27 +5569,6 @@ class $$StudyTableFilterComposer extends Composer<_$AppDatabase, $StudyTable> {
                   $removeJoinBuilderFromRootComposer,
             ));
     return composer;
-  }
-
-  Expression<bool> taskStudyRefs(
-      Expression<bool> Function($$TaskStudyTableFilterComposer f) f) {
-    final $$TaskStudyTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.taskStudy,
-        getReferencedColumn: (t) => t.studyId,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$TaskStudyTableFilterComposer(
-              $db: $db,
-              $table: $db.taskStudy,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
   }
 
   Expression<bool> timeStudyRefs(
@@ -5895,27 +5677,6 @@ class $$StudyTableAnnotationComposer
     return composer;
   }
 
-  Expression<T> taskStudyRefs<T extends Object>(
-      Expression<T> Function($$TaskStudyTableAnnotationComposer a) f) {
-    final $$TaskStudyTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.taskStudy,
-        getReferencedColumn: (t) => t.studyId,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$TaskStudyTableAnnotationComposer(
-              $db: $db,
-              $table: $db.taskStudy,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
-
   Expression<T> timeStudyRefs<T extends Object>(
       Expression<T> Function($$TimeStudyTableAnnotationComposer a) f) {
     final $$TimeStudyTableAnnotationComposer composer = $composerBuilder(
@@ -5949,8 +5710,7 @@ class $$StudyTableTableManager extends RootTableManager<
     $$StudyTableUpdateCompanionBuilder,
     (StudyData, $$StudyTableReferences),
     StudyData,
-    PrefetchHooks Function(
-        {bool setupId, bool taskStudyRefs, bool timeStudyRefs})> {
+    PrefetchHooks Function({bool setupId, bool timeStudyRefs})> {
   $$StudyTableTableManager(_$AppDatabase db, $StudyTable table)
       : super(TableManagerState(
           db: db,
@@ -5993,14 +5753,10 @@ class $$StudyTableTableManager extends RootTableManager<
               .map((e) =>
                   (e.readTable(table), $$StudyTableReferences(db, table, e)))
               .toList(),
-          prefetchHooksCallback: (
-              {setupId = false, taskStudyRefs = false, timeStudyRefs = false}) {
+          prefetchHooksCallback: ({setupId = false, timeStudyRefs = false}) {
             return PrefetchHooks(
               db: db,
-              explicitlyWatchedTables: [
-                if (taskStudyRefs) db.taskStudy,
-                if (timeStudyRefs) db.timeStudy
-              ],
+              explicitlyWatchedTables: [if (timeStudyRefs) db.timeStudy],
               addJoins: <
                   T extends TableManagerState<
                       dynamic,
@@ -6028,18 +5784,6 @@ class $$StudyTableTableManager extends RootTableManager<
               },
               getPrefetchedDataCallback: (items) async {
                 return [
-                  if (taskStudyRefs)
-                    await $_getPrefetchedData<StudyData, $StudyTable,
-                            TaskStudyData>(
-                        currentTable: table,
-                        referencedTable:
-                            $$StudyTableReferences._taskStudyRefsTable(db),
-                        managerFromTypedResult: (p0) =>
-                            $$StudyTableReferences(db, table, p0).taskStudyRefs,
-                        referencedItemsForCurrentItem: (item,
-                                referencedItems) =>
-                            referencedItems.where((e) => e.studyId == item.id),
-                        typedResults: items),
                   if (timeStudyRefs)
                     await $_getPrefetchedData<StudyData, $StudyTable,
                             TimeStudyData>(
@@ -6070,290 +5814,7 @@ typedef $$StudyTableProcessedTableManager = ProcessedTableManager<
     $$StudyTableUpdateCompanionBuilder,
     (StudyData, $$StudyTableReferences),
     StudyData,
-    PrefetchHooks Function(
-        {bool setupId, bool taskStudyRefs, bool timeStudyRefs})>;
-typedef $$TaskStudyTableCreateCompanionBuilder = TaskStudyCompanion Function({
-  Value<int> id,
-  required int studyId,
-  required String taskName,
-  required String lrt,
-  Value<String?> overrideTime,
-  Value<String?> comments,
-});
-typedef $$TaskStudyTableUpdateCompanionBuilder = TaskStudyCompanion Function({
-  Value<int> id,
-  Value<int> studyId,
-  Value<String> taskName,
-  Value<String> lrt,
-  Value<String?> overrideTime,
-  Value<String?> comments,
-});
-
-final class $$TaskStudyTableReferences
-    extends BaseReferences<_$AppDatabase, $TaskStudyTable, TaskStudyData> {
-  $$TaskStudyTableReferences(super.$_db, super.$_table, super.$_typedResult);
-
-  static $StudyTable _studyIdTable(_$AppDatabase db) => db.study
-      .createAlias($_aliasNameGenerator(db.taskStudy.studyId, db.study.id));
-
-  $$StudyTableProcessedTableManager get studyId {
-    final $_column = $_itemColumn<int>('study_id')!;
-
-    final manager = $$StudyTableTableManager($_db, $_db.study)
-        .filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_studyIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: [item]));
-  }
-}
-
-class $$TaskStudyTableFilterComposer
-    extends Composer<_$AppDatabase, $TaskStudyTable> {
-  $$TaskStudyTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<int> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get taskName => $composableBuilder(
-      column: $table.taskName, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get lrt => $composableBuilder(
-      column: $table.lrt, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get overrideTime => $composableBuilder(
-      column: $table.overrideTime, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get comments => $composableBuilder(
-      column: $table.comments, builder: (column) => ColumnFilters(column));
-
-  $$StudyTableFilterComposer get studyId {
-    final $$StudyTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.studyId,
-        referencedTable: $db.study,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$StudyTableFilterComposer(
-              $db: $db,
-              $table: $db.study,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-}
-
-class $$TaskStudyTableOrderingComposer
-    extends Composer<_$AppDatabase, $TaskStudyTable> {
-  $$TaskStudyTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<int> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get taskName => $composableBuilder(
-      column: $table.taskName, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get lrt => $composableBuilder(
-      column: $table.lrt, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get overrideTime => $composableBuilder(
-      column: $table.overrideTime,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get comments => $composableBuilder(
-      column: $table.comments, builder: (column) => ColumnOrderings(column));
-
-  $$StudyTableOrderingComposer get studyId {
-    final $$StudyTableOrderingComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.studyId,
-        referencedTable: $db.study,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$StudyTableOrderingComposer(
-              $db: $db,
-              $table: $db.study,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-}
-
-class $$TaskStudyTableAnnotationComposer
-    extends Composer<_$AppDatabase, $TaskStudyTable> {
-  $$TaskStudyTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<int> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get taskName =>
-      $composableBuilder(column: $table.taskName, builder: (column) => column);
-
-  GeneratedColumn<String> get lrt =>
-      $composableBuilder(column: $table.lrt, builder: (column) => column);
-
-  GeneratedColumn<String> get overrideTime => $composableBuilder(
-      column: $table.overrideTime, builder: (column) => column);
-
-  GeneratedColumn<String> get comments =>
-      $composableBuilder(column: $table.comments, builder: (column) => column);
-
-  $$StudyTableAnnotationComposer get studyId {
-    final $$StudyTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.studyId,
-        referencedTable: $db.study,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$StudyTableAnnotationComposer(
-              $db: $db,
-              $table: $db.study,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-}
-
-class $$TaskStudyTableTableManager extends RootTableManager<
-    _$AppDatabase,
-    $TaskStudyTable,
-    TaskStudyData,
-    $$TaskStudyTableFilterComposer,
-    $$TaskStudyTableOrderingComposer,
-    $$TaskStudyTableAnnotationComposer,
-    $$TaskStudyTableCreateCompanionBuilder,
-    $$TaskStudyTableUpdateCompanionBuilder,
-    (TaskStudyData, $$TaskStudyTableReferences),
-    TaskStudyData,
-    PrefetchHooks Function({bool studyId})> {
-  $$TaskStudyTableTableManager(_$AppDatabase db, $TaskStudyTable table)
-      : super(TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$TaskStudyTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$TaskStudyTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$TaskStudyTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            Value<int> studyId = const Value.absent(),
-            Value<String> taskName = const Value.absent(),
-            Value<String> lrt = const Value.absent(),
-            Value<String?> overrideTime = const Value.absent(),
-            Value<String?> comments = const Value.absent(),
-          }) =>
-              TaskStudyCompanion(
-            id: id,
-            studyId: studyId,
-            taskName: taskName,
-            lrt: lrt,
-            overrideTime: overrideTime,
-            comments: comments,
-          ),
-          createCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            required int studyId,
-            required String taskName,
-            required String lrt,
-            Value<String?> overrideTime = const Value.absent(),
-            Value<String?> comments = const Value.absent(),
-          }) =>
-              TaskStudyCompanion.insert(
-            id: id,
-            studyId: studyId,
-            taskName: taskName,
-            lrt: lrt,
-            overrideTime: overrideTime,
-            comments: comments,
-          ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (
-                    e.readTable(table),
-                    $$TaskStudyTableReferences(db, table, e)
-                  ))
-              .toList(),
-          prefetchHooksCallback: ({studyId = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [],
-              addJoins: <
-                  T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic>>(state) {
-                if (studyId) {
-                  state = state.withJoin(
-                    currentTable: table,
-                    currentColumn: table.studyId,
-                    referencedTable:
-                        $$TaskStudyTableReferences._studyIdTable(db),
-                    referencedColumn:
-                        $$TaskStudyTableReferences._studyIdTable(db).id,
-                  ) as T;
-                }
-
-                return state;
-              },
-              getPrefetchedDataCallback: (items) async {
-                return [];
-              },
-            );
-          },
-        ));
-}
-
-typedef $$TaskStudyTableProcessedTableManager = ProcessedTableManager<
-    _$AppDatabase,
-    $TaskStudyTable,
-    TaskStudyData,
-    $$TaskStudyTableFilterComposer,
-    $$TaskStudyTableOrderingComposer,
-    $$TaskStudyTableAnnotationComposer,
-    $$TaskStudyTableCreateCompanionBuilder,
-    $$TaskStudyTableUpdateCompanionBuilder,
-    (TaskStudyData, $$TaskStudyTableReferences),
-    TaskStudyData,
-    PrefetchHooks Function({bool studyId})>;
+    PrefetchHooks Function({bool setupId, bool timeStudyRefs})>;
 typedef $$TimeStudyTableCreateCompanionBuilder = TimeStudyCompanion Function({
   Value<int> id,
   required int studyId,
@@ -6628,8 +6089,6 @@ class $AppDatabaseManager {
       $$SetupElementsTableTableManager(_db, _db.setupElements);
   $$StudyTableTableManager get study =>
       $$StudyTableTableManager(_db, _db.study);
-  $$TaskStudyTableTableManager get taskStudy =>
-      $$TaskStudyTableTableManager(_db, _db.taskStudy);
   $$TimeStudyTableTableManager get timeStudy =>
       $$TimeStudyTableTableManager(_db, _db.timeStudy);
 }

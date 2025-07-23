@@ -22,6 +22,11 @@ class SetupElements extends Table {
   TextColumn get elementName => text()();
   TextColumn get time => text()(); // Format: HH:MM:SS
   IntColumn get orderIndex => integer().withDefault(const Constant(0))();
+  // Fields migrated from TaskStudy table
+  TextColumn get lrt => text().nullable()(); // LRT time in HH:MM:SS format
+  TextColumn get overrideTime =>
+      text().nullable()(); // Override time in HH:MM:SS format
+  TextColumn get comments => text().nullable()();
 }
 
 class Setups extends Table {
@@ -36,16 +41,6 @@ class Study extends Table {
   DateTimeColumn get date => dateTime()();
   DateTimeColumn get time => dateTime()();
   TextColumn get observerName => text()();
-}
-
-class TaskStudy extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  IntColumn get studyId => integer().references(Study, #id)();
-  TextColumn get taskName => text()();
-  TextColumn get lrt => text()(); // LRT time in HH:MM:SS format
-  TextColumn get overrideTime =>
-      text().nullable()(); // Override time in HH:MM:SS format
-  TextColumn get comments => text().nullable()();
 }
 
 class TimeStudy extends Table {
@@ -65,7 +60,6 @@ class TimeStudy extends Table {
   SetupElements,
   Setups,
   Study,
-  TaskStudy,
   TimeStudy
 ])
 class AppDatabase extends _$AppDatabase {
@@ -92,7 +86,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -100,6 +94,25 @@ class AppDatabase extends _$AppDatabase {
           return m.createAll();
         },
         onUpgrade: (Migrator m, int from, int to) async {
+          // Force complete recreation for version 15 - TaskStudy consolidated into SetupElements
+          if (to >= 15) {
+            await m.deleteTable('parts');
+            await m.deleteTable('processes');
+            await m.deleteTable('value_streams');
+            await m.deleteTable('plants');
+            await m.deleteTable('organizations');
+            await m.deleteTable('setup_elements');
+            await m.deleteTable('setups');
+            await m.deleteTable('study');
+            await m.deleteTable('task_study');
+            await m.deleteTable('time_study');
+            await m.deleteTable('process_parts');
+
+            // Recreate all tables with current schema
+            await m.createAll();
+            return;
+          }
+
           // Force complete recreation for version 14
           if (to >= 14) {
             await m.deleteTable('parts');
@@ -325,29 +338,7 @@ class AppDatabase extends _$AppDatabase {
         .getSingleOrNull();
   }
 
-  // TaskStudy management methods
-  Future<int> insertTaskStudy(TaskStudyCompanion taskStudy) =>
-      into(this.taskStudy).insert(taskStudy);
-
-  Future<List<TaskStudyData>> getTaskStudiesForStudy(int studyId) {
-    return (select(taskStudy)..where((ts) => ts.studyId.equals(studyId))).get();
-  }
-
-  Future<TaskStudyData?> getTaskStudyById(int taskStudyId) {
-    return (select(taskStudy)..where((ts) => ts.id.equals(taskStudyId)))
-        .getSingleOrNull();
-  }
-
-  Future<void> updateTaskStudy(int taskStudyId, TaskStudyCompanion companion) {
-    return (update(taskStudy)..where((ts) => ts.id.equals(taskStudyId)))
-        .write(companion);
-  }
-
-  Future<void> deleteTaskStudy(int taskStudyId) {
-    return (delete(taskStudy)..where((ts) => ts.id.equals(taskStudyId))).go();
-  }
-
-  // SetupElements management methods
+  // SetupElements management methods (now includes TaskStudy functionality)
   Future<int> insertSetupElement(SetupElementsCompanion setupElement) =>
       into(setupElements).insert(setupElement);
 
@@ -376,6 +367,19 @@ class AppDatabase extends _$AppDatabase {
       int setupElementId, SetupElementsCompanion companion) {
     return (update(setupElements)..where((se) => se.id.equals(setupElementId)))
         .write(companion);
+  }
+
+  // Method to replace TaskStudy functionality - get setup elements for a study
+  Future<List<SetupElement>> getSetupElementsForStudy(int studyId) async {
+    // Get the study to find its setupId
+    final study = await (select(this.study)..where((s) => s.id.equals(studyId)))
+        .getSingleOrNull();
+    if (study == null) return [];
+
+    // Get setup elements for this setup
+    return (select(setupElements)
+          ..where((se) => se.setupId.equals(study.setupId)))
+        .get();
   }
 
   // Add the method here:

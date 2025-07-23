@@ -58,10 +58,6 @@ class _ProcessInputScreenState extends State<ProcessInputScreen> {
     });
     try {
       // Debug logging to identify the issue
-      print(
-          'DEBUG: Loading processes for valueStreamId: ${widget.valueStreamId}');
-      print('DEBUG: ValueStream name: ${widget.valueStreamName}');
-      print('DEBUG: Plant name: ${widget.plantName}');
 
       // First, verify the value stream exists and get the correct ID by name
       // This handles cases where the ID might be stale after app restart
@@ -80,11 +76,7 @@ class _ProcessInputScreenState extends State<ProcessInputScreen> {
 
       if (valueStreamCheck.isNotEmpty) {
         actualValueStreamId = valueStreamCheck.first.data['id'] as int;
-        print(
-            'DEBUG: Found value stream by name. Actual ID: $actualValueStreamId');
       } else {
-        print(
-            'DEBUG: Value stream not found by name, using passed ID: $actualValueStreamId');
       }
 
       // Query processes using the correct value stream ID
@@ -93,8 +85,6 @@ class _ProcessInputScreenState extends State<ProcessInputScreen> {
         variables: [drift.Variable.withInt(actualValueStreamId)],
       ).get();
 
-      print(
-          'DEBUG: Found ${result.length} processes for value stream ID $actualValueStreamId');
 
       setState(() {
         _processes = result.map((row) => row.data).toList();
@@ -108,16 +98,10 @@ class _ProcessInputScreenState extends State<ProcessInputScreen> {
       });
 
       if (_processes.isNotEmpty) {
-        print(
-            'DEBUG: Processes loaded successfully. First process: ${_processes[0]}');
       } else {
-        print(
-            'DEBUG: No processes found - checking if any processes exist in database...');
         final totalProcesses = await db
             .customSelectQuery('SELECT COUNT(*) as count FROM processes')
             .get();
-        print(
-            'DEBUG: Total processes in database: ${totalProcesses.first.data['count']}');
 
         // Check for orphaned processes (processes with value_stream_id that no longer exists)
         final orphanedProcesses = await db.customSelectQuery(
@@ -127,8 +111,6 @@ class _ProcessInputScreenState extends State<ProcessInputScreen> {
              WHERE vs.id IS NULL''').get();
 
         if (orphanedProcesses.isNotEmpty) {
-          print(
-              'DEBUG: Found ${orphanedProcesses.length} orphaned processes (referencing non-existent value_stream_ids)');
 
           // Ask user if they want to fix the orphaned processes by updating them to current value stream
           if (mounted) {
@@ -160,11 +142,8 @@ class _ProcessInputScreenState extends State<ProcessInputScreen> {
                   'UPDATE processes SET value_stream_id = ? WHERE id = ?',
                   [actualValueStreamId, orphanProcess.data['id']],
                 );
-                print(
-                    'DEBUG: Updated process ${orphanProcess.data['process_name']} to use value_stream_id $actualValueStreamId');
               }
 
-              print('DEBUG: Processes updated, reloading...');
               // Reload the processes after fixing
               _loadProcesses();
               return;
@@ -173,7 +152,6 @@ class _ProcessInputScreenState extends State<ProcessInputScreen> {
         }
       }
     } catch (e) {
-      print('DEBUG: Error loading processes: $e');
       setState(() {
         _error = 'Failed to load processes: $e';
         _loading = false;

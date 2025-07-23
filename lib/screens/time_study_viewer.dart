@@ -12,6 +12,8 @@ class TimeStudyInfo {
   final String observerName;
   final List<TimeStudyData> timeStudies;
   final Map<String, List<String>> elementLaps; // taskName -> list of lap times
+  final Map<String, SetupElement>
+      setupElements; // taskName -> SetupElement data
 
   TimeStudyInfo({
     required this.studyId,
@@ -21,6 +23,7 @@ class TimeStudyInfo {
     required this.observerName,
     required this.timeStudies,
     required this.elementLaps,
+    required this.setupElements,
   });
 }
 
@@ -117,6 +120,17 @@ class _TimeStudyViewerScreenState extends State<TimeStudyViewerScreen> {
             elementLaps[timeStudy.taskName]!.add(timeStudy.iterationTime);
           }
 
+          // Get setup elements for this study to get lrt, overrideTime, and comments
+          final setupElements = await (db.select(db.setupElements)
+                ..where((se) => se.setupId.equals(study.setupId)))
+              .get();
+
+          // Create a map of element name to SetupElement for easy lookup
+          Map<String, SetupElement> elementMap = {};
+          for (final element in setupElements) {
+            elementMap[element.elementName] = element;
+          }
+
           studies.add(TimeStudyInfo(
             studyId: study.id,
             setupName: setup.setupName,
@@ -125,6 +139,7 @@ class _TimeStudyViewerScreenState extends State<TimeStudyViewerScreen> {
             observerName: study.observerName,
             timeStudies: timeStudies,
             elementLaps: elementLaps,
+            setupElements: elementMap,
           ));
         } catch (e) {
           continue;
@@ -411,9 +426,9 @@ class _TimeStudyViewerScreenState extends State<TimeStudyViewerScreen> {
 
     return ListView.builder(
       padding: const EdgeInsets.all(8),
-      itemCount: _studies.length,
+      itemCount: _filteredStudies.length,
       itemBuilder: (context, index) {
-        final study = _studies[index];
+        final study = _filteredStudies[index];
         final isSelected = _selectedStudy?.studyId == study.studyId;
 
         return Card(
@@ -550,7 +565,7 @@ class _TimeStudyViewerScreenState extends State<TimeStudyViewerScreen> {
         Expanded(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: _buildLapsTable(study.elementLaps),
+            child: _buildLapsTable(study.elementLaps, study.setupElements),
           ),
         ),
       ],
@@ -581,7 +596,8 @@ class _TimeStudyViewerScreenState extends State<TimeStudyViewerScreen> {
     );
   }
 
-  Widget _buildLapsTable(Map<String, List<String>> elementLaps) {
+  Widget _buildLapsTable(Map<String, List<String>> elementLaps,
+      Map<String, SetupElement> setupElements) {
     if (elementLaps.isEmpty) {
       return const Center(
         child: Text(
@@ -598,86 +614,245 @@ class _TimeStudyViewerScreenState extends State<TimeStudyViewerScreen> {
     int maxLaps = elementLaps.values
         .fold(0, (max, laps) => laps.length > max ? laps.length : max);
 
-    // Create column widths - element name gets more space, lap columns are equal
-    Map<int, TableColumnWidth> columnWidths = {
-      0: const FlexColumnWidth(3), // Element Name
-    };
-    for (int i = 1; i <= maxLaps; i++) {
-      columnWidths[i] = const FlexColumnWidth(1); // Lap columns
-    }
-
     List<String> sortedElements = elementLaps.keys.toList()..sort();
 
-    return SingleChildScrollView(
-      child: Table(
-        border: TableBorder.all(color: Colors.grey[300]!, width: 1),
-        columnWidths: columnWidths,
-        children: [
-          // Header Row
-          TableRow(
-            decoration: BoxDecoration(
-              color: Colors.yellow[100],
-            ),
+    return Column(
+      children: [
+        // Fixed Header
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.yellow[100],
+            border: Border.all(color: Colors.grey[300]!, width: 1),
+          ),
+          child: Row(
             children: [
-              const TableCell(
-                child: Padding(
-                  padding: EdgeInsets.all(12),
-                  child: Text(
-                    'Element Name',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+              // Fixed Element Name column
+              Container(
+                width: 200,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  border: Border(
+                    right: BorderSide(color: Colors.grey[300]!, width: 1),
+                  ),
+                ),
+                child: const Text(
+                  'Element Name',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
                   ),
                 ),
               ),
-              ...List.generate(
-                maxLaps,
-                (index) => TableCell(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Text(
-                      'Lap ${index + 1}',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                      textAlign: TextAlign.center,
-                    ),
+              // Scrollable columns
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      // Lap columns
+                      ...List.generate(
+                        maxLaps,
+                        (index) => Container(
+                          width: 80,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            border: Border(
+                              right: BorderSide(
+                                  color: Colors.grey[300]!, width: 1),
+                            ),
+                          ),
+                          child: Text(
+                            'Lap ${index + 1}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                      // LRT Time column
+                      Container(
+                        width: 80,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          border: Border(
+                            right:
+                                BorderSide(color: Colors.grey[300]!, width: 1),
+                          ),
+                        ),
+                        child: const Text(
+                          'LRT Time',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      // Override Time column
+                      Container(
+                        width: 90,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          border: Border(
+                            right:
+                                BorderSide(color: Colors.grey[300]!, width: 1),
+                          ),
+                        ),
+                        child: const Text(
+                          'Override Time',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      // Comments column
+                      Container(
+                        width: 200,
+                        padding: const EdgeInsets.all(12),
+                        child: const Text(
+                          'Comments',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ],
           ),
-          // Data Rows
-          ...sortedElements.asMap().entries.map((entry) {
-            final index = entry.key;
-            final elementName = entry.value;
-            final laps = elementLaps[elementName]!;
+        ),
+        // Scrollable Data Rows
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              children: sortedElements.asMap().entries.map((entry) {
+                final index = entry.key;
+                final elementName = entry.value;
+                final laps = elementLaps[elementName]!;
+                final setupElement = setupElements[elementName];
 
-            return TableRow(
-              decoration: BoxDecoration(
-                color: index % 2 == 0 ? Colors.white : Colors.grey[50],
-              ),
-              children: [
-                TableCell(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Text(elementName),
-                  ),
-                ),
-                ...List.generate(
-                  maxLaps,
-                  (lapIndex) => TableCell(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Text(
-                        lapIndex < laps.length ? laps[lapIndex] : '',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontFamily: 'monospace'),
-                      ),
+                return Container(
+                  decoration: BoxDecoration(
+                    color: index % 2 == 0 ? Colors.white : Colors.grey[50],
+                    border: Border(
+                      bottom: BorderSide(color: Colors.grey[300]!, width: 1),
+                      left: BorderSide(color: Colors.grey[300]!, width: 1),
+                      right: BorderSide(color: Colors.grey[300]!, width: 1),
                     ),
                   ),
-                ),
-              ],
-            );
-          }),
-        ],
-      ),
+                  child: Row(
+                    children: [
+                      // Fixed Element Name column
+                      Container(
+                        width: 200,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          border: Border(
+                            right:
+                                BorderSide(color: Colors.grey[300]!, width: 1),
+                          ),
+                        ),
+                        child: Text(
+                          elementName,
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                      ),
+                      // Scrollable columns
+                      Expanded(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              // Lap columns
+                              ...List.generate(
+                                maxLaps,
+                                (lapIndex) => Container(
+                                  width: 80,
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    border: Border(
+                                      right: BorderSide(
+                                          color: Colors.grey[300]!, width: 1),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    lapIndex < laps.length
+                                        ? laps[lapIndex]
+                                        : '',
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      fontFamily: 'monospace',
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              // LRT Time column
+                              Container(
+                                width: 80,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  border: Border(
+                                    right: BorderSide(
+                                        color: Colors.grey[300]!, width: 1),
+                                  ),
+                                ),
+                                child: Text(
+                                  setupElement?.lrt ?? '-',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontFamily: 'monospace',
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                              // Override Time column
+                              Container(
+                                width: 90,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  border: Border(
+                                    right: BorderSide(
+                                        color: Colors.grey[300]!, width: 1),
+                                  ),
+                                ),
+                                child: Text(
+                                  setupElement?.overrideTime ?? '-',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontFamily: 'monospace',
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                              // Comments column
+                              Container(
+                                width: 200,
+                                padding: const EdgeInsets.all(12),
+                                child: Text(
+                                  setupElement?.comments ?? '',
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

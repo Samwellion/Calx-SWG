@@ -6,8 +6,8 @@ import '../screens/plant_setup_screen.dart';
 import '../screens/elements_input_screen.dart';
 import '../screens/time_observation_form.dart';
 import '../screens/setup_element_viewer.dart';
-import '../screens/task_study_viewer.dart';
 import '../screens/time_study_viewer.dart';
+import '../screens/time_study_review_screen.dart';
 
 class AppDrawer extends StatefulWidget {
   const AppDrawer({super.key});
@@ -359,19 +359,6 @@ class _AppDrawerState extends State<AppDrawer> {
                 },
               ),
 
-              // Task Study Viewer - No requirements (view-only)
-              _buildEnabledListTile(
-                icon: Icons.assignment_outlined,
-                title: 'Task Study Viewer',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const TaskStudyViewerScreen()),
-                  );
-                },
-              ),
-
               // Time Study Viewer - No requirements (view-only)
               _buildEnabledListTile(
                 icon: Icons.timer_outlined,
@@ -381,6 +368,19 @@ class _AppDrawerState extends State<AppDrawer> {
                     context,
                     MaterialPageRoute(
                         builder: (context) => const TimeStudyViewerScreen()),
+                  );
+                },
+              ),
+
+              // Time Study Review - No requirements (view-only)
+              _buildEnabledListTile(
+                icon: Icons.analytics_outlined,
+                title: 'Time Study Review',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const TimeStudyReviewScreen()),
                   );
                 },
               ),

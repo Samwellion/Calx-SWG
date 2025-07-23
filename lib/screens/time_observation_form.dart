@@ -359,22 +359,26 @@ class _TimeObservationFormState extends State<TimeObservationForm> {
           }
 
           if (shouldUpdate) {
+            // Update SetupElement with new time and study data
             await (db.update(db.setupElements)
                   ..where((se) => se.id.equals(setupElement.id)))
                 .write(SetupElementsCompanion(
               time: drift.Value(observedTime),
+              lrt: drift.Value(lowestRepeatableTime ?? 'N/A'),
+              overrideTime: drift.Value(overrideTime),
+              comments: drift.Value(comments),
+            ));
+          } else {
+            // Just update the study data fields without changing the element time
+            await (db.update(db.setupElements)
+                  ..where((se) => se.id.equals(setupElement.id)))
+                .write(SetupElementsCompanion(
+              lrt: drift.Value(lowestRepeatableTime ?? 'N/A'),
+              overrideTime: drift.Value(overrideTime),
+              comments: drift.Value(comments),
             ));
           }
         }
-
-        // Create TaskStudy record for this element
-        await db.insertTaskStudy(TaskStudyCompanion.insert(
-          studyId: studyId,
-          taskName: elementName,
-          lrt: lowestRepeatableTime ?? 'N/A',
-          overrideTime: drift.Value(overrideTime),
-          comments: drift.Value(comments),
-        ));
 
         // Create TimeStudy records for each lap time
         for (final lapTime in times) {
