@@ -14,6 +14,7 @@ import '../widgets/app_footer.dart';
 import 'elements_input_screen.dart';
 import 'time_observation_form.dart';
 import '../widgets/app_drawer.dart';
+import '../widgets/full_hierarchy_tree.dart';
 
 final RouteObserver<ModalRoute<void>> routeObserver =
     RouteObserver<ModalRoute<void>>();
@@ -37,6 +38,8 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   static const Duration _debounceDelay = Duration(milliseconds: 300);
 
   bool hasSetupsForSelectedProcess = false;
+  bool hasPartsInDatabase = false;
+  bool hasProcessesInDatabase = false;
   bool _isDisposed = false;
 
   void _onProcessChanged(String? value) async {
@@ -54,6 +57,54 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         await _checkSetupsForSelectedProcess();
       }
     });
+  }
+
+  void _onHierarchyTreeItemSelected({
+    String? companyName,
+    String? plantName,
+    String? valueStreamName,
+    String? processName,
+    int? plantIndex,
+    int? valueStreamId,
+    int? processId,
+  }) async {
+    if (_isDisposed) return;
+
+    // Update selections based on what was selected in the tree
+    bool hasChanges = false;
+
+    if (companyName != selectedCompany) {
+      selectedCompany = companyName;
+      hasChanges = true;
+    }
+
+    if (plantName != selectedPlant) {
+      selectedPlant = plantName;
+      hasChanges = true;
+    }
+
+    if (valueStreamName != selectedValueStream) {
+      selectedValueStream = valueStreamName;
+      selectedValueStreamId = valueStreamId;
+      hasChanges = true;
+    }
+
+    if (processName != selectedProcess) {
+      selectedProcess = processName;
+      hasChanges = true;
+    }
+
+    if (hasChanges) {
+      setState(() {});
+      await _saveSelections();
+
+      // Reload dependent data
+      if (valueStreamName != null) {
+        await _loadProcessesForValueStream();
+      }
+      await _checkSetupsForSelectedProcess();
+      await _checkPartsAndProcessesExistence();
+    }
   }
 
   Future<void> _checkSetupsForSelectedProcess() async {
@@ -89,6 +140,58 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       if (!_isDisposed) {
         setState(() {
           hasSetupsForSelectedProcess = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _checkPartsAndProcessesExistence() async {
+    if (_isDisposed || selectedValueStreamId == null) {
+      if (!_isDisposed) {
+        setState(() {
+          hasPartsInDatabase = false;
+          hasProcessesInDatabase = false;
+        });
+      }
+      return;
+    }
+
+    try {
+      // Check if there are any parts for the selected value stream
+      final partsResult = await db.customSelect('''
+        SELECT COUNT(*) as count 
+        FROM process_parts pp
+        INNER JOIN processes p ON pp.process_id = p.id
+        WHERE p.value_stream_id = ?
+      ''', variables: [
+        drift.Variable.withInt(selectedValueStreamId!)
+      ]).getSingle();
+
+      final partsCount = partsResult.data['count'] as int;
+
+      // Check if there are any processes for the selected value stream
+      final processesResult = await db.customSelect('''
+        SELECT COUNT(*) as count 
+        FROM processes p
+        WHERE p.value_stream_id = ?
+      ''', variables: [
+        drift.Variable.withInt(selectedValueStreamId!)
+      ]).getSingle();
+
+      final processesCount = processesResult.data['count'] as int;
+
+      if (!_isDisposed) {
+        setState(() {
+          hasPartsInDatabase = partsCount > 0;
+          hasProcessesInDatabase = processesCount > 0;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error checking parts and processes existence: $e');
+      if (!_isDisposed) {
+        setState(() {
+          hasPartsInDatabase = false;
+          hasProcessesInDatabase = false;
         });
       }
     }
@@ -189,6 +292,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     await _loadDropdownData();
     await _loadProcessesForValueStream();
     await _checkSetupsForSelectedProcess();
+    await _checkPartsAndProcessesExistence();
     if (mounted) {
       setState(() {
         isLoading = false;
@@ -215,6 +319,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     // Called when returning to this screen after popping another route
     _loadSelections();
     _loadDropdownData();
+    _checkPartsAndProcessesExistence();
     setState(() {});
   }
 
@@ -389,6 +494,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
 
     _saveSelections();
     await _loadProcessesForValueStream();
+    await _checkPartsAndProcessesExistence();
   }
 
   void _openPartInputScreen() async {
@@ -607,7 +713,8 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           Expanded(
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 900),
+                constraints:
+                    const BoxConstraints(maxWidth: 1200), // Increased from 900
                 child: Container(
                   padding: const EdgeInsets.all(32),
                   decoration: BoxDecoration(
@@ -635,65 +742,123 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                         child: IntrinsicHeight(
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              // Left side: Full Hierarchy Tree
                               Flexible(
-                                child: HomeButtonColumn(
-                                  onSetupOrg: () async {
-                                    await Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            const OrganizationSetupScreen(),
-                                      ),
-                                    );
-                                    await _loadDropdownData();
-                                  },
-                                  onLoadOrg: _openPlantSetupScreen,
-                                  onOpenObs: _openTimeObservationScreen,
-                                  onAddPartNumber: _openPartInputScreen,
-                                  onAddVSProcess: _onAddVSProcess,
-                                  onAddElements: _openAddElementsScreen,
-                                  enableAddPartNumber:
-                                      (selectedCompany != null &&
-                                          selectedCompany!.isNotEmpty &&
-                                          selectedPlant != null &&
-                                          selectedPlant!.isNotEmpty &&
-                                          selectedValueStream != null &&
-                                          selectedValueStream!.isNotEmpty),
-                                  enableAddElements: (selectedCompany != null &&
-                                      selectedCompany!.isNotEmpty &&
-                                      selectedPlant != null &&
-                                      selectedPlant!.isNotEmpty &&
-                                      selectedValueStream != null &&
-                                      selectedValueStream!.isNotEmpty &&
-                                      selectedProcess != null &&
-                                      selectedProcess!.isNotEmpty),
-                                  enableOpenObs: (selectedCompany != null &&
-                                      selectedCompany!.isNotEmpty &&
-                                      selectedPlant != null &&
-                                      selectedPlant!.isNotEmpty &&
-                                      selectedValueStream != null &&
-                                      selectedValueStream!.isNotEmpty &&
-                                      selectedProcess != null &&
-                                      selectedProcess!.isNotEmpty &&
-                                      hasSetupsForSelectedProcess),
+                                flex: 2,
+                                child: SizedBox(
+                                  height:
+                                      450, // Reduced height to prevent overflow
+                                  child: FullHierarchyTree(
+                                    width: null, // Let it expand to fit
+                                    height:
+                                        null, // Use intrinsic height instead of fixed
+                                    showHeader: true,
+                                    headerText: 'Organization',
+                                    expandedByDefault:
+                                        true, // Set to true for debugging
+                                    onItemSelected:
+                                        _onHierarchyTreeItemSelected,
+                                    selectedCompany: selectedCompany,
+                                    selectedPlant: selectedPlant,
+                                    selectedValueStream: selectedValueStream,
+                                    selectedProcess: selectedProcess,
+                                  ),
                                 ),
                               ),
-                              const SizedBox(width: 32),
+                              const SizedBox(width: 24),
+
+                              // Right side: Existing buttons and dropdowns
                               Flexible(
-                                child: HomeDropdownsColumn(
-                                  companyNames: companyNames,
-                                  selectedCompany: validCompany,
-                                  onCompanyChanged: _onCompanyChanged,
-                                  plantNames: orgPlants,
-                                  selectedPlant: validPlant,
-                                  onPlantChanged: _onPlantChanged,
-                                  valueStreams: valueStreams,
-                                  selectedValueStream: validValueStream,
-                                  onValueStreamChanged: _onValueStreamChanged,
-                                  processes: processNames,
-                                  selectedProcess: validProcess,
-                                  onProcessChanged: _onProcessChanged,
+                                flex: 3,
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      children: [
+                                        Flexible(
+                                          child: HomeButtonColumn(
+                                            onSetupOrg: () async {
+                                              await Navigator.of(context).push(
+                                                MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      const OrganizationSetupScreen(),
+                                                ),
+                                              );
+                                              await _loadDropdownData();
+                                            },
+                                            onLoadOrg: _openPlantSetupScreen,
+                                            onOpenObs:
+                                                _openTimeObservationScreen,
+                                            onAddPartNumber:
+                                                _openPartInputScreen,
+                                            onAddVSProcess: _onAddVSProcess,
+                                            onAddElements:
+                                                _openAddElementsScreen,
+                                            enableAddPartNumber:
+                                                (selectedCompany != null &&
+                                                    selectedCompany!
+                                                        .isNotEmpty &&
+                                                    selectedPlant != null &&
+                                                    selectedPlant!.isNotEmpty &&
+                                                    selectedValueStream !=
+                                                        null &&
+                                                    selectedValueStream!
+                                                        .isNotEmpty),
+                                            enableAddElements:
+                                                (selectedCompany != null &&
+                                                    selectedCompany!
+                                                        .isNotEmpty &&
+                                                    selectedPlant != null &&
+                                                    selectedPlant!.isNotEmpty &&
+                                                    selectedValueStream !=
+                                                        null &&
+                                                    selectedValueStream!
+                                                        .isNotEmpty &&
+                                                    selectedProcess != null &&
+                                                    selectedProcess!
+                                                        .isNotEmpty &&
+                                                    hasPartsInDatabase &&
+                                                    hasProcessesInDatabase),
+                                            enableOpenObs: (selectedCompany !=
+                                                    null &&
+                                                selectedCompany!.isNotEmpty &&
+                                                selectedPlant != null &&
+                                                selectedPlant!.isNotEmpty &&
+                                                selectedValueStream != null &&
+                                                selectedValueStream!
+                                                    .isNotEmpty &&
+                                                selectedProcess != null &&
+                                                selectedProcess!.isNotEmpty &&
+                                                hasSetupsForSelectedProcess),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 32),
+                                        Flexible(
+                                          child: HomeDropdownsColumn(
+                                            companyNames: companyNames,
+                                            selectedCompany: validCompany,
+                                            onCompanyChanged: _onCompanyChanged,
+                                            plantNames: orgPlants,
+                                            selectedPlant: validPlant,
+                                            onPlantChanged: _onPlantChanged,
+                                            valueStreams: valueStreams,
+                                            selectedValueStream:
+                                                validValueStream,
+                                            onValueStreamChanged:
+                                                _onValueStreamChanged,
+                                            processes: processNames,
+                                            selectedProcess: validProcess,
+                                            onProcessChanged: _onProcessChanged,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],

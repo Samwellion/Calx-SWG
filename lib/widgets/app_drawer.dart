@@ -8,6 +8,7 @@ import '../screens/time_observation_form.dart';
 import '../screens/setup_element_viewer.dart';
 import '../screens/time_study_viewer.dart';
 import '../screens/time_study_review_screen.dart';
+import '../screens/full_hierarchy_demo_screen.dart';
 
 class AppDrawer extends StatefulWidget {
   const AppDrawer({super.key});
@@ -59,6 +60,11 @@ class _AppDrawerState extends State<AppDrawer> {
       hasCompanySelection && hasPlantSelection && hasValueStreamSelection;
   bool get canAccessPartInput =>
       hasCompanySelection && hasPlantSelection && hasValueStreamSelection;
+  bool get canAccessElementsInput =>
+      hasCompanySelection &&
+      hasPlantSelection &&
+      hasValueStreamSelection &&
+      hasProcessSelection;
 
   void _showRequirementsDialog(
       BuildContext context, String feature, List<String> requirements) {
@@ -283,8 +289,8 @@ class _AppDrawerState extends State<AppDrawer> {
             leading: const Icon(Icons.engineering),
             title: const Text('Standard Work Development'),
             children: <Widget>[
-              // Add Elements in Setup - Requires Company, Plant, Value Stream
-              if (canAccessPartInput)
+              // Add Elements in Setup - Requires Company, Plant, Value Stream, Process
+              if (canAccessElementsInput)
                 _buildEnabledListTile(
                   icon: Icons.add_circle_outline,
                   title: 'Add Elements in Setup',
@@ -305,8 +311,16 @@ class _AppDrawerState extends State<AppDrawer> {
                 _buildDisabledListTile(
                   icon: Icons.add_circle_outline,
                   title: 'Add Elements in Setup',
-                  requirements: ['Company', 'Plant', 'Value Stream'],
-                  subtitle: 'Requires: Company, Plant, Value Stream',
+                  requirements: [
+                    'Company',
+                    'Plant',
+                    'Value Stream',
+                    'Process',
+                    'Parts in database',
+                    'Processes in database'
+                  ],
+                  subtitle:
+                      'Requires: Company, Plant, Value Stream, Process, and existing parts/processes',
                 ),
 
               // Time Observation - Requires Company, Plant, Value Stream, Process
@@ -381,6 +395,19 @@ class _AppDrawerState extends State<AppDrawer> {
                     context,
                     MaterialPageRoute(
                         builder: (context) => const TimeStudyReviewScreen()),
+                  );
+                },
+              ),
+
+              // Full Hierarchy Tree Demo - No requirements (view-only)
+              _buildEnabledListTile(
+                icon: Icons.account_tree_outlined,
+                title: 'Full Hierarchy Tree',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const FullHierarchyDemoScreen()),
                   );
                 },
               ),
