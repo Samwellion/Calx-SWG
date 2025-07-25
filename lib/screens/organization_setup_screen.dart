@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'plant_setup_screen.dart';
 import '../widgets/app_footer.dart';
+import '../widgets/home_button_wrapper.dart';
 import '../models/organization_data.dart' as org_data;
 import '../database_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -663,7 +664,8 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
         body: Center(child: CircularProgressIndicator()),
       );
     }
-    return Scaffold(
+    return HomeButtonWrapper(
+        child: Scaffold(
       appBar: AppBar(
         title: const Text('Organization Setup'),
         backgroundColor: Colors.white,
@@ -727,6 +729,6 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
           ],
         ),
       ),
-    );
+    ));
   }
 }

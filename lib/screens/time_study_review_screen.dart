@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/app_footer.dart';
+import '../widgets/home_button_wrapper.dart';
 import '../database_provider.dart';
 import '../logic/app_database.dart';
 import 'package:drift/drift.dart' show OrderingTerm;
@@ -213,7 +214,8 @@ class _TimeStudyReviewScreenState extends State<TimeStudyReviewScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return HomeButtonWrapper(
+        child: Scaffold(
       appBar: AppBar(
         title: const Text('Time Study Review'),
         backgroundColor: Colors.white,
@@ -391,7 +393,7 @@ class _TimeStudyReviewScreenState extends State<TimeStudyReviewScreen>
           ],
         ),
       ),
-    );
+    ));
   }
 
   Widget _buildStudiesList() {

@@ -5,6 +5,7 @@ import '../database_provider.dart';
 import '../widgets/selection_display_card.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/app_footer.dart';
+import '../widgets/home_button_wrapper.dart';
 import '../utils/error_handler.dart';
 
 class ProcessInputScreen extends StatefulWidget {
@@ -236,7 +237,8 @@ class _ProcessInputScreenState extends State<ProcessInputScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return HomeButtonWrapper(
+        child: Scaffold(
       appBar: AppBar(
         title: const Text('Process Input'),
         backgroundColor: Colors.white,
@@ -518,6 +520,6 @@ class _ProcessInputScreenState extends State<ProcessInputScreen> {
           ],
         ),
       ),
-    );
+    ));
   }
 }

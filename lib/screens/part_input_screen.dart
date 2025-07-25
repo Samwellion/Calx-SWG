@@ -5,6 +5,7 @@ import '../database_provider.dart';
 import '../widgets/selection_display_card.dart';
 import '../widgets/app_footer.dart';
 import '../widgets/app_drawer.dart';
+import '../widgets/home_button_wrapper.dart';
 import '../utils/error_handler.dart';
 
 class PartInputScreen extends StatefulWidget {
@@ -369,7 +370,8 @@ class _PartInputScreenState extends State<PartInputScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return HomeButtonWrapper(
+        child: Scaffold(
       appBar: AppBar(
         title: const Text('Part Input'),
         backgroundColor: Colors.white,
@@ -692,6 +694,6 @@ class _PartInputScreenState extends State<PartInputScreen> {
           ],
         ),
       ),
-    );
+    ));
   }
 }

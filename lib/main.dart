@@ -5,6 +5,9 @@ import 'screens/home_screen.dart';
 void main() {
   runApp(MaterialApp(
     home: HomeScreen(),
+    routes: {
+      '/': (context) => HomeScreen(),
+    },
   ));
 }
 // The main.dart file initializes the Flutter application and sets the HomeScreen as the home widget.

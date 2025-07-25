@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/organization_data.dart' as org_data;
 import '../widgets/app_footer.dart';
 import '../widgets/app_drawer.dart';
+import '../widgets/home_button_wrapper.dart';
 import '../database_provider.dart';
 import '../logic/plant_repository.dart';
 import '../widgets/plant_details_panel.dart';
@@ -298,7 +299,8 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
             ? plants[_selectedPlantIdx!]
             : null;
 
-        return PopScope(
+        return HomeButtonWrapper(
+            child: PopScope(
           canPop: false, // Always handle pop manually
           onPopInvoked: (bool didPop) async {
             if (didPop) return; // Already popped
@@ -469,7 +471,7 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
               },
             ),
           ), // Close the PopScope widget
-        );
+        ));
       },
     );
   }
