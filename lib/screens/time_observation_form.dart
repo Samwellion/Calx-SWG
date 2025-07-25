@@ -104,8 +104,6 @@ class _TimeObservationFormState extends State<TimeObservationForm> {
 
   List<Map<String, dynamic>> _parts = [];
   String? _selectedPartNumber;
-  bool _loadingParts = true;
-  String? _partsError;
   String? _currentSetupName;
 
   @override
@@ -133,10 +131,7 @@ class _TimeObservationFormState extends State<TimeObservationForm> {
   }
 
   Future<void> _loadParts() async {
-    setState(() {
-      _loadingParts = true;
-      _partsError = null;
-    });
+    setState(() {});
     try {
       final db = await DatabaseProvider.getInstance();
       final result = await db.customSelect(
@@ -148,16 +143,12 @@ class _TimeObservationFormState extends State<TimeObservationForm> {
         if (_parts.isNotEmpty && _selectedPartNumber == null) {
           _selectedPartNumber = _parts[0]['part_number'];
         }
-        _loadingParts = false;
       });
 
       // Load setup name after parts are loaded
       await _loadSetupName();
     } catch (e) {
-      setState(() {
-        _partsError = 'Failed to load parts: $e';
-        _loadingParts = false;
-      });
+      setState(() {});
     }
   }
 

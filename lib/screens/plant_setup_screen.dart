@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/organization_data.dart' as org_data;
 import '../widgets/app_footer.dart';
 import '../widgets/app_drawer.dart';
@@ -12,11 +13,13 @@ import '../widgets/plant_list.dart';
 Map<String, List<String>> plantValueStreams = {};
 
 class PlantSetupScreen extends StatefulWidget {
-  final int initialPlantIndex;
+  final int? initialPlantIndex;
+  final String? selectedPlantName;
 
   const PlantSetupScreen({
     super.key,
-    this.initialPlantIndex = 0, // Default to the first plant if not provided
+    this.initialPlantIndex,
+    this.selectedPlantName, // Plant name from preferences
   });
 
   @override
@@ -150,10 +153,60 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
     final dbPlants = await _repository.getAllPlants();
     org_data.OrganizationData.plants = dbPlants;
 
+    // Determine the initial plant index
+    await _determineInitialPlantIndex();
+
     // Load data for the initially selected plant
     if (mounted) {
       await _loadSelectedPlantData();
     }
+  }
+
+  Future<void> _determineInitialPlantIndex() async {
+    final plants = org_data.OrganizationData.plants;
+
+    if (plants.isEmpty) {
+      _selectedPlantIdx = null;
+      return;
+    }
+
+    // Priority 1: Use explicit initial plant index if provided
+    if (widget.initialPlantIndex != null &&
+        widget.initialPlantIndex! >= 0 &&
+        widget.initialPlantIndex! < plants.length) {
+      _selectedPlantIdx = widget.initialPlantIndex!;
+      return;
+    }
+
+    // Priority 2: Use plant name if provided
+    if (widget.selectedPlantName != null &&
+        widget.selectedPlantName!.isNotEmpty) {
+      final plantIndex =
+          plants.indexWhere((plant) => plant.name == widget.selectedPlantName);
+      if (plantIndex >= 0) {
+        _selectedPlantIdx = plantIndex;
+        return;
+      }
+    }
+
+    // Priority 3: Try to get plant from saved preferences
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedPlantName = prefs.getString('selectedPlant');
+      if (savedPlantName != null && savedPlantName.isNotEmpty) {
+        final plantIndex =
+            plants.indexWhere((plant) => plant.name == savedPlantName);
+        if (plantIndex >= 0) {
+          _selectedPlantIdx = plantIndex;
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading plant preference: $e');
+    }
+
+    // Priority 4: Default to first plant
+    _selectedPlantIdx = 0;
   }
 
   void _ensurePlantDataInitialized(List<org_data.PlantData> plants) {

@@ -29,6 +29,8 @@ class _PartInputScreenState extends State<PartInputScreen> {
   final TextEditingController _partNumberController = TextEditingController();
   final TextEditingController _partDescriptionController =
       TextEditingController();
+  final FocusNode _partNumberFocus = FocusNode();
+  final FocusNode _partDescriptionFocus = FocusNode();
   bool _saving = false;
   bool _loading = true;
   String? _error;
@@ -75,7 +77,11 @@ class _PartInputScreenState extends State<PartInputScreen> {
 
       if (valueStreamCheck.isNotEmpty) {
         actualValueStreamId = valueStreamCheck.first.data['id'] as int;
-      } else {}
+      } else {
+        // Log warning: Value stream not found, using original ID
+        debugPrint(
+            'Warning: Value stream "${widget.valueStreamName}" not found in plant "${widget.plantName}"');
+      }
 
       // Query parts using the correct value stream ID
       final result = await db.customSelect(
@@ -97,69 +103,9 @@ class _PartInputScreenState extends State<PartInputScreen> {
         _loading = false;
       });
 
-      if (_parts.isNotEmpty) {
-      } else {
-        final totalParts =
-            await db.customSelect('SELECT COUNT(*) as count FROM parts').get();
-
-        // Let's see what value_stream_ids the existing parts are using
-        final existingParts = await db
-            .customSelect('SELECT part_number, value_stream_id FROM parts')
-            .get();
-        for (final part in existingParts) {}
-
-        // Let's also check all value streams to see which ones exist
-        final allValueStreams = await db
-            .customSelect('SELECT id, name, plant_id FROM value_streams')
-            .get();
-        for (final vs in allValueStreams) {}
-
-        // Check for orphaned parts (parts with value_stream_id that no longer exists)
-        final orphanedParts = await db
-            .customSelect('''SELECT p.id, p.part_number, p.value_stream_id 
-             FROM parts p 
-             LEFT JOIN value_streams vs ON p.value_stream_id = vs.id 
-             WHERE vs.id IS NULL''').get();
-
-        if (orphanedParts.isNotEmpty) {
-          // Ask user if they want to fix the orphaned parts by updating them to current value stream
-          if (mounted) {
-            final shouldFix = await showDialog<bool>(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('Data Repair Needed'),
-                content: Text(
-                    'Found ${orphanedParts.length} saved parts that are referencing an old value stream configuration.\n\n'
-                    'Would you like to update these parts to use the current "${widget.valueStreamName}" value stream?\n\n'
-                    'Parts to update: ${orphanedParts.map((p) => p.data['part_number']).join(', ')}'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    child: const Text('Cancel'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () => Navigator.of(context).pop(true),
-                    child: const Text('Update Parts'),
-                  ),
-                ],
-              ),
-            );
-
-            if (shouldFix == true) {
-              // Update orphaned parts to use the current value stream ID
-              for (final orphanPart in orphanedParts) {
-                await db.customStatement(
-                  'UPDATE parts SET value_stream_id = ? WHERE id = ?',
-                  [actualValueStreamId, orphanPart.data['id']],
-                );
-              }
-
-              // Reload the parts after fixing
-              _loadParts();
-              return;
-            }
-          }
-        }
+      // Only check for orphaned parts if no parts were found for this value stream
+      if (_parts.isEmpty) {
+        await _handleOrphanedParts(actualValueStreamId);
       }
     } catch (e) {
       setState(() {
@@ -169,10 +115,63 @@ class _PartInputScreenState extends State<PartInputScreen> {
     }
   }
 
+  /// Handles orphaned parts that reference non-existent value streams
+  Future<void> _handleOrphanedParts(int actualValueStreamId) async {
+    try {
+      // Check for orphaned parts (parts with value_stream_id that no longer exists)
+      final orphanedParts = await db.customSelect('''
+        SELECT p.id, p.part_number, p.value_stream_id 
+        FROM parts p 
+        LEFT JOIN value_streams vs ON p.value_stream_id = vs.id 
+        WHERE vs.id IS NULL
+      ''').get();
+
+      if (orphanedParts.isNotEmpty && mounted) {
+        final shouldFix = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Data Repair Needed'),
+            content: Text(
+                'Found ${orphanedParts.length} saved parts that are referencing an old value stream configuration.\n\n'
+                'Would you like to update these parts to use the current "${widget.valueStreamName}" value stream?\n\n'
+                'Parts to update: ${orphanedParts.map((p) => p.data['part_number']).join(', ')}'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Update Parts'),
+              ),
+            ],
+          ),
+        );
+
+        if (shouldFix == true) {
+          // Update orphaned parts to use the current value stream ID
+          for (final orphanPart in orphanedParts) {
+            await db.customStatement(
+              'UPDATE parts SET value_stream_id = ? WHERE id = ?',
+              [actualValueStreamId, orphanPart.data['id']],
+            );
+          }
+
+          // Reload the parts after fixing
+          await _loadParts();
+        }
+      }
+    } catch (e) {
+      debugPrint('Error handling orphaned parts: $e');
+    }
+  }
+
   @override
   void dispose() {
     _partNumberController.dispose();
     _partDescriptionController.dispose();
+    _partNumberFocus.dispose();
+    _partDescriptionFocus.dispose();
     for (var controller in _partNumberControllers.values) {
       controller.dispose();
     }
@@ -185,20 +184,48 @@ class _PartInputScreenState extends State<PartInputScreen> {
   Future<void> _savePart() async {
     final partNumber = _partNumberController.text.trim();
     final partDescription = _partDescriptionController.text.trim();
+
     if (partNumber.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Part Number is required!')),
       );
       return;
     }
+
+    // Check for duplicate part numbers
+    if (_parts.any((part) =>
+        part['part_number']?.toLowerCase() == partNumber.toLowerCase())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('A part with this number already exists!')),
+      );
+      return;
+    }
+
     setState(() => _saving = true);
+
     try {
+      // Get the correct value stream ID
+      final valueStreamCheck = await db.customSelect(
+        '''SELECT vs.id FROM value_streams vs 
+           JOIN plants p ON vs.plant_id = p.id 
+           WHERE vs.name = ? AND p.name = ?''',
+        variables: [
+          drift.Variable.withString(widget.valueStreamName),
+          drift.Variable.withString(widget.plantName),
+        ],
+      ).get();
+
+      final actualValueStreamId = valueStreamCheck.isNotEmpty
+          ? valueStreamCheck.first.data['id'] as int
+          : widget.valueStreamId;
+
       // Get the organization ID from the company name
       final organizationId = await db.upsertOrganization(widget.companyName);
 
       await db.insertPart(
         PartsCompanion.insert(
-          valueStreamId: widget.valueStreamId,
+          valueStreamId: actualValueStreamId,
           organizationId: organizationId,
           partNumber: partNumber,
           partDescription: partDescription.isEmpty
@@ -211,6 +238,9 @@ class _PartInputScreenState extends State<PartInputScreen> {
       _partNumberController.clear();
       _partDescriptionController.clear();
 
+      // Reset focus to part number field for efficient data entry
+      _partNumberFocus.requestFocus();
+
       if (mounted) {
         ErrorHandler.showSuccessSnackbar(
             context, 'Part "$partNumber" saved successfully!');
@@ -220,38 +250,84 @@ class _PartInputScreenState extends State<PartInputScreen> {
         ErrorHandler.showConstraintErrorDialog(context, e);
       }
     } finally {
-      setState(() => _saving = false);
+      if (mounted) {
+        setState(() => _saving = false);
+      }
     }
   }
 
   void _trySaveOnEnter() {
     final partNumber = _partNumberController.text.trim();
-    final partDescription = _partDescriptionController.text.trim();
-    if (partNumber.isNotEmpty && partDescription.isNotEmpty && !_saving) {
+    if (partNumber.isNotEmpty && !_saving) {
       _savePart();
     }
   }
 
   Future<void> _deletePart(int id) async {
+    // Find the part to get its name for confirmation
+    final part = _parts.firstWhere((p) => p['id'] == id, orElse: () => {});
+    final partNumber = part['part_number'] ?? 'Unknown Part';
+
+    // Show confirmation dialog
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Delete'),
+        content: Text(
+            'Are you sure you want to delete part "$partNumber"?\n\nThis action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldDelete != true) return;
+
     try {
       await (db.delete(db.parts)..where((p) => p.id.equals(id))).go();
+
+      // Clean up the controller for this part
+      _partNumberControllers[id]?.dispose();
+      _partDescriptionControllers[id]?.dispose();
+      _partNumberControllers.remove(id);
+      _partDescriptionControllers.remove(id);
+      _editingStates.remove(id);
+
       await _loadParts();
+
+      if (mounted) {
+        ErrorHandler.showSuccessSnackbar(
+            context, 'Part "$partNumber" deleted successfully!');
+      }
     } catch (e) {
-      setState(() {
-        _error = 'Failed to delete part: $e';
-      });
+      if (mounted) {
+        setState(() {
+          _error = 'Failed to delete part: $e';
+        });
+        ErrorHandler.showConstraintErrorDialog(context, e);
+      }
     }
   }
 
   Future<void> _updatePart(int id) async {
     final partNumber = _partNumberControllers[id]!.text.trim();
     final partDescription = _partDescriptionControllers[id]!.text.trim();
+
     if (partNumber.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Part Number is required!')),
       );
       return;
     }
+
     try {
       await (db.update(db.parts)..where((p) => p.id.equals(id))).write(
         PartsCompanion(
@@ -259,12 +335,36 @@ class _PartInputScreenState extends State<PartInputScreen> {
           partDescription: drift.Value(partDescription),
         ),
       );
-      await _loadParts();
-    } catch (e) {
+
+      // Exit editing mode
       setState(() {
-        _error = 'Failed to update part: $e';
+        _editingStates[id] = false;
       });
+
+      await _loadParts();
+
+      if (mounted) {
+        ErrorHandler.showSuccessSnackbar(
+            context, 'Part "$partNumber" updated successfully!');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Failed to update part: $e';
+        });
+        ErrorHandler.showConstraintErrorDialog(context, e);
+      }
     }
+  }
+
+  void _cancelEdit(int id) {
+    setState(() {
+      _editingStates[id] = false;
+      // Reset the controllers to original values
+      final part = _parts.firstWhere((p) => p['id'] == id);
+      _partNumberControllers[id]!.text = part['part_number'] ?? '';
+      _partDescriptionControllers[id]!.text = part['part_description'] ?? '';
+    });
   }
 
   @override
@@ -276,284 +376,321 @@ class _PartInputScreenState extends State<PartInputScreen> {
       ),
       drawer: const AppDrawer(),
       backgroundColor: Colors.yellow[100],
-      body: Column(
-        children: [
-          Expanded(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 900),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Left Column: Selection Card and Form
-                    Expanded(
-                      flex: 2,
-                      child: Column(
-                        children: [
-                          SelectionDisplayCard(
-                            companyName: widget.companyName,
-                            plantName: widget.plantName,
-                            valueStreamName: widget.valueStreamName,
-                          ),
-                          Expanded(
-                            child: Card(
-                              color: Colors.yellow[50],
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16)),
-                              elevation: 8,
-                              child: Padding(
-                                padding: const EdgeInsets.all(24.0),
-                                child: _loading
-                                    ? const Center(
-                                        child: CircularProgressIndicator())
-                                    : _error != null
-                                        ? Center(
-                                            child: Text(_error!,
-                                                style: const TextStyle(
-                                                    color: Colors.red)))
-                                        : SingleChildScrollView(
-                                            child: Column(
-                                              mainAxisSize: MainAxisSize.max,
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.stretch,
-                                              children: [
-                                                const Text(
-                                                  'Enter Part',
-                                                  textAlign: TextAlign.center,
-                                                  style: TextStyle(
-                                                    fontSize: 18,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 14),
-                                                TextField(
-                                                  controller:
-                                                      _partNumberController,
-                                                  decoration:
-                                                      const InputDecoration(
-                                                    labelText: 'Part Number',
-                                                    border:
-                                                        OutlineInputBorder(),
-                                                    filled: true,
-                                                    fillColor: Colors.white,
-                                                  ),
-                                                  onSubmitted: (_) =>
-                                                      _trySaveOnEnter(),
-                                                ),
-                                                const SizedBox(height: 14),
-                                                TextField(
-                                                  controller:
-                                                      _partDescriptionController,
-                                                  decoration:
-                                                      const InputDecoration(
-                                                    labelText:
-                                                        'Part Description',
-                                                    border:
-                                                        OutlineInputBorder(),
-                                                    filled: true,
-                                                    fillColor: Colors.white,
-                                                  ),
-                                                  onSubmitted: (_) =>
-                                                      _trySaveOnEnter(),
-                                                ),
-                                                const SizedBox(height: 20),
-                                                SizedBox(
-                                                  width: double.infinity,
-                                                  child: ElevatedButton(
-                                                    style: ElevatedButton
-                                                        .styleFrom(
-                                                      backgroundColor:
-                                                          Colors.yellow[300],
-                                                      foregroundColor:
-                                                          Colors.black,
-                                                      padding: const EdgeInsets
-                                                          .symmetric(
-                                                          vertical: 16),
-                                                      textStyle:
-                                                          const TextStyle(
-                                                              fontSize: 18,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold),
-                                                      shape:
-                                                          RoundedRectangleBorder(
-                                                              borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          12)),
-                                                      elevation: 6,
+      resizeToAvoidBottomInset: true,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 900),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Left Column: Selection Card and Form
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          children: [
+                            SelectionDisplayCard(
+                              companyName: widget.companyName,
+                              plantName: widget.plantName,
+                              valueStreamName: widget.valueStreamName,
+                            ),
+                            Expanded(
+                              child: Card(
+                                color: Colors.yellow[50],
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16)),
+                                elevation: 8,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(24.0),
+                                  child: _loading
+                                      ? const Center(
+                                          child: CircularProgressIndicator())
+                                      : _error != null
+                                          ? Center(
+                                              child: Text(_error!,
+                                                  style: const TextStyle(
+                                                      color: Colors.red)))
+                                          : SingleChildScrollView(
+                                              child: Column(
+                                                mainAxisSize: MainAxisSize.max,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.stretch,
+                                                children: [
+                                                  const Text(
+                                                    'Enter Part',
+                                                    textAlign: TextAlign.center,
+                                                    style: TextStyle(
+                                                      fontSize: 18,
+                                                      fontWeight:
+                                                          FontWeight.bold,
                                                     ),
-                                                    onPressed: _saving
-                                                        ? null
-                                                        : _savePart,
-                                                    child: _saving
-                                                        ? const CircularProgressIndicator()
-                                                        : const Text(
-                                                            'Save Part'),
                                                   ),
-                                                ),
-                                              ],
+                                                  const SizedBox(height: 14),
+                                                  TextField(
+                                                    controller:
+                                                        _partNumberController,
+                                                    focusNode: _partNumberFocus,
+                                                    decoration:
+                                                        const InputDecoration(
+                                                      labelText: 'Part Number',
+                                                      border:
+                                                          OutlineInputBorder(),
+                                                      filled: true,
+                                                      fillColor: Colors.white,
+                                                    ),
+                                                    textInputAction:
+                                                        TextInputAction.next,
+                                                    onSubmitted: (_) =>
+                                                        _partDescriptionFocus
+                                                            .requestFocus(),
+                                                  ),
+                                                  const SizedBox(height: 14),
+                                                  TextField(
+                                                    controller:
+                                                        _partDescriptionController,
+                                                    focusNode:
+                                                        _partDescriptionFocus,
+                                                    decoration:
+                                                        const InputDecoration(
+                                                      labelText:
+                                                          'Part Description',
+                                                      border:
+                                                          OutlineInputBorder(),
+                                                      filled: true,
+                                                      fillColor: Colors.white,
+                                                    ),
+                                                    textInputAction:
+                                                        TextInputAction.done,
+                                                    onSubmitted: (_) =>
+                                                        _trySaveOnEnter(),
+                                                  ),
+                                                  const SizedBox(height: 20),
+                                                  SizedBox(
+                                                    width: double.infinity,
+                                                    child: ElevatedButton(
+                                                      style: ElevatedButton
+                                                          .styleFrom(
+                                                        backgroundColor:
+                                                            Colors.yellow[300],
+                                                        foregroundColor:
+                                                            Colors.black,
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                                vertical: 16),
+                                                        textStyle:
+                                                            const TextStyle(
+                                                                fontSize: 18,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold),
+                                                        shape: RoundedRectangleBorder(
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        12)),
+                                                        elevation: 6,
+                                                      ),
+                                                      onPressed: _saving
+                                                          ? null
+                                                          : _savePart,
+                                                      child: _saving
+                                                          ? const CircularProgressIndicator()
+                                                          : const Text(
+                                                              'Save Part'),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
                                             ),
-                                          ),
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 32),
-                    // Right: Saved Parts Table
-                    Expanded(
-                      flex: 3,
-                      child: Card(
-                        color: Colors.yellow[50],
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16)),
-                        elevation: 8,
-                        child: Padding(
-                          padding: const EdgeInsets.all(24.0),
-                          child: _loading
-                              ? const Center(child: CircularProgressIndicator())
-                              : _error != null
-                                  ? Center(
-                                      child: Text(_error!,
-                                          style: const TextStyle(
-                                              color: Colors.red)))
-                                  : Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                        const Text('Saved Parts',
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 18)),
-                                        const SizedBox(height: 8),
-                                        Expanded(
-                                          child: _parts.isEmpty
-                                              ? const Text(
-                                                  'No parts saved yet.')
-                                              : SingleChildScrollView(
-                                                  scrollDirection:
-                                                      Axis.vertical,
-                                                  child: LayoutBuilder(builder:
-                                                      (context, constraints) {
-                                                    return DataTable(
-                                                      columnSpacing: 20,
-                                                      columns: [
-                                                        DataColumn(
-                                                          label: SizedBox(
-                                                            width: constraints
-                                                                    .maxWidth *
-                                                                0.2,
-                                                            child: const Text(
-                                                                'Part Number'),
-                                                          ),
-                                                        ),
-                                                        DataColumn(
-                                                          label: SizedBox(
-                                                            width: constraints
-                                                                    .maxWidth *
-                                                                0.5,
-                                                            child: const Text(
-                                                                'Description'),
-                                                          ),
-                                                        ),
-                                                        const DataColumn(
-                                                          label:
-                                                              Text('Actions'),
-                                                        ),
-                                                      ],
-                                                      rows: _parts.map((part) {
-                                                        final isEditing =
-                                                            _editingStates[part[
-                                                                    'id']] ??
-                                                                false;
-                                                        return DataRow(cells: [
-                                                          DataCell(
-                                                            Text(part[
-                                                                    'part_number'] ??
-                                                                ''),
-                                                          ),
-                                                          DataCell(
-                                                            isEditing
-                                                                ? TextFormField(
-                                                                    controller:
-                                                                        _partDescriptionControllers[
-                                                                            part['id']],
-                                                                  )
-                                                                : Text(part[
-                                                                        'part_description'] ??
-                                                                    ''),
-                                                          ),
-                                                          DataCell(
-                                                            Row(
-                                                              children: [
-                                                                if (isEditing)
-                                                                  IconButton(
-                                                                    icon: const Icon(
-                                                                        Icons
-                                                                            .check,
-                                                                        color: Colors
-                                                                            .green),
-                                                                    onPressed:
-                                                                        () {
-                                                                      _updatePart(
-                                                                          part[
-                                                                              'id']);
-                                                                    },
-                                                                  )
-                                                                else
-                                                                  IconButton(
-                                                                    icon: const Icon(
-                                                                        Icons
-                                                                            .edit,
-                                                                        color: Colors
-                                                                            .blue),
-                                                                    onPressed:
-                                                                        () {
-                                                                      setState(
-                                                                          () {
-                                                                        _editingStates[part['id']] =
-                                                                            true;
-                                                                      });
-                                                                    },
-                                                                  ),
-                                                                IconButton(
-                                                                  icon: const Icon(
-                                                                      Icons
-                                                                          .delete,
-                                                                      color: Colors
-                                                                          .red),
-                                                                  onPressed:
-                                                                      () {
-                                                                    _deletePart(
-                                                                        part[
-                                                                            'id']);
-                                                                  },
-                                                                ),
-                                                              ],
-                                                            ),
-                                                          ),
-                                                        ]);
-                                                      }).toList(),
-                                                    );
-                                                  }),
-                                                ),
-                                        ),
-                                      ],
-                                    ),
+                          ],
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 32),
+                      // Right: Saved Parts Table
+                      Expanded(
+                        flex: 3,
+                        child: Card(
+                          color: Colors.yellow[50],
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16)),
+                          elevation: 8,
+                          child: Padding(
+                            padding: const EdgeInsets.all(24.0),
+                            child: _loading
+                                ? const Center(
+                                    child: CircularProgressIndicator())
+                                : _error != null
+                                    ? Center(
+                                        child: Text(_error!,
+                                            style: const TextStyle(
+                                                color: Colors.red)))
+                                    : Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          const Text('Saved Parts',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 18)),
+                                          const SizedBox(height: 8),
+                                          Expanded(
+                                            child: _parts.isEmpty
+                                                ? const Text(
+                                                    'No parts saved yet.')
+                                                : SingleChildScrollView(
+                                                    scrollDirection:
+                                                        Axis.vertical,
+                                                    child: LayoutBuilder(
+                                                        builder: (context,
+                                                            constraints) {
+                                                      return DataTable(
+                                                        columnSpacing: 20,
+                                                        columns: [
+                                                          DataColumn(
+                                                            label: SizedBox(
+                                                              width: constraints
+                                                                      .maxWidth *
+                                                                  0.2,
+                                                              child: const Text(
+                                                                  'Part Number'),
+                                                            ),
+                                                          ),
+                                                          DataColumn(
+                                                            label: SizedBox(
+                                                              width: constraints
+                                                                      .maxWidth *
+                                                                  0.5,
+                                                              child: const Text(
+                                                                  'Description'),
+                                                            ),
+                                                          ),
+                                                          const DataColumn(
+                                                            label:
+                                                                Text('Actions'),
+                                                          ),
+                                                        ],
+                                                        rows:
+                                                            _parts.map((part) {
+                                                          final isEditing =
+                                                              _editingStates[part[
+                                                                      'id']] ??
+                                                                  false;
+                                                          return DataRow(
+                                                              cells: [
+                                                                DataCell(
+                                                                  isEditing
+                                                                      ? TextFormField(
+                                                                          controller:
+                                                                              _partNumberControllers[part['id']],
+                                                                          decoration:
+                                                                              const InputDecoration(
+                                                                            labelText:
+                                                                                'Part Number',
+                                                                            isDense:
+                                                                                true,
+                                                                          ),
+                                                                        )
+                                                                      : Text(part[
+                                                                              'part_number'] ??
+                                                                          ''),
+                                                                ),
+                                                                DataCell(
+                                                                  isEditing
+                                                                      ? TextFormField(
+                                                                          controller:
+                                                                              _partDescriptionControllers[part['id']],
+                                                                          decoration:
+                                                                              const InputDecoration(
+                                                                            labelText:
+                                                                                'Description',
+                                                                            isDense:
+                                                                                true,
+                                                                          ),
+                                                                        )
+                                                                      : Text(part[
+                                                                              'part_description'] ??
+                                                                          ''),
+                                                                ),
+                                                                DataCell(
+                                                                  Row(
+                                                                    mainAxisSize:
+                                                                        MainAxisSize
+                                                                            .min,
+                                                                    children: [
+                                                                      if (isEditing) ...[
+                                                                        IconButton(
+                                                                          icon: const Icon(
+                                                                              Icons.check,
+                                                                              color: Colors.green),
+                                                                          onPressed: () =>
+                                                                              _updatePart(part['id']),
+                                                                          tooltip:
+                                                                              'Save',
+                                                                        ),
+                                                                        IconButton(
+                                                                          icon: const Icon(
+                                                                              Icons.close,
+                                                                              color: Colors.orange),
+                                                                          onPressed: () =>
+                                                                              _cancelEdit(part['id']),
+                                                                          tooltip:
+                                                                              'Cancel',
+                                                                        ),
+                                                                      ] else ...[
+                                                                        IconButton(
+                                                                          icon: const Icon(
+                                                                              Icons.edit,
+                                                                              color: Colors.blue),
+                                                                          onPressed:
+                                                                              () {
+                                                                            setState(() {
+                                                                              _editingStates[part['id']] = true;
+                                                                            });
+                                                                          },
+                                                                          tooltip:
+                                                                              'Edit',
+                                                                        ),
+                                                                        IconButton(
+                                                                          icon: const Icon(
+                                                                              Icons.delete,
+                                                                              color: Colors.red),
+                                                                          onPressed: () =>
+                                                                              _deletePart(part['id']),
+                                                                          tooltip:
+                                                                              'Delete',
+                                                                        ),
+                                                                      ],
+                                                                    ],
+                                                                  ),
+                                                                ),
+                                                              ]);
+                                                        }).toList(),
+                                                      );
+                                                    }),
+                                                  ),
+                                          ),
+                                        ],
+                                      ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 8),
-          const AppFooter(),
-        ],
+            const SizedBox(height: 8),
+            const AppFooter(),
+          ],
+        ),
       ),
     );
   }

@@ -152,142 +152,50 @@ class OrganizationDetailsForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.all(24),
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.yellow[50],
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.only(bottom: 16.0),
-              child: Text(
-                'Company and Plants',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
+    return Container(
+      margin: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.yellow[50],
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(bottom: 16.0),
+            child: Text(
+              'Company and Plants',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
               ),
             ),
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Company Name label and input + scrollable selectable list
-                  Expanded(
-                    flex: 2,
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 32.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Company Name',
-                            style: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: companyNameController,
-                                  focusNode: companyNameFocusNode,
-                                  decoration: const InputDecoration(
-                                    border: OutlineInputBorder(),
-                                    isDense: true,
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                  ),
-                                  onSubmitted: (_) => onAddCompanyName(),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.yellow[300],
-                                  foregroundColor: Colors.black,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 24, vertical: 14),
-                                  textStyle: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold),
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12)),
-                                  elevation: 6,
-                                ),
-                                onPressed: onAddCompanyName,
-                                child: const Text('Add'),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Expanded(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey[300]!),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Scrollbar(
-                                controller: companyScrollController,
-                                thumbVisibility: true,
-                                child: ListView.builder(
-                                  controller: companyScrollController,
-                                  itemCount: companyNames.length,
-                                  itemBuilder: (context, idx) {
-                                    final name = companyNames[idx];
-                                    final selected = name == selectedCompany;
-                                    return Material(
-                                      color: selected
-                                          ? Colors.yellow[200]
-                                          : Colors.transparent,
-                                      child: ListTile(
-                                        title: Text(
-                                          name,
-                                          style: TextStyle(
-                                            fontWeight: selected
-                                                ? FontWeight.bold
-                                                : FontWeight.normal,
-                                          ),
-                                        ),
-                                        selected: selected,
-                                        onTap: () => onSelectCompany(name),
-                                        trailing: IconButton(
-                                          icon: const Icon(Icons.delete,
-                                              color: Colors.red),
-                                          onPressed: () =>
-                                              onRemoveCompanyName(idx),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  // Plant Name label, input, and scrollable selectable list
-                  Expanded(
-                    flex: 3,
+          ),
+          SizedBox(
+            height: MediaQuery.of(context).size.height *
+                0.5, // Use 50% of screen height
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Company Name label and input + scrollable selectable list
+                Expanded(
+                  flex: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 32.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Plant Name',
+                          'Company Name',
                           style: TextStyle(
                               fontSize: 18, fontWeight: FontWeight.bold),
                         ),
@@ -296,19 +204,15 @@ class OrganizationDetailsForm extends StatelessWidget {
                           children: [
                             Expanded(
                               child: TextField(
-                                controller: plantController,
-                                focusNode: plantFocusNode,
-                                enabled: selectedCompany != null,
-                                decoration: InputDecoration(
-                                  border: const OutlineInputBorder(),
+                                controller: companyNameController,
+                                focusNode: companyNameFocusNode,
+                                decoration: const InputDecoration(
+                                  border: OutlineInputBorder(),
                                   isDense: true,
                                   filled: true,
                                   fillColor: Colors.white,
-                                  hintText: selectedCompany == null
-                                      ? 'Select a company first'
-                                      : 'Add Plant Name',
                                 ),
-                                onSubmitted: (_) => onAddPlant(),
+                                onSubmitted: (_) => onAddCompanyName(),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -324,8 +228,7 @@ class OrganizationDetailsForm extends StatelessWidget {
                                     borderRadius: BorderRadius.circular(12)),
                                 elevation: 6,
                               ),
-                              onPressed:
-                                  selectedCompany != null ? onAddPlant : null,
+                              onPressed: onAddCompanyName,
                               child: const Text('Add'),
                             ),
                           ],
@@ -338,30 +241,34 @@ class OrganizationDetailsForm extends StatelessWidget {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Scrollbar(
-                              controller: plantScrollController,
+                              controller: companyScrollController,
                               thumbVisibility: true,
                               child: ListView.builder(
-                                controller: plantScrollController,
-                                itemCount: plants.length,
+                                controller: companyScrollController,
+                                itemCount: companyNames.length,
                                 itemBuilder: (context, idx) {
-                                  final plant = plants[idx];
-                                  final selected = plant == selectedPlant;
+                                  final name = companyNames[idx];
+                                  final selected = name == selectedCompany;
                                   return Material(
                                     color: selected
                                         ? Colors.yellow[200]
                                         : Colors.transparent,
                                     child: ListTile(
-                                      title: Text(plant,
-                                          style: TextStyle(
-                                              fontWeight: selected
-                                                  ? FontWeight.bold
-                                                  : FontWeight.normal)),
+                                      title: Text(
+                                        name,
+                                        style: TextStyle(
+                                          fontWeight: selected
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                        ),
+                                      ),
                                       selected: selected,
-                                      onTap: () => onSelectPlant(plant),
+                                      onTap: () => onSelectCompany(name),
                                       trailing: IconButton(
                                         icon: const Icon(Icons.delete,
                                             color: Colors.red),
-                                        onPressed: () => onRemovePlant(idx),
+                                        onPressed: () =>
+                                            onRemoveCompanyName(idx),
                                       ),
                                     ),
                                   );
@@ -373,32 +280,125 @@ class OrganizationDetailsForm extends StatelessWidget {
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.yellow[300],
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 32, vertical: 16),
-                    textStyle: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    elevation: 6,
+                ),
+                // Plant Name label, input, and scrollable selectable list
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Plant Name',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: plantController,
+                              focusNode: plantFocusNode,
+                              enabled: selectedCompany != null,
+                              decoration: InputDecoration(
+                                border: const OutlineInputBorder(),
+                                isDense: true,
+                                filled: true,
+                                fillColor: Colors.white,
+                                hintText: selectedCompany == null
+                                    ? 'Select a company first'
+                                    : 'Add Plant Name',
+                              ),
+                              onSubmitted: (_) => onAddPlant(),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.yellow[300],
+                              foregroundColor: Colors.black,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 24, vertical: 14),
+                              textStyle: const TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                              elevation: 6,
+                            ),
+                            onPressed:
+                                selectedCompany != null ? onAddPlant : null,
+                            child: const Text('Add'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey[300]!),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Scrollbar(
+                            controller: plantScrollController,
+                            thumbVisibility: true,
+                            child: ListView.builder(
+                              controller: plantScrollController,
+                              itemCount: plants.length,
+                              itemBuilder: (context, idx) {
+                                final plant = plants[idx];
+                                final selected = plant == selectedPlant;
+                                return Material(
+                                  color: selected
+                                      ? Colors.yellow[200]
+                                      : Colors.transparent,
+                                  child: ListTile(
+                                    title: Text(plant,
+                                        style: TextStyle(
+                                            fontWeight: selected
+                                                ? FontWeight.bold
+                                                : FontWeight.normal)),
+                                    selected: selected,
+                                    onTap: () => onSelectPlant(plant),
+                                    trailing: IconButton(
+                                      icon: const Icon(Icons.delete,
+                                          color: Colors.red),
+                                      onPressed: () => onRemovePlant(idx),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  onPressed: saveEnabled ? onSave : null,
-                  child: const Text('Plant Setup'),
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.yellow[300],
+                  foregroundColor: Colors.black,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  textStyle: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  elevation: 6,
+                ),
+                onPressed: saveEnabled ? onSave : null,
+                child: const Text('Plant Setup'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -671,44 +671,61 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
       drawer: const AppDrawer(),
       backgroundColor: Colors.yellow[100],
       resizeToAvoidBottomInset: true,
-      body: Column(
-        children: [
-          // Organization Details Form - now expands to fill space
-          OrganizationDetailsForm(
-            companyNameController: _companyNameController,
-            companyNameFocusNode: _companyNameFocusNode,
-            plantController: _plantController,
-            plantFocusNode: _plantFocusNode,
-            companyScrollController: _companyScrollController,
-            plantScrollController: _plantScrollController,
-            companyNames: _companyNames,
-            selectedCompany: _selectedCompany,
-            onAddCompanyName: _addCompanyName,
-            onRemoveCompanyName: _removeCompanyName,
-            onSelectCompany: (name) {
-              setState(() {
-                _selectedCompany = name;
-                _selectedPlant = null;
-                _saveSelections(); // Save the selection change
-              });
-            },
-            plants: _selectedCompany != null
-                ? _companyPlants[_selectedCompany!] ?? []
-                : [],
-            selectedPlant: _selectedPlant,
-            onSelectPlant: (plant) {
-              setState(() {
-                _selectedPlant = plant;
-                _saveSelections(); // Save the selection change
-              });
-            },
-            onAddPlant: _addPlant,
-            onRemovePlant: _removePlant,
-            onSave: _saveOrganization,
-            saveEnabled: _selectedPlant != null,
-          ),
-          const AppFooter(),
-        ],
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Organization Details Form - now expands to fill space
+            Expanded(
+              child: SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: MediaQuery.of(context).size.height -
+                        AppBar().preferredSize.height -
+                        MediaQuery.of(context).padding.top -
+                        MediaQuery.of(context).padding.bottom -
+                        100, // Approximate footer height
+                  ),
+                  child: IntrinsicHeight(
+                    child: OrganizationDetailsForm(
+                      companyNameController: _companyNameController,
+                      companyNameFocusNode: _companyNameFocusNode,
+                      plantController: _plantController,
+                      plantFocusNode: _plantFocusNode,
+                      companyScrollController: _companyScrollController,
+                      plantScrollController: _plantScrollController,
+                      companyNames: _companyNames,
+                      selectedCompany: _selectedCompany,
+                      onAddCompanyName: _addCompanyName,
+                      onRemoveCompanyName: _removeCompanyName,
+                      onSelectCompany: (name) {
+                        setState(() {
+                          _selectedCompany = name;
+                          _selectedPlant = null;
+                          _saveSelections(); // Save the selection change
+                        });
+                      },
+                      plants: _selectedCompany != null
+                          ? _companyPlants[_selectedCompany!] ?? []
+                          : [],
+                      selectedPlant: _selectedPlant,
+                      onSelectPlant: (plant) {
+                        setState(() {
+                          _selectedPlant = plant;
+                          _saveSelections(); // Save the selection change
+                        });
+                      },
+                      onAddPlant: _addPlant,
+                      onRemovePlant: _removePlant,
+                      onSave: _saveOrganization,
+                      saveEnabled: _selectedPlant != null,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const AppFooter(),
+          ],
+        ),
       ),
     );
   }

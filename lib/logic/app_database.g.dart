@@ -254,9 +254,44 @@ class $ProcessesTable extends Processes
   late final GeneratedColumn<String> processDescription =
       GeneratedColumn<String>('process_description', aliasedName, true,
           type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _dailyDemandMeta =
+      const VerificationMeta('dailyDemand');
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, valueStreamId, processName, processDescription];
+  late final GeneratedColumn<int> dailyDemand = GeneratedColumn<int>(
+      'daily_demand', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _staffMeta = const VerificationMeta('staff');
+  @override
+  late final GeneratedColumn<int> staff = GeneratedColumn<int>(
+      'staff', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _wipMeta = const VerificationMeta('wip');
+  @override
+  late final GeneratedColumn<int> wip = GeneratedColumn<int>(
+      'wip', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _uptimeMeta = const VerificationMeta('uptime');
+  @override
+  late final GeneratedColumn<double> uptime = GeneratedColumn<double>(
+      'uptime', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _coTimeMeta = const VerificationMeta('coTime');
+  @override
+  late final GeneratedColumn<String> coTime = GeneratedColumn<String>(
+      'co_time', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        valueStreamId,
+        processName,
+        processDescription,
+        dailyDemand,
+        staff,
+        wip,
+        uptime,
+        coTime
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -292,6 +327,28 @@ class $ProcessesTable extends Processes
           processDescription.isAcceptableOrUnknown(
               data['process_description']!, _processDescriptionMeta));
     }
+    if (data.containsKey('daily_demand')) {
+      context.handle(
+          _dailyDemandMeta,
+          dailyDemand.isAcceptableOrUnknown(
+              data['daily_demand']!, _dailyDemandMeta));
+    }
+    if (data.containsKey('staff')) {
+      context.handle(
+          _staffMeta, staff.isAcceptableOrUnknown(data['staff']!, _staffMeta));
+    }
+    if (data.containsKey('wip')) {
+      context.handle(
+          _wipMeta, wip.isAcceptableOrUnknown(data['wip']!, _wipMeta));
+    }
+    if (data.containsKey('uptime')) {
+      context.handle(_uptimeMeta,
+          uptime.isAcceptableOrUnknown(data['uptime']!, _uptimeMeta));
+    }
+    if (data.containsKey('co_time')) {
+      context.handle(_coTimeMeta,
+          coTime.isAcceptableOrUnknown(data['co_time']!, _coTimeMeta));
+    }
     return context;
   }
 
@@ -309,6 +366,16 @@ class $ProcessesTable extends Processes
           .read(DriftSqlType.string, data['${effectivePrefix}process_name'])!,
       processDescription: attachedDatabase.typeMapping.read(
           DriftSqlType.string, data['${effectivePrefix}process_description']),
+      dailyDemand: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}daily_demand']),
+      staff: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}staff']),
+      wip: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}wip']),
+      uptime: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}uptime']),
+      coTime: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}co_time']),
     );
   }
 
@@ -323,11 +390,21 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
   final int valueStreamId;
   final String processName;
   final String? processDescription;
+  final int? dailyDemand;
+  final int? staff;
+  final int? wip;
+  final double? uptime;
+  final String? coTime;
   const ProcessesData(
       {required this.id,
       required this.valueStreamId,
       required this.processName,
-      this.processDescription});
+      this.processDescription,
+      this.dailyDemand,
+      this.staff,
+      this.wip,
+      this.uptime,
+      this.coTime});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -336,6 +413,21 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
     map['process_name'] = Variable<String>(processName);
     if (!nullToAbsent || processDescription != null) {
       map['process_description'] = Variable<String>(processDescription);
+    }
+    if (!nullToAbsent || dailyDemand != null) {
+      map['daily_demand'] = Variable<int>(dailyDemand);
+    }
+    if (!nullToAbsent || staff != null) {
+      map['staff'] = Variable<int>(staff);
+    }
+    if (!nullToAbsent || wip != null) {
+      map['wip'] = Variable<int>(wip);
+    }
+    if (!nullToAbsent || uptime != null) {
+      map['uptime'] = Variable<double>(uptime);
+    }
+    if (!nullToAbsent || coTime != null) {
+      map['co_time'] = Variable<String>(coTime);
     }
     return map;
   }
@@ -348,6 +440,16 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
       processDescription: processDescription == null && nullToAbsent
           ? const Value.absent()
           : Value(processDescription),
+      dailyDemand: dailyDemand == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dailyDemand),
+      staff:
+          staff == null && nullToAbsent ? const Value.absent() : Value(staff),
+      wip: wip == null && nullToAbsent ? const Value.absent() : Value(wip),
+      uptime:
+          uptime == null && nullToAbsent ? const Value.absent() : Value(uptime),
+      coTime:
+          coTime == null && nullToAbsent ? const Value.absent() : Value(coTime),
     );
   }
 
@@ -360,6 +462,11 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
       processName: serializer.fromJson<String>(json['processName']),
       processDescription:
           serializer.fromJson<String?>(json['processDescription']),
+      dailyDemand: serializer.fromJson<int?>(json['dailyDemand']),
+      staff: serializer.fromJson<int?>(json['staff']),
+      wip: serializer.fromJson<int?>(json['wip']),
+      uptime: serializer.fromJson<double?>(json['uptime']),
+      coTime: serializer.fromJson<String?>(json['coTime']),
     );
   }
   @override
@@ -370,6 +477,11 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
       'valueStreamId': serializer.toJson<int>(valueStreamId),
       'processName': serializer.toJson<String>(processName),
       'processDescription': serializer.toJson<String?>(processDescription),
+      'dailyDemand': serializer.toJson<int?>(dailyDemand),
+      'staff': serializer.toJson<int?>(staff),
+      'wip': serializer.toJson<int?>(wip),
+      'uptime': serializer.toJson<double?>(uptime),
+      'coTime': serializer.toJson<String?>(coTime),
     };
   }
 
@@ -377,7 +489,12 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
           {int? id,
           int? valueStreamId,
           String? processName,
-          Value<String?> processDescription = const Value.absent()}) =>
+          Value<String?> processDescription = const Value.absent(),
+          Value<int?> dailyDemand = const Value.absent(),
+          Value<int?> staff = const Value.absent(),
+          Value<int?> wip = const Value.absent(),
+          Value<double?> uptime = const Value.absent(),
+          Value<String?> coTime = const Value.absent()}) =>
       ProcessesData(
         id: id ?? this.id,
         valueStreamId: valueStreamId ?? this.valueStreamId,
@@ -385,6 +502,11 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
         processDescription: processDescription.present
             ? processDescription.value
             : this.processDescription,
+        dailyDemand: dailyDemand.present ? dailyDemand.value : this.dailyDemand,
+        staff: staff.present ? staff.value : this.staff,
+        wip: wip.present ? wip.value : this.wip,
+        uptime: uptime.present ? uptime.value : this.uptime,
+        coTime: coTime.present ? coTime.value : this.coTime,
       );
   ProcessesData copyWithCompanion(ProcessesCompanion data) {
     return ProcessesData(
@@ -397,6 +519,12 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
       processDescription: data.processDescription.present
           ? data.processDescription.value
           : this.processDescription,
+      dailyDemand:
+          data.dailyDemand.present ? data.dailyDemand.value : this.dailyDemand,
+      staff: data.staff.present ? data.staff.value : this.staff,
+      wip: data.wip.present ? data.wip.value : this.wip,
+      uptime: data.uptime.present ? data.uptime.value : this.uptime,
+      coTime: data.coTime.present ? data.coTime.value : this.coTime,
     );
   }
 
@@ -406,14 +534,19 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
           ..write('id: $id, ')
           ..write('valueStreamId: $valueStreamId, ')
           ..write('processName: $processName, ')
-          ..write('processDescription: $processDescription')
+          ..write('processDescription: $processDescription, ')
+          ..write('dailyDemand: $dailyDemand, ')
+          ..write('staff: $staff, ')
+          ..write('wip: $wip, ')
+          ..write('uptime: $uptime, ')
+          ..write('coTime: $coTime')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, valueStreamId, processName, processDescription);
+  int get hashCode => Object.hash(id, valueStreamId, processName,
+      processDescription, dailyDemand, staff, wip, uptime, coTime);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -421,7 +554,12 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
           other.id == this.id &&
           other.valueStreamId == this.valueStreamId &&
           other.processName == this.processName &&
-          other.processDescription == this.processDescription);
+          other.processDescription == this.processDescription &&
+          other.dailyDemand == this.dailyDemand &&
+          other.staff == this.staff &&
+          other.wip == this.wip &&
+          other.uptime == this.uptime &&
+          other.coTime == this.coTime);
 }
 
 class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
@@ -429,17 +567,32 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
   final Value<int> valueStreamId;
   final Value<String> processName;
   final Value<String?> processDescription;
+  final Value<int?> dailyDemand;
+  final Value<int?> staff;
+  final Value<int?> wip;
+  final Value<double?> uptime;
+  final Value<String?> coTime;
   const ProcessesCompanion({
     this.id = const Value.absent(),
     this.valueStreamId = const Value.absent(),
     this.processName = const Value.absent(),
     this.processDescription = const Value.absent(),
+    this.dailyDemand = const Value.absent(),
+    this.staff = const Value.absent(),
+    this.wip = const Value.absent(),
+    this.uptime = const Value.absent(),
+    this.coTime = const Value.absent(),
   });
   ProcessesCompanion.insert({
     this.id = const Value.absent(),
     required int valueStreamId,
     required String processName,
     this.processDescription = const Value.absent(),
+    this.dailyDemand = const Value.absent(),
+    this.staff = const Value.absent(),
+    this.wip = const Value.absent(),
+    this.uptime = const Value.absent(),
+    this.coTime = const Value.absent(),
   })  : valueStreamId = Value(valueStreamId),
         processName = Value(processName);
   static Insertable<ProcessesData> custom({
@@ -447,12 +600,22 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
     Expression<int>? valueStreamId,
     Expression<String>? processName,
     Expression<String>? processDescription,
+    Expression<int>? dailyDemand,
+    Expression<int>? staff,
+    Expression<int>? wip,
+    Expression<double>? uptime,
+    Expression<String>? coTime,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (valueStreamId != null) 'value_stream_id': valueStreamId,
       if (processName != null) 'process_name': processName,
       if (processDescription != null) 'process_description': processDescription,
+      if (dailyDemand != null) 'daily_demand': dailyDemand,
+      if (staff != null) 'staff': staff,
+      if (wip != null) 'wip': wip,
+      if (uptime != null) 'uptime': uptime,
+      if (coTime != null) 'co_time': coTime,
     });
   }
 
@@ -460,12 +623,22 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
       {Value<int>? id,
       Value<int>? valueStreamId,
       Value<String>? processName,
-      Value<String?>? processDescription}) {
+      Value<String?>? processDescription,
+      Value<int?>? dailyDemand,
+      Value<int?>? staff,
+      Value<int?>? wip,
+      Value<double?>? uptime,
+      Value<String?>? coTime}) {
     return ProcessesCompanion(
       id: id ?? this.id,
       valueStreamId: valueStreamId ?? this.valueStreamId,
       processName: processName ?? this.processName,
       processDescription: processDescription ?? this.processDescription,
+      dailyDemand: dailyDemand ?? this.dailyDemand,
+      staff: staff ?? this.staff,
+      wip: wip ?? this.wip,
+      uptime: uptime ?? this.uptime,
+      coTime: coTime ?? this.coTime,
     );
   }
 
@@ -484,6 +657,21 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
     if (processDescription.present) {
       map['process_description'] = Variable<String>(processDescription.value);
     }
+    if (dailyDemand.present) {
+      map['daily_demand'] = Variable<int>(dailyDemand.value);
+    }
+    if (staff.present) {
+      map['staff'] = Variable<int>(staff.value);
+    }
+    if (wip.present) {
+      map['wip'] = Variable<int>(wip.value);
+    }
+    if (uptime.present) {
+      map['uptime'] = Variable<double>(uptime.value);
+    }
+    if (coTime.present) {
+      map['co_time'] = Variable<String>(coTime.value);
+    }
     return map;
   }
 
@@ -493,7 +681,12 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
           ..write('id: $id, ')
           ..write('valueStreamId: $valueStreamId, ')
           ..write('processName: $processName, ')
-          ..write('processDescription: $processDescription')
+          ..write('processDescription: $processDescription, ')
+          ..write('dailyDemand: $dailyDemand, ')
+          ..write('staff: $staff, ')
+          ..write('wip: $wip, ')
+          ..write('uptime: $uptime, ')
+          ..write('coTime: $coTime')
           ..write(')'))
         .toString();
   }
@@ -529,8 +722,26 @@ class $ProcessPartsTable extends ProcessParts
       requiredDuringInsert: true,
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('REFERENCES processes (id)'));
+  static const VerificationMeta _dailyDemandMeta =
+      const VerificationMeta('dailyDemand');
   @override
-  List<GeneratedColumn> get $columns => [id, partNumber, processId];
+  late final GeneratedColumn<int> dailyDemand = GeneratedColumn<int>(
+      'daily_demand', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _cycleTimeMeta =
+      const VerificationMeta('cycleTime');
+  @override
+  late final GeneratedColumn<String> cycleTime = GeneratedColumn<String>(
+      'cycle_time', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _fpyMeta = const VerificationMeta('fpy');
+  @override
+  late final GeneratedColumn<double> fpy = GeneratedColumn<double>(
+      'fpy', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, partNumber, processId, dailyDemand, cycleTime, fpy];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -558,6 +769,20 @@ class $ProcessPartsTable extends ProcessParts
     } else if (isInserting) {
       context.missing(_processIdMeta);
     }
+    if (data.containsKey('daily_demand')) {
+      context.handle(
+          _dailyDemandMeta,
+          dailyDemand.isAcceptableOrUnknown(
+              data['daily_demand']!, _dailyDemandMeta));
+    }
+    if (data.containsKey('cycle_time')) {
+      context.handle(_cycleTimeMeta,
+          cycleTime.isAcceptableOrUnknown(data['cycle_time']!, _cycleTimeMeta));
+    }
+    if (data.containsKey('fpy')) {
+      context.handle(
+          _fpyMeta, fpy.isAcceptableOrUnknown(data['fpy']!, _fpyMeta));
+    }
     return context;
   }
 
@@ -573,6 +798,12 @@ class $ProcessPartsTable extends ProcessParts
           .read(DriftSqlType.string, data['${effectivePrefix}part_number'])!,
       processId: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}process_id'])!,
+      dailyDemand: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}daily_demand']),
+      cycleTime: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}cycle_time']),
+      fpy: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}fpy']),
     );
   }
 
@@ -586,14 +817,31 @@ class ProcessPart extends DataClass implements Insertable<ProcessPart> {
   final int id;
   final String partNumber;
   final int processId;
+  final int? dailyDemand;
+  final String? cycleTime;
+  final double? fpy;
   const ProcessPart(
-      {required this.id, required this.partNumber, required this.processId});
+      {required this.id,
+      required this.partNumber,
+      required this.processId,
+      this.dailyDemand,
+      this.cycleTime,
+      this.fpy});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['part_number'] = Variable<String>(partNumber);
     map['process_id'] = Variable<int>(processId);
+    if (!nullToAbsent || dailyDemand != null) {
+      map['daily_demand'] = Variable<int>(dailyDemand);
+    }
+    if (!nullToAbsent || cycleTime != null) {
+      map['cycle_time'] = Variable<String>(cycleTime);
+    }
+    if (!nullToAbsent || fpy != null) {
+      map['fpy'] = Variable<double>(fpy);
+    }
     return map;
   }
 
@@ -602,6 +850,13 @@ class ProcessPart extends DataClass implements Insertable<ProcessPart> {
       id: Value(id),
       partNumber: Value(partNumber),
       processId: Value(processId),
+      dailyDemand: dailyDemand == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dailyDemand),
+      cycleTime: cycleTime == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cycleTime),
+      fpy: fpy == null && nullToAbsent ? const Value.absent() : Value(fpy),
     );
   }
 
@@ -612,6 +867,9 @@ class ProcessPart extends DataClass implements Insertable<ProcessPart> {
       id: serializer.fromJson<int>(json['id']),
       partNumber: serializer.fromJson<String>(json['partNumber']),
       processId: serializer.fromJson<int>(json['processId']),
+      dailyDemand: serializer.fromJson<int?>(json['dailyDemand']),
+      cycleTime: serializer.fromJson<String?>(json['cycleTime']),
+      fpy: serializer.fromJson<double?>(json['fpy']),
     );
   }
   @override
@@ -621,14 +879,26 @@ class ProcessPart extends DataClass implements Insertable<ProcessPart> {
       'id': serializer.toJson<int>(id),
       'partNumber': serializer.toJson<String>(partNumber),
       'processId': serializer.toJson<int>(processId),
+      'dailyDemand': serializer.toJson<int?>(dailyDemand),
+      'cycleTime': serializer.toJson<String?>(cycleTime),
+      'fpy': serializer.toJson<double?>(fpy),
     };
   }
 
-  ProcessPart copyWith({int? id, String? partNumber, int? processId}) =>
+  ProcessPart copyWith(
+          {int? id,
+          String? partNumber,
+          int? processId,
+          Value<int?> dailyDemand = const Value.absent(),
+          Value<String?> cycleTime = const Value.absent(),
+          Value<double?> fpy = const Value.absent()}) =>
       ProcessPart(
         id: id ?? this.id,
         partNumber: partNumber ?? this.partNumber,
         processId: processId ?? this.processId,
+        dailyDemand: dailyDemand.present ? dailyDemand.value : this.dailyDemand,
+        cycleTime: cycleTime.present ? cycleTime.value : this.cycleTime,
+        fpy: fpy.present ? fpy.value : this.fpy,
       );
   ProcessPart copyWithCompanion(ProcessPartsCompanion data) {
     return ProcessPart(
@@ -636,6 +906,10 @@ class ProcessPart extends DataClass implements Insertable<ProcessPart> {
       partNumber:
           data.partNumber.present ? data.partNumber.value : this.partNumber,
       processId: data.processId.present ? data.processId.value : this.processId,
+      dailyDemand:
+          data.dailyDemand.present ? data.dailyDemand.value : this.dailyDemand,
+      cycleTime: data.cycleTime.present ? data.cycleTime.value : this.cycleTime,
+      fpy: data.fpy.present ? data.fpy.value : this.fpy,
     );
   }
 
@@ -644,55 +918,85 @@ class ProcessPart extends DataClass implements Insertable<ProcessPart> {
     return (StringBuffer('ProcessPart(')
           ..write('id: $id, ')
           ..write('partNumber: $partNumber, ')
-          ..write('processId: $processId')
+          ..write('processId: $processId, ')
+          ..write('dailyDemand: $dailyDemand, ')
+          ..write('cycleTime: $cycleTime, ')
+          ..write('fpy: $fpy')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, partNumber, processId);
+  int get hashCode =>
+      Object.hash(id, partNumber, processId, dailyDemand, cycleTime, fpy);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is ProcessPart &&
           other.id == this.id &&
           other.partNumber == this.partNumber &&
-          other.processId == this.processId);
+          other.processId == this.processId &&
+          other.dailyDemand == this.dailyDemand &&
+          other.cycleTime == this.cycleTime &&
+          other.fpy == this.fpy);
 }
 
 class ProcessPartsCompanion extends UpdateCompanion<ProcessPart> {
   final Value<int> id;
   final Value<String> partNumber;
   final Value<int> processId;
+  final Value<int?> dailyDemand;
+  final Value<String?> cycleTime;
+  final Value<double?> fpy;
   const ProcessPartsCompanion({
     this.id = const Value.absent(),
     this.partNumber = const Value.absent(),
     this.processId = const Value.absent(),
+    this.dailyDemand = const Value.absent(),
+    this.cycleTime = const Value.absent(),
+    this.fpy = const Value.absent(),
   });
   ProcessPartsCompanion.insert({
     this.id = const Value.absent(),
     required String partNumber,
     required int processId,
+    this.dailyDemand = const Value.absent(),
+    this.cycleTime = const Value.absent(),
+    this.fpy = const Value.absent(),
   })  : partNumber = Value(partNumber),
         processId = Value(processId);
   static Insertable<ProcessPart> custom({
     Expression<int>? id,
     Expression<String>? partNumber,
     Expression<int>? processId,
+    Expression<int>? dailyDemand,
+    Expression<String>? cycleTime,
+    Expression<double>? fpy,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (partNumber != null) 'part_number': partNumber,
       if (processId != null) 'process_id': processId,
+      if (dailyDemand != null) 'daily_demand': dailyDemand,
+      if (cycleTime != null) 'cycle_time': cycleTime,
+      if (fpy != null) 'fpy': fpy,
     });
   }
 
   ProcessPartsCompanion copyWith(
-      {Value<int>? id, Value<String>? partNumber, Value<int>? processId}) {
+      {Value<int>? id,
+      Value<String>? partNumber,
+      Value<int>? processId,
+      Value<int?>? dailyDemand,
+      Value<String?>? cycleTime,
+      Value<double?>? fpy}) {
     return ProcessPartsCompanion(
       id: id ?? this.id,
       partNumber: partNumber ?? this.partNumber,
       processId: processId ?? this.processId,
+      dailyDemand: dailyDemand ?? this.dailyDemand,
+      cycleTime: cycleTime ?? this.cycleTime,
+      fpy: fpy ?? this.fpy,
     );
   }
 
@@ -708,6 +1012,15 @@ class ProcessPartsCompanion extends UpdateCompanion<ProcessPart> {
     if (processId.present) {
       map['process_id'] = Variable<int>(processId.value);
     }
+    if (dailyDemand.present) {
+      map['daily_demand'] = Variable<int>(dailyDemand.value);
+    }
+    if (cycleTime.present) {
+      map['cycle_time'] = Variable<String>(cycleTime.value);
+    }
+    if (fpy.present) {
+      map['fpy'] = Variable<double>(fpy.value);
+    }
     return map;
   }
 
@@ -716,7 +1029,485 @@ class ProcessPartsCompanion extends UpdateCompanion<ProcessPart> {
     return (StringBuffer('ProcessPartsCompanion(')
           ..write('id: $id, ')
           ..write('partNumber: $partNumber, ')
-          ..write('processId: $processId')
+          ..write('processId: $processId, ')
+          ..write('dailyDemand: $dailyDemand, ')
+          ..write('cycleTime: $cycleTime, ')
+          ..write('fpy: $fpy')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ProcessShiftTable extends ProcessShift
+    with TableInfo<$ProcessShiftTable, ProcessShiftData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ProcessShiftTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _processIdMeta =
+      const VerificationMeta('processId');
+  @override
+  late final GeneratedColumn<int> processId = GeneratedColumn<int>(
+      'process_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES processes (id)'));
+  static const VerificationMeta _shiftNameMeta =
+      const VerificationMeta('shiftName');
+  @override
+  late final GeneratedColumn<String> shiftName = GeneratedColumn<String>(
+      'shift_name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _sunMeta = const VerificationMeta('sun');
+  @override
+  late final GeneratedColumn<String> sun = GeneratedColumn<String>(
+      'sun', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _monMeta = const VerificationMeta('mon');
+  @override
+  late final GeneratedColumn<String> mon = GeneratedColumn<String>(
+      'mon', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _tueMeta = const VerificationMeta('tue');
+  @override
+  late final GeneratedColumn<String> tue = GeneratedColumn<String>(
+      'tue', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _wedMeta = const VerificationMeta('wed');
+  @override
+  late final GeneratedColumn<String> wed = GeneratedColumn<String>(
+      'wed', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _thuMeta = const VerificationMeta('thu');
+  @override
+  late final GeneratedColumn<String> thu = GeneratedColumn<String>(
+      'thu', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _friMeta = const VerificationMeta('fri');
+  @override
+  late final GeneratedColumn<String> fri = GeneratedColumn<String>(
+      'fri', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _satMeta = const VerificationMeta('sat');
+  @override
+  late final GeneratedColumn<String> sat = GeneratedColumn<String>(
+      'sat', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, processId, shiftName, sun, mon, tue, wed, thu, fri, sat];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'process_shift';
+  @override
+  VerificationContext validateIntegrity(Insertable<ProcessShiftData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('process_id')) {
+      context.handle(_processIdMeta,
+          processId.isAcceptableOrUnknown(data['process_id']!, _processIdMeta));
+    } else if (isInserting) {
+      context.missing(_processIdMeta);
+    }
+    if (data.containsKey('shift_name')) {
+      context.handle(_shiftNameMeta,
+          shiftName.isAcceptableOrUnknown(data['shift_name']!, _shiftNameMeta));
+    } else if (isInserting) {
+      context.missing(_shiftNameMeta);
+    }
+    if (data.containsKey('sun')) {
+      context.handle(
+          _sunMeta, sun.isAcceptableOrUnknown(data['sun']!, _sunMeta));
+    }
+    if (data.containsKey('mon')) {
+      context.handle(
+          _monMeta, mon.isAcceptableOrUnknown(data['mon']!, _monMeta));
+    }
+    if (data.containsKey('tue')) {
+      context.handle(
+          _tueMeta, tue.isAcceptableOrUnknown(data['tue']!, _tueMeta));
+    }
+    if (data.containsKey('wed')) {
+      context.handle(
+          _wedMeta, wed.isAcceptableOrUnknown(data['wed']!, _wedMeta));
+    }
+    if (data.containsKey('thu')) {
+      context.handle(
+          _thuMeta, thu.isAcceptableOrUnknown(data['thu']!, _thuMeta));
+    }
+    if (data.containsKey('fri')) {
+      context.handle(
+          _friMeta, fri.isAcceptableOrUnknown(data['fri']!, _friMeta));
+    }
+    if (data.containsKey('sat')) {
+      context.handle(
+          _satMeta, sat.isAcceptableOrUnknown(data['sat']!, _satMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ProcessShiftData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ProcessShiftData(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      processId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}process_id'])!,
+      shiftName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}shift_name'])!,
+      sun: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}sun']),
+      mon: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}mon']),
+      tue: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}tue']),
+      wed: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}wed']),
+      thu: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}thu']),
+      fri: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}fri']),
+      sat: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}sat']),
+    );
+  }
+
+  @override
+  $ProcessShiftTable createAlias(String alias) {
+    return $ProcessShiftTable(attachedDatabase, alias);
+  }
+}
+
+class ProcessShiftData extends DataClass
+    implements Insertable<ProcessShiftData> {
+  final int id;
+  final int processId;
+  final String shiftName;
+  final String? sun;
+  final String? mon;
+  final String? tue;
+  final String? wed;
+  final String? thu;
+  final String? fri;
+  final String? sat;
+  const ProcessShiftData(
+      {required this.id,
+      required this.processId,
+      required this.shiftName,
+      this.sun,
+      this.mon,
+      this.tue,
+      this.wed,
+      this.thu,
+      this.fri,
+      this.sat});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['process_id'] = Variable<int>(processId);
+    map['shift_name'] = Variable<String>(shiftName);
+    if (!nullToAbsent || sun != null) {
+      map['sun'] = Variable<String>(sun);
+    }
+    if (!nullToAbsent || mon != null) {
+      map['mon'] = Variable<String>(mon);
+    }
+    if (!nullToAbsent || tue != null) {
+      map['tue'] = Variable<String>(tue);
+    }
+    if (!nullToAbsent || wed != null) {
+      map['wed'] = Variable<String>(wed);
+    }
+    if (!nullToAbsent || thu != null) {
+      map['thu'] = Variable<String>(thu);
+    }
+    if (!nullToAbsent || fri != null) {
+      map['fri'] = Variable<String>(fri);
+    }
+    if (!nullToAbsent || sat != null) {
+      map['sat'] = Variable<String>(sat);
+    }
+    return map;
+  }
+
+  ProcessShiftCompanion toCompanion(bool nullToAbsent) {
+    return ProcessShiftCompanion(
+      id: Value(id),
+      processId: Value(processId),
+      shiftName: Value(shiftName),
+      sun: sun == null && nullToAbsent ? const Value.absent() : Value(sun),
+      mon: mon == null && nullToAbsent ? const Value.absent() : Value(mon),
+      tue: tue == null && nullToAbsent ? const Value.absent() : Value(tue),
+      wed: wed == null && nullToAbsent ? const Value.absent() : Value(wed),
+      thu: thu == null && nullToAbsent ? const Value.absent() : Value(thu),
+      fri: fri == null && nullToAbsent ? const Value.absent() : Value(fri),
+      sat: sat == null && nullToAbsent ? const Value.absent() : Value(sat),
+    );
+  }
+
+  factory ProcessShiftData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ProcessShiftData(
+      id: serializer.fromJson<int>(json['id']),
+      processId: serializer.fromJson<int>(json['processId']),
+      shiftName: serializer.fromJson<String>(json['shiftName']),
+      sun: serializer.fromJson<String?>(json['sun']),
+      mon: serializer.fromJson<String?>(json['mon']),
+      tue: serializer.fromJson<String?>(json['tue']),
+      wed: serializer.fromJson<String?>(json['wed']),
+      thu: serializer.fromJson<String?>(json['thu']),
+      fri: serializer.fromJson<String?>(json['fri']),
+      sat: serializer.fromJson<String?>(json['sat']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'processId': serializer.toJson<int>(processId),
+      'shiftName': serializer.toJson<String>(shiftName),
+      'sun': serializer.toJson<String?>(sun),
+      'mon': serializer.toJson<String?>(mon),
+      'tue': serializer.toJson<String?>(tue),
+      'wed': serializer.toJson<String?>(wed),
+      'thu': serializer.toJson<String?>(thu),
+      'fri': serializer.toJson<String?>(fri),
+      'sat': serializer.toJson<String?>(sat),
+    };
+  }
+
+  ProcessShiftData copyWith(
+          {int? id,
+          int? processId,
+          String? shiftName,
+          Value<String?> sun = const Value.absent(),
+          Value<String?> mon = const Value.absent(),
+          Value<String?> tue = const Value.absent(),
+          Value<String?> wed = const Value.absent(),
+          Value<String?> thu = const Value.absent(),
+          Value<String?> fri = const Value.absent(),
+          Value<String?> sat = const Value.absent()}) =>
+      ProcessShiftData(
+        id: id ?? this.id,
+        processId: processId ?? this.processId,
+        shiftName: shiftName ?? this.shiftName,
+        sun: sun.present ? sun.value : this.sun,
+        mon: mon.present ? mon.value : this.mon,
+        tue: tue.present ? tue.value : this.tue,
+        wed: wed.present ? wed.value : this.wed,
+        thu: thu.present ? thu.value : this.thu,
+        fri: fri.present ? fri.value : this.fri,
+        sat: sat.present ? sat.value : this.sat,
+      );
+  ProcessShiftData copyWithCompanion(ProcessShiftCompanion data) {
+    return ProcessShiftData(
+      id: data.id.present ? data.id.value : this.id,
+      processId: data.processId.present ? data.processId.value : this.processId,
+      shiftName: data.shiftName.present ? data.shiftName.value : this.shiftName,
+      sun: data.sun.present ? data.sun.value : this.sun,
+      mon: data.mon.present ? data.mon.value : this.mon,
+      tue: data.tue.present ? data.tue.value : this.tue,
+      wed: data.wed.present ? data.wed.value : this.wed,
+      thu: data.thu.present ? data.thu.value : this.thu,
+      fri: data.fri.present ? data.fri.value : this.fri,
+      sat: data.sat.present ? data.sat.value : this.sat,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ProcessShiftData(')
+          ..write('id: $id, ')
+          ..write('processId: $processId, ')
+          ..write('shiftName: $shiftName, ')
+          ..write('sun: $sun, ')
+          ..write('mon: $mon, ')
+          ..write('tue: $tue, ')
+          ..write('wed: $wed, ')
+          ..write('thu: $thu, ')
+          ..write('fri: $fri, ')
+          ..write('sat: $sat')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, processId, shiftName, sun, mon, tue, wed, thu, fri, sat);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ProcessShiftData &&
+          other.id == this.id &&
+          other.processId == this.processId &&
+          other.shiftName == this.shiftName &&
+          other.sun == this.sun &&
+          other.mon == this.mon &&
+          other.tue == this.tue &&
+          other.wed == this.wed &&
+          other.thu == this.thu &&
+          other.fri == this.fri &&
+          other.sat == this.sat);
+}
+
+class ProcessShiftCompanion extends UpdateCompanion<ProcessShiftData> {
+  final Value<int> id;
+  final Value<int> processId;
+  final Value<String> shiftName;
+  final Value<String?> sun;
+  final Value<String?> mon;
+  final Value<String?> tue;
+  final Value<String?> wed;
+  final Value<String?> thu;
+  final Value<String?> fri;
+  final Value<String?> sat;
+  const ProcessShiftCompanion({
+    this.id = const Value.absent(),
+    this.processId = const Value.absent(),
+    this.shiftName = const Value.absent(),
+    this.sun = const Value.absent(),
+    this.mon = const Value.absent(),
+    this.tue = const Value.absent(),
+    this.wed = const Value.absent(),
+    this.thu = const Value.absent(),
+    this.fri = const Value.absent(),
+    this.sat = const Value.absent(),
+  });
+  ProcessShiftCompanion.insert({
+    this.id = const Value.absent(),
+    required int processId,
+    required String shiftName,
+    this.sun = const Value.absent(),
+    this.mon = const Value.absent(),
+    this.tue = const Value.absent(),
+    this.wed = const Value.absent(),
+    this.thu = const Value.absent(),
+    this.fri = const Value.absent(),
+    this.sat = const Value.absent(),
+  })  : processId = Value(processId),
+        shiftName = Value(shiftName);
+  static Insertable<ProcessShiftData> custom({
+    Expression<int>? id,
+    Expression<int>? processId,
+    Expression<String>? shiftName,
+    Expression<String>? sun,
+    Expression<String>? mon,
+    Expression<String>? tue,
+    Expression<String>? wed,
+    Expression<String>? thu,
+    Expression<String>? fri,
+    Expression<String>? sat,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (processId != null) 'process_id': processId,
+      if (shiftName != null) 'shift_name': shiftName,
+      if (sun != null) 'sun': sun,
+      if (mon != null) 'mon': mon,
+      if (tue != null) 'tue': tue,
+      if (wed != null) 'wed': wed,
+      if (thu != null) 'thu': thu,
+      if (fri != null) 'fri': fri,
+      if (sat != null) 'sat': sat,
+    });
+  }
+
+  ProcessShiftCompanion copyWith(
+      {Value<int>? id,
+      Value<int>? processId,
+      Value<String>? shiftName,
+      Value<String?>? sun,
+      Value<String?>? mon,
+      Value<String?>? tue,
+      Value<String?>? wed,
+      Value<String?>? thu,
+      Value<String?>? fri,
+      Value<String?>? sat}) {
+    return ProcessShiftCompanion(
+      id: id ?? this.id,
+      processId: processId ?? this.processId,
+      shiftName: shiftName ?? this.shiftName,
+      sun: sun ?? this.sun,
+      mon: mon ?? this.mon,
+      tue: tue ?? this.tue,
+      wed: wed ?? this.wed,
+      thu: thu ?? this.thu,
+      fri: fri ?? this.fri,
+      sat: sat ?? this.sat,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (processId.present) {
+      map['process_id'] = Variable<int>(processId.value);
+    }
+    if (shiftName.present) {
+      map['shift_name'] = Variable<String>(shiftName.value);
+    }
+    if (sun.present) {
+      map['sun'] = Variable<String>(sun.value);
+    }
+    if (mon.present) {
+      map['mon'] = Variable<String>(mon.value);
+    }
+    if (tue.present) {
+      map['tue'] = Variable<String>(tue.value);
+    }
+    if (wed.present) {
+      map['wed'] = Variable<String>(wed.value);
+    }
+    if (thu.present) {
+      map['thu'] = Variable<String>(thu.value);
+    }
+    if (fri.present) {
+      map['fri'] = Variable<String>(fri.value);
+    }
+    if (sat.present) {
+      map['sat'] = Variable<String>(sat.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ProcessShiftCompanion(')
+          ..write('id: $id, ')
+          ..write('processId: $processId, ')
+          ..write('shiftName: $shiftName, ')
+          ..write('sun: $sun, ')
+          ..write('mon: $mon, ')
+          ..write('tue: $tue, ')
+          ..write('wed: $wed, ')
+          ..write('thu: $thu, ')
+          ..write('fri: $fri, ')
+          ..write('sat: $sat')
           ..write(')'))
         .toString();
   }
@@ -2909,6 +3700,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ValueStreamsTable valueStreams = $ValueStreamsTable(this);
   late final $ProcessesTable processes = $ProcessesTable(this);
   late final $ProcessPartsTable processParts = $ProcessPartsTable(this);
+  late final $ProcessShiftTable processShift = $ProcessShiftTable(this);
   late final $OrganizationsTable organizations = $OrganizationsTable(this);
   late final $PartsTable parts = $PartsTable(this);
   late final $PlantsTable plants = $PlantsTable(this);
@@ -2924,6 +3716,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         valueStreams,
         processes,
         processParts,
+        processShift,
         organizations,
         parts,
         plants,
@@ -3231,12 +4024,22 @@ typedef $$ProcessesTableCreateCompanionBuilder = ProcessesCompanion Function({
   required int valueStreamId,
   required String processName,
   Value<String?> processDescription,
+  Value<int?> dailyDemand,
+  Value<int?> staff,
+  Value<int?> wip,
+  Value<double?> uptime,
+  Value<String?> coTime,
 });
 typedef $$ProcessesTableUpdateCompanionBuilder = ProcessesCompanion Function({
   Value<int> id,
   Value<int> valueStreamId,
   Value<String> processName,
   Value<String?> processDescription,
+  Value<int?> dailyDemand,
+  Value<int?> staff,
+  Value<int?> wip,
+  Value<double?> uptime,
+  Value<String?> coTime,
 });
 
 final class $$ProcessesTableReferences
@@ -3272,6 +4075,21 @@ final class $$ProcessesTableReferences
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: cache));
   }
+
+  static MultiTypedResultKey<$ProcessShiftTable, List<ProcessShiftData>>
+      _processShiftRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+          db.processShift,
+          aliasName:
+              $_aliasNameGenerator(db.processes.id, db.processShift.processId));
+
+  $$ProcessShiftTableProcessedTableManager get processShiftRefs {
+    final manager = $$ProcessShiftTableTableManager($_db, $_db.processShift)
+        .filter((f) => f.processId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_processShiftRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
 }
 
 class $$ProcessesTableFilterComposer
@@ -3292,6 +4110,21 @@ class $$ProcessesTableFilterComposer
   ColumnFilters<String> get processDescription => $composableBuilder(
       column: $table.processDescription,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get dailyDemand => $composableBuilder(
+      column: $table.dailyDemand, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get staff => $composableBuilder(
+      column: $table.staff, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get wip => $composableBuilder(
+      column: $table.wip, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get uptime => $composableBuilder(
+      column: $table.uptime, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get coTime => $composableBuilder(
+      column: $table.coTime, builder: (column) => ColumnFilters(column));
 
   $$ValueStreamsTableFilterComposer get valueStreamId {
     final $$ValueStreamsTableFilterComposer composer = $composerBuilder(
@@ -3333,6 +4166,27 @@ class $$ProcessesTableFilterComposer
             ));
     return f(composer);
   }
+
+  Expression<bool> processShiftRefs(
+      Expression<bool> Function($$ProcessShiftTableFilterComposer f) f) {
+    final $$ProcessShiftTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.processShift,
+        getReferencedColumn: (t) => t.processId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ProcessShiftTableFilterComposer(
+              $db: $db,
+              $table: $db.processShift,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
 }
 
 class $$ProcessesTableOrderingComposer
@@ -3353,6 +4207,21 @@ class $$ProcessesTableOrderingComposer
   ColumnOrderings<String> get processDescription => $composableBuilder(
       column: $table.processDescription,
       builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get dailyDemand => $composableBuilder(
+      column: $table.dailyDemand, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get staff => $composableBuilder(
+      column: $table.staff, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get wip => $composableBuilder(
+      column: $table.wip, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get uptime => $composableBuilder(
+      column: $table.uptime, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get coTime => $composableBuilder(
+      column: $table.coTime, builder: (column) => ColumnOrderings(column));
 
   $$ValueStreamsTableOrderingComposer get valueStreamId {
     final $$ValueStreamsTableOrderingComposer composer = $composerBuilder(
@@ -3392,6 +4261,21 @@ class $$ProcessesTableAnnotationComposer
 
   GeneratedColumn<String> get processDescription => $composableBuilder(
       column: $table.processDescription, builder: (column) => column);
+
+  GeneratedColumn<int> get dailyDemand => $composableBuilder(
+      column: $table.dailyDemand, builder: (column) => column);
+
+  GeneratedColumn<int> get staff =>
+      $composableBuilder(column: $table.staff, builder: (column) => column);
+
+  GeneratedColumn<int> get wip =>
+      $composableBuilder(column: $table.wip, builder: (column) => column);
+
+  GeneratedColumn<double> get uptime =>
+      $composableBuilder(column: $table.uptime, builder: (column) => column);
+
+  GeneratedColumn<String> get coTime =>
+      $composableBuilder(column: $table.coTime, builder: (column) => column);
 
   $$ValueStreamsTableAnnotationComposer get valueStreamId {
     final $$ValueStreamsTableAnnotationComposer composer = $composerBuilder(
@@ -3433,6 +4317,27 @@ class $$ProcessesTableAnnotationComposer
             ));
     return f(composer);
   }
+
+  Expression<T> processShiftRefs<T extends Object>(
+      Expression<T> Function($$ProcessShiftTableAnnotationComposer a) f) {
+    final $$ProcessShiftTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.processShift,
+        getReferencedColumn: (t) => t.processId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ProcessShiftTableAnnotationComposer(
+              $db: $db,
+              $table: $db.processShift,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
 }
 
 class $$ProcessesTableTableManager extends RootTableManager<
@@ -3446,7 +4351,8 @@ class $$ProcessesTableTableManager extends RootTableManager<
     $$ProcessesTableUpdateCompanionBuilder,
     (ProcessesData, $$ProcessesTableReferences),
     ProcessesData,
-    PrefetchHooks Function({bool valueStreamId, bool processPartsRefs})> {
+    PrefetchHooks Function(
+        {bool valueStreamId, bool processPartsRefs, bool processShiftRefs})> {
   $$ProcessesTableTableManager(_$AppDatabase db, $ProcessesTable table)
       : super(TableManagerState(
           db: db,
@@ -3462,24 +4368,44 @@ class $$ProcessesTableTableManager extends RootTableManager<
             Value<int> valueStreamId = const Value.absent(),
             Value<String> processName = const Value.absent(),
             Value<String?> processDescription = const Value.absent(),
+            Value<int?> dailyDemand = const Value.absent(),
+            Value<int?> staff = const Value.absent(),
+            Value<int?> wip = const Value.absent(),
+            Value<double?> uptime = const Value.absent(),
+            Value<String?> coTime = const Value.absent(),
           }) =>
               ProcessesCompanion(
             id: id,
             valueStreamId: valueStreamId,
             processName: processName,
             processDescription: processDescription,
+            dailyDemand: dailyDemand,
+            staff: staff,
+            wip: wip,
+            uptime: uptime,
+            coTime: coTime,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
             required int valueStreamId,
             required String processName,
             Value<String?> processDescription = const Value.absent(),
+            Value<int?> dailyDemand = const Value.absent(),
+            Value<int?> staff = const Value.absent(),
+            Value<int?> wip = const Value.absent(),
+            Value<double?> uptime = const Value.absent(),
+            Value<String?> coTime = const Value.absent(),
           }) =>
               ProcessesCompanion.insert(
             id: id,
             valueStreamId: valueStreamId,
             processName: processName,
             processDescription: processDescription,
+            dailyDemand: dailyDemand,
+            staff: staff,
+            wip: wip,
+            uptime: uptime,
+            coTime: coTime,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (
@@ -3488,10 +4414,15 @@ class $$ProcessesTableTableManager extends RootTableManager<
                   ))
               .toList(),
           prefetchHooksCallback: (
-              {valueStreamId = false, processPartsRefs = false}) {
+              {valueStreamId = false,
+              processPartsRefs = false,
+              processShiftRefs = false}) {
             return PrefetchHooks(
               db: db,
-              explicitlyWatchedTables: [if (processPartsRefs) db.processParts],
+              explicitlyWatchedTables: [
+                if (processPartsRefs) db.processParts,
+                if (processShiftRefs) db.processShift
+              ],
               addJoins: <
                   T extends TableManagerState<
                       dynamic,
@@ -3532,6 +4463,19 @@ class $$ProcessesTableTableManager extends RootTableManager<
                         referencedItemsForCurrentItem:
                             (item, referencedItems) => referencedItems
                                 .where((e) => e.processId == item.id),
+                        typedResults: items),
+                  if (processShiftRefs)
+                    await $_getPrefetchedData<ProcessesData, $ProcessesTable,
+                            ProcessShiftData>(
+                        currentTable: table,
+                        referencedTable: $$ProcessesTableReferences
+                            ._processShiftRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$ProcessesTableReferences(db, table, p0)
+                                .processShiftRefs,
+                        referencedItemsForCurrentItem:
+                            (item, referencedItems) => referencedItems
+                                .where((e) => e.processId == item.id),
                         typedResults: items)
                 ];
               },
@@ -3551,18 +4495,25 @@ typedef $$ProcessesTableProcessedTableManager = ProcessedTableManager<
     $$ProcessesTableUpdateCompanionBuilder,
     (ProcessesData, $$ProcessesTableReferences),
     ProcessesData,
-    PrefetchHooks Function({bool valueStreamId, bool processPartsRefs})>;
+    PrefetchHooks Function(
+        {bool valueStreamId, bool processPartsRefs, bool processShiftRefs})>;
 typedef $$ProcessPartsTableCreateCompanionBuilder = ProcessPartsCompanion
     Function({
   Value<int> id,
   required String partNumber,
   required int processId,
+  Value<int?> dailyDemand,
+  Value<String?> cycleTime,
+  Value<double?> fpy,
 });
 typedef $$ProcessPartsTableUpdateCompanionBuilder = ProcessPartsCompanion
     Function({
   Value<int> id,
   Value<String> partNumber,
   Value<int> processId,
+  Value<int?> dailyDemand,
+  Value<String?> cycleTime,
+  Value<double?> fpy,
 });
 
 final class $$ProcessPartsTableReferences
@@ -3629,6 +4580,15 @@ class $$ProcessPartsTableFilterComposer
 
   ColumnFilters<String> get partNumber => $composableBuilder(
       column: $table.partNumber, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get dailyDemand => $composableBuilder(
+      column: $table.dailyDemand, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get cycleTime => $composableBuilder(
+      column: $table.cycleTime, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get fpy => $composableBuilder(
+      column: $table.fpy, builder: (column) => ColumnFilters(column));
 
   $$ProcessesTableFilterComposer get processId {
     final $$ProcessesTableFilterComposer composer = $composerBuilder(
@@ -3708,6 +4668,15 @@ class $$ProcessPartsTableOrderingComposer
   ColumnOrderings<String> get partNumber => $composableBuilder(
       column: $table.partNumber, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get dailyDemand => $composableBuilder(
+      column: $table.dailyDemand, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get cycleTime => $composableBuilder(
+      column: $table.cycleTime, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get fpy => $composableBuilder(
+      column: $table.fpy, builder: (column) => ColumnOrderings(column));
+
   $$ProcessesTableOrderingComposer get processId {
     final $$ProcessesTableOrderingComposer composer = $composerBuilder(
         composer: this,
@@ -3743,6 +4712,15 @@ class $$ProcessPartsTableAnnotationComposer
 
   GeneratedColumn<String> get partNumber => $composableBuilder(
       column: $table.partNumber, builder: (column) => column);
+
+  GeneratedColumn<int> get dailyDemand => $composableBuilder(
+      column: $table.dailyDemand, builder: (column) => column);
+
+  GeneratedColumn<String> get cycleTime =>
+      $composableBuilder(column: $table.cycleTime, builder: (column) => column);
+
+  GeneratedColumn<double> get fpy =>
+      $composableBuilder(column: $table.fpy, builder: (column) => column);
 
   $$ProcessesTableAnnotationComposer get processId {
     final $$ProcessesTableAnnotationComposer composer = $composerBuilder(
@@ -3834,21 +4812,33 @@ class $$ProcessPartsTableTableManager extends RootTableManager<
             Value<int> id = const Value.absent(),
             Value<String> partNumber = const Value.absent(),
             Value<int> processId = const Value.absent(),
+            Value<int?> dailyDemand = const Value.absent(),
+            Value<String?> cycleTime = const Value.absent(),
+            Value<double?> fpy = const Value.absent(),
           }) =>
               ProcessPartsCompanion(
             id: id,
             partNumber: partNumber,
             processId: processId,
+            dailyDemand: dailyDemand,
+            cycleTime: cycleTime,
+            fpy: fpy,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
             required String partNumber,
             required int processId,
+            Value<int?> dailyDemand = const Value.absent(),
+            Value<String?> cycleTime = const Value.absent(),
+            Value<double?> fpy = const Value.absent(),
           }) =>
               ProcessPartsCompanion.insert(
             id: id,
             partNumber: partNumber,
             processId: processId,
+            dailyDemand: dailyDemand,
+            cycleTime: cycleTime,
+            fpy: fpy,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (
@@ -3940,6 +4930,350 @@ typedef $$ProcessPartsTableProcessedTableManager = ProcessedTableManager<
     ProcessPart,
     PrefetchHooks Function(
         {bool processId, bool setupsRefs, bool setupElementsRefs})>;
+typedef $$ProcessShiftTableCreateCompanionBuilder = ProcessShiftCompanion
+    Function({
+  Value<int> id,
+  required int processId,
+  required String shiftName,
+  Value<String?> sun,
+  Value<String?> mon,
+  Value<String?> tue,
+  Value<String?> wed,
+  Value<String?> thu,
+  Value<String?> fri,
+  Value<String?> sat,
+});
+typedef $$ProcessShiftTableUpdateCompanionBuilder = ProcessShiftCompanion
+    Function({
+  Value<int> id,
+  Value<int> processId,
+  Value<String> shiftName,
+  Value<String?> sun,
+  Value<String?> mon,
+  Value<String?> tue,
+  Value<String?> wed,
+  Value<String?> thu,
+  Value<String?> fri,
+  Value<String?> sat,
+});
+
+final class $$ProcessShiftTableReferences extends BaseReferences<_$AppDatabase,
+    $ProcessShiftTable, ProcessShiftData> {
+  $$ProcessShiftTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $ProcessesTable _processIdTable(_$AppDatabase db) =>
+      db.processes.createAlias(
+          $_aliasNameGenerator(db.processShift.processId, db.processes.id));
+
+  $$ProcessesTableProcessedTableManager get processId {
+    final $_column = $_itemColumn<int>('process_id')!;
+
+    final manager = $$ProcessesTableTableManager($_db, $_db.processes)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_processIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$ProcessShiftTableFilterComposer
+    extends Composer<_$AppDatabase, $ProcessShiftTable> {
+  $$ProcessShiftTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get shiftName => $composableBuilder(
+      column: $table.shiftName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get sun => $composableBuilder(
+      column: $table.sun, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get mon => $composableBuilder(
+      column: $table.mon, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get tue => $composableBuilder(
+      column: $table.tue, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get wed => $composableBuilder(
+      column: $table.wed, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get thu => $composableBuilder(
+      column: $table.thu, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get fri => $composableBuilder(
+      column: $table.fri, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get sat => $composableBuilder(
+      column: $table.sat, builder: (column) => ColumnFilters(column));
+
+  $$ProcessesTableFilterComposer get processId {
+    final $$ProcessesTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.processId,
+        referencedTable: $db.processes,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ProcessesTableFilterComposer(
+              $db: $db,
+              $table: $db.processes,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$ProcessShiftTableOrderingComposer
+    extends Composer<_$AppDatabase, $ProcessShiftTable> {
+  $$ProcessShiftTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get shiftName => $composableBuilder(
+      column: $table.shiftName, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get sun => $composableBuilder(
+      column: $table.sun, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get mon => $composableBuilder(
+      column: $table.mon, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get tue => $composableBuilder(
+      column: $table.tue, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get wed => $composableBuilder(
+      column: $table.wed, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get thu => $composableBuilder(
+      column: $table.thu, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get fri => $composableBuilder(
+      column: $table.fri, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get sat => $composableBuilder(
+      column: $table.sat, builder: (column) => ColumnOrderings(column));
+
+  $$ProcessesTableOrderingComposer get processId {
+    final $$ProcessesTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.processId,
+        referencedTable: $db.processes,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ProcessesTableOrderingComposer(
+              $db: $db,
+              $table: $db.processes,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$ProcessShiftTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ProcessShiftTable> {
+  $$ProcessShiftTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get shiftName =>
+      $composableBuilder(column: $table.shiftName, builder: (column) => column);
+
+  GeneratedColumn<String> get sun =>
+      $composableBuilder(column: $table.sun, builder: (column) => column);
+
+  GeneratedColumn<String> get mon =>
+      $composableBuilder(column: $table.mon, builder: (column) => column);
+
+  GeneratedColumn<String> get tue =>
+      $composableBuilder(column: $table.tue, builder: (column) => column);
+
+  GeneratedColumn<String> get wed =>
+      $composableBuilder(column: $table.wed, builder: (column) => column);
+
+  GeneratedColumn<String> get thu =>
+      $composableBuilder(column: $table.thu, builder: (column) => column);
+
+  GeneratedColumn<String> get fri =>
+      $composableBuilder(column: $table.fri, builder: (column) => column);
+
+  GeneratedColumn<String> get sat =>
+      $composableBuilder(column: $table.sat, builder: (column) => column);
+
+  $$ProcessesTableAnnotationComposer get processId {
+    final $$ProcessesTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.processId,
+        referencedTable: $db.processes,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ProcessesTableAnnotationComposer(
+              $db: $db,
+              $table: $db.processes,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$ProcessShiftTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $ProcessShiftTable,
+    ProcessShiftData,
+    $$ProcessShiftTableFilterComposer,
+    $$ProcessShiftTableOrderingComposer,
+    $$ProcessShiftTableAnnotationComposer,
+    $$ProcessShiftTableCreateCompanionBuilder,
+    $$ProcessShiftTableUpdateCompanionBuilder,
+    (ProcessShiftData, $$ProcessShiftTableReferences),
+    ProcessShiftData,
+    PrefetchHooks Function({bool processId})> {
+  $$ProcessShiftTableTableManager(_$AppDatabase db, $ProcessShiftTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ProcessShiftTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ProcessShiftTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ProcessShiftTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<int> processId = const Value.absent(),
+            Value<String> shiftName = const Value.absent(),
+            Value<String?> sun = const Value.absent(),
+            Value<String?> mon = const Value.absent(),
+            Value<String?> tue = const Value.absent(),
+            Value<String?> wed = const Value.absent(),
+            Value<String?> thu = const Value.absent(),
+            Value<String?> fri = const Value.absent(),
+            Value<String?> sat = const Value.absent(),
+          }) =>
+              ProcessShiftCompanion(
+            id: id,
+            processId: processId,
+            shiftName: shiftName,
+            sun: sun,
+            mon: mon,
+            tue: tue,
+            wed: wed,
+            thu: thu,
+            fri: fri,
+            sat: sat,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required int processId,
+            required String shiftName,
+            Value<String?> sun = const Value.absent(),
+            Value<String?> mon = const Value.absent(),
+            Value<String?> tue = const Value.absent(),
+            Value<String?> wed = const Value.absent(),
+            Value<String?> thu = const Value.absent(),
+            Value<String?> fri = const Value.absent(),
+            Value<String?> sat = const Value.absent(),
+          }) =>
+              ProcessShiftCompanion.insert(
+            id: id,
+            processId: processId,
+            shiftName: shiftName,
+            sun: sun,
+            mon: mon,
+            tue: tue,
+            wed: wed,
+            thu: thu,
+            fri: fri,
+            sat: sat,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$ProcessShiftTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({processId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (processId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.processId,
+                    referencedTable:
+                        $$ProcessShiftTableReferences._processIdTable(db),
+                    referencedColumn:
+                        $$ProcessShiftTableReferences._processIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$ProcessShiftTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $ProcessShiftTable,
+    ProcessShiftData,
+    $$ProcessShiftTableFilterComposer,
+    $$ProcessShiftTableOrderingComposer,
+    $$ProcessShiftTableAnnotationComposer,
+    $$ProcessShiftTableCreateCompanionBuilder,
+    $$ProcessShiftTableUpdateCompanionBuilder,
+    (ProcessShiftData, $$ProcessShiftTableReferences),
+    ProcessShiftData,
+    PrefetchHooks Function({bool processId})>;
 typedef $$OrganizationsTableCreateCompanionBuilder = OrganizationsCompanion
     Function({
   Value<int> id,
@@ -6077,6 +7411,8 @@ class $AppDatabaseManager {
       $$ProcessesTableTableManager(_db, _db.processes);
   $$ProcessPartsTableTableManager get processParts =>
       $$ProcessPartsTableTableManager(_db, _db.processParts);
+  $$ProcessShiftTableTableManager get processShift =>
+      $$ProcessShiftTableTableManager(_db, _db.processShift);
   $$OrganizationsTableTableManager get organizations =>
       $$OrganizationsTableTableManager(_db, _db.organizations);
   $$PartsTableTableManager get parts =>

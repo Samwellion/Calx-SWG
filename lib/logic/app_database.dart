@@ -52,6 +52,7 @@ class TimeStudy extends Table {
 
 @DriftDatabase(tables: [
   ProcessParts,
+  ProcessShift,
   Processes,
   Parts,
   Organizations,
@@ -86,7 +87,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -94,6 +95,45 @@ class AppDatabase extends _$AppDatabase {
           return m.createAll();
         },
         onUpgrade: (Migrator m, int from, int to) async {
+          // Force complete recreation for version 17 - Added ProcessShift table and new fields to ProcessParts
+          if (to >= 17) {
+            await m.deleteTable('parts');
+            await m.deleteTable('processes');
+            await m.deleteTable('value_streams');
+            await m.deleteTable('plants');
+            await m.deleteTable('organizations');
+            await m.deleteTable('setup_elements');
+            await m.deleteTable('setups');
+            await m.deleteTable('study');
+            await m.deleteTable('task_study');
+            await m.deleteTable('time_study');
+            await m.deleteTable('process_parts');
+            await m.deleteTable('process_shift');
+
+            // Recreate all tables with current schema
+            await m.createAll();
+            return;
+          }
+
+          // Force complete recreation for version 16 - Added new fields to Processes table
+          if (to >= 16) {
+            await m.deleteTable('parts');
+            await m.deleteTable('processes');
+            await m.deleteTable('value_streams');
+            await m.deleteTable('plants');
+            await m.deleteTable('organizations');
+            await m.deleteTable('setup_elements');
+            await m.deleteTable('setups');
+            await m.deleteTable('study');
+            await m.deleteTable('task_study');
+            await m.deleteTable('time_study');
+            await m.deleteTable('process_parts');
+
+            // Recreate all tables with current schema
+            await m.createAll();
+            return;
+          }
+
           // Force complete recreation for version 15 - TaskStudy consolidated into SetupElements
           if (to >= 15) {
             await m.deleteTable('parts');
@@ -452,6 +492,28 @@ class ProcessParts extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get partNumber => text()();
   IntColumn get processId => integer().references(Processes, #id)();
+
+  // New fields for process parts management
+  IntColumn get dailyDemand => integer().nullable()();
+  TextColumn get cycleTime => text().nullable()(); // Format: HH:MM:SS
+  RealColumn get fpy =>
+      real().nullable()(); // First Pass Yield as decimal (e.g., 0.95 for 95%)
+}
+
+// ProcessShift table: stores shift schedules for each process
+class ProcessShift extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get processId => integer().references(Processes, #id)();
+  TextColumn get shiftName => text()();
+
+  // Shift times for each day of the week (Format: HH:MM:SS)
+  TextColumn get sun => text().nullable()(); // Sunday shift time
+  TextColumn get mon => text().nullable()(); // Monday shift time
+  TextColumn get tue => text().nullable()(); // Tuesday shift time
+  TextColumn get wed => text().nullable()(); // Wednesday shift time
+  TextColumn get thu => text().nullable()(); // Thursday shift time
+  TextColumn get fri => text().nullable()(); // Friday shift time
+  TextColumn get sat => text().nullable()(); // Saturday shift time
 }
 
 // Process table: associates a process with a value stream
@@ -462,6 +524,14 @@ class Processes extends Table {
   TextColumn get processName => text().named('process_name')();
   TextColumn get processDescription =>
       text().named('process_description').nullable()();
+
+  // New fields for process management
+  IntColumn get dailyDemand => integer().nullable()();
+  IntColumn get staff => integer().nullable()();
+  IntColumn get wip => integer().nullable()();
+  RealColumn get uptime =>
+      real().nullable()(); // Percentage as decimal (e.g., 0.85 for 85%)
+  TextColumn get coTime => text().nullable()(); // Format: HH:MM:SS
 
   @override
   List<String> get customConstraints => [
