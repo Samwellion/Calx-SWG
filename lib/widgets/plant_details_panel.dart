@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/organization_data.dart' as org_data;
-import '../screens/home_screen.dart';
 
 class PlantDetailsPanel extends StatefulWidget {
   final org_data.PlantData plant;
@@ -194,39 +193,6 @@ class _PlantDetailsPanelState extends State<PlantDetailsPanel> {
                         ),
                       );
                     },
-                  ),
-                ),
-              ),
-              // Home button at bottom right
-              Padding(
-                padding: EdgeInsets.only(top: isKeyboardVisible ? 8 : 16),
-                child: Align(
-                  alignment: Alignment.bottomRight,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.yellow[300],
-                      foregroundColor: Colors.black,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isKeyboardVisible ? 24 : 32,
-                        vertical: isKeyboardVisible ? 12 : 16,
-                      ),
-                      textStyle: TextStyle(
-                        fontSize: isKeyboardVisible ? 14 : 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      elevation: 8,
-                    ),
-                    onPressed: () {
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const HomeScreen()),
-                        (Route<dynamic> route) => false,
-                      );
-                    },
-                    child: const Text('Home'),
                   ),
                 ),
               ),

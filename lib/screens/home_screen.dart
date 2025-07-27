@@ -1,8 +1,6 @@
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'dart:async';
-import '../widgets/home_dropdowns_column.dart';
-import '../widgets/home_button_column.dart';
 import 'part_input_screen.dart';
 import 'process_input_screen.dart';
 import '../screens/organization_setup_screen.dart';
@@ -33,31 +31,10 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   static const _kValueStreamIdKey = 'selectedValueStreamId';
   static const _kProcessKey = 'selectedProcess';
 
-  // Debouncing timer for database operations
-  Timer? _debounceTimer;
-  static const Duration _debounceDelay = Duration(milliseconds: 300);
-
   bool hasSetupsForSelectedProcess = false;
   bool hasPartsInDatabase = false;
   bool hasProcessesInDatabase = false;
   bool _isDisposed = false;
-
-  void _onProcessChanged(String? value) async {
-    if (_isDisposed) return;
-
-    setState(() {
-      selectedProcess = value;
-    });
-    _saveSelections();
-
-    // Debounce the database operation
-    _debounceTimer?.cancel();
-    _debounceTimer = Timer(_debounceDelay, () async {
-      if (!_isDisposed) {
-        await _checkSetupsForSelectedProcess();
-      }
-    });
-  }
 
   void _onHierarchyTreeItemSelected({
     String? companyName,
@@ -83,7 +60,8 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       hasChanges = true;
     }
 
-    if (valueStreamName != selectedValueStream) {
+    if (valueStreamName != selectedValueStream ||
+        valueStreamId != selectedValueStreamId) {
       selectedValueStream = valueStreamName;
       selectedValueStreamId = valueStreamId;
       hasChanges = true;
@@ -105,6 +83,914 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       await _checkSetupsForSelectedProcess();
       await _checkPartsAndProcessesExistence();
     }
+  }
+
+  void _onHierarchyTreeAddItem({
+    TreeItemType? itemType,
+    String? companyName,
+    String? plantName,
+    String? valueStreamName,
+    int? valueStreamId,
+  }) async {
+    if (itemType == null) return;
+
+    switch (itemType) {
+      case TreeItemType.company:
+        // Navigate to organization setup screen
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => OrganizationSetupScreen(),
+          ),
+        );
+        break;
+      case TreeItemType.plant:
+        // Navigate to organization setup screen with company pre-selected
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => OrganizationSetupScreen(
+              selectedCompany: companyName,
+            ),
+          ),
+        );
+        break;
+
+      case TreeItemType.valueStream:
+        // Navigate to plant setup screen
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => PlantSetupScreen(),
+          ),
+        );
+        break;
+
+      case TreeItemType.process:
+        // Navigate to process input screen with value stream information
+        if (valueStreamId != null &&
+            valueStreamName != null &&
+            companyName != null &&
+            plantName != null) {
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ProcessInputScreen(
+                valueStreamId: valueStreamId,
+                valueStreamName: valueStreamName,
+                companyName: companyName,
+                plantName: plantName,
+              ),
+            ),
+          );
+        }
+        break;
+    }
+
+    // Refresh data after navigation
+    await _loadDropdownData();
+    await _loadSelections();
+  }
+
+  String _getSelectedItemDisplayText() {
+    if (companyNames.isEmpty) {
+      return "Getting started";
+    } else if (selectedProcess != null && selectedProcess!.isNotEmpty) {
+      return "Process";
+    } else if (selectedValueStream != null && selectedValueStream!.isNotEmpty) {
+      return "Value Stream";
+    } else if (selectedPlant != null && selectedPlant!.isNotEmpty) {
+      return "Plant";
+    } else if (selectedCompany != null && selectedCompany!.isNotEmpty) {
+      return "Company";
+    } else {
+      return "Getting started";
+    }
+  }
+
+  Widget _buildWelcomePanel() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.yellow[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.yellow[300]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Welcome to Calx\' Industrial Tools',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[800],
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'This app will help mentor you and your team in applying well known Lean manufacturing concepts to your factory. You will see action buttons and video links to guide you through the journey. Start by clicking \'Setup Organization\'...',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[700],
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompanyPanel() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.yellow[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.yellow[300]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Company and Plant Names',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[800],
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Company names and plant names are the containers for the details that we will focus our improvements on. Notice the hierarchy navigation panel to the left side of the screen. As you select items there the actions and videos will change to help guide you through utilizing the tools. At the plant level we have:',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[700],
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.only(left: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      '• ',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Employees (Under Development)',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      '• ',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'PFEP (Under Development)',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      '• ',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Product Process Matrix (Under Development)',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      '• ',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Value Streams',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildValueStreamPanel() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.yellow[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.yellow[300]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Where Customer Value is Created',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[800],
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'The Value Stream is the series of processes that transform data or materials into something that your customer considers valuable. So the basic building blocks are:',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[700],
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.only(left: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      '• ',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Job Positions (Under Development)',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      '• ',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Parts Customers Consume',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      '• ',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Processes That Create the Parts',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProcessPanel() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.yellow[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.yellow[300]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Processes in the Value Stream Transform',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[800],
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'As the data or material move through the value stream a series of processes transform it into something the customer wants. These processes are where the work is done. Here we have:',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[700],
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.only(left: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      '• ',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Detailed Process Performance (Under Development)',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      '• ',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Setups with Work Elements',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      '• ',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Machines (Under Development)',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      '• ',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Time Studies',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContextualActionsPanel() {
+    if (companyNames.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.yellow[50],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.yellow[300]!),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Actions',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: () async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const OrganizationSetupScreen(),
+                  ),
+                );
+                await _loadDropdownData();
+              },
+              child: const Text('Setup Organization'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Show plant setup button when company or plant is selected (but no value stream)
+    if (selectedCompany != null &&
+        selectedCompany!.isNotEmpty &&
+        (selectedValueStream == null || selectedValueStream!.isEmpty)) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.yellow[50],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.yellow[300]!),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Actions',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _openPlantSetupScreen,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.yellow[600],
+                  ),
+                  child: const Text('Setup Value Stream Names'),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Show value stream actions when value stream is selected (but no process)
+    if (selectedValueStream != null &&
+        selectedValueStream!.isNotEmpty &&
+        (selectedProcess == null || selectedProcess!.isEmpty)) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.yellow[50],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.yellow[300]!),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Actions',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: (selectedCompany != null &&
+                          selectedCompany!.isNotEmpty &&
+                          selectedPlant != null &&
+                          selectedPlant!.isNotEmpty)
+                      ? _openPartInputScreen
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.yellow[600],
+                  ),
+                  child: const Text('Add Part Number'),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _onAddVSProcess,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.yellow[600],
+                  ),
+                  child: const Text('Add VS Process'),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Show process actions when process is selected
+    if (selectedProcess != null && selectedProcess!.isNotEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.yellow[50],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.yellow[300]!),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Actions',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: (hasPartsInDatabase && hasProcessesInDatabase)
+                      ? _openAddElementsScreen
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.yellow[600],
+                  ),
+                  child: const Text('Add Setup and Elements'),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: hasSetupsForSelectedProcess
+                      ? _openTimeObservationScreen
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.yellow[600],
+                  ),
+                  child: const Text('Open Time Observation'),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Return contextual actions based on selection for other cases
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.yellow[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.yellow[300]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Actions',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[700],
+            ),
+          ),
+          const SizedBox(height: 12),
+          ..._getContextualActionButtons(),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _getContextualActionButtons() {
+    List<Widget> buttons = [];
+
+    // Always show setup organization
+    buttons.add(
+      Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const OrganizationSetupScreen(),
+                ),
+              );
+              await _loadDropdownData();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.yellow[600],
+            ),
+            child: const Text('Setup Organization'),
+          ),
+        ),
+      ),
+    );
+
+    // Show plant setup if company exists
+    if (selectedCompany != null && selectedCompany!.isNotEmpty) {
+      buttons.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _openPlantSetupScreen,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.yellow[600],
+              ),
+              child: const Text('Setup Plant'),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Show add part number if value stream is selected
+    if (selectedValueStream != null && selectedValueStream!.isNotEmpty) {
+      buttons.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: (selectedCompany != null &&
+                      selectedCompany!.isNotEmpty &&
+                      selectedPlant != null &&
+                      selectedPlant!.isNotEmpty)
+                  ? _openPartInputScreen
+                  : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.yellow[600],
+              ),
+              child: const Text('Add Part Number'),
+            ),
+          ),
+        ),
+      );
+
+      buttons.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _onAddVSProcess,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.yellow[600],
+              ),
+              child: const Text('Add VS Process'),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Show process-specific actions if process is selected
+    if (selectedProcess != null && selectedProcess!.isNotEmpty) {
+      buttons.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: (hasPartsInDatabase && hasProcessesInDatabase)
+                  ? _openAddElementsScreen
+                  : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.yellow[600],
+              ),
+              child: const Text('Add Setup and Elements'),
+            ),
+          ),
+        ),
+      );
+
+      buttons.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: hasSetupsForSelectedProcess
+                  ? _openTimeObservationScreen
+                  : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.yellow[600],
+              ),
+              child: const Text('Open Time Observation'),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return buttons;
+  }
+
+  Widget _buildVideoLinksPanel() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.yellow[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.yellow[300]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Video Links',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[700],
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (companyNames.isEmpty) ...[
+            // Show only welcome and setup videos when no companies exist
+            _buildVideoLink('Welcome to Calx\' Industrial Tools',
+                'https://example.com/getting-started'),
+            _buildVideoLink(
+                'Setting up Organizations', 'https://example.com/setup-org'),
+          ] else if (selectedCompany != null &&
+              selectedCompany!.isNotEmpty &&
+              (selectedValueStream == null ||
+                  selectedValueStream!.isEmpty)) ...[
+            // Show welcome and value streams videos when company or plant is selected
+            _buildVideoLink('Welcome to Calx\' Industrial Tools',
+                'https://example.com/getting-started'),
+            _buildVideoLink('Adding Value Streams',
+                'https://example.com/add-value-streams'),
+          ] else if (selectedValueStream != null &&
+              selectedValueStream!.isNotEmpty &&
+              (selectedProcess == null || selectedProcess!.isEmpty)) ...[
+            // Show value stream specific videos when value stream is selected
+            _buildVideoLink('Welcome to Calx\' Industrial Tools',
+                'https://example.com/getting-started'),
+            _buildVideoLink(
+                'Adding Part Numbers', 'https://example.com/add-part-numbers'),
+            _buildVideoLink('Adding Process Names',
+                'https://example.com/add-process-names'),
+          ] else if (selectedProcess != null &&
+              selectedProcess!.isNotEmpty) ...[
+            // Show process specific videos when process is selected
+            _buildVideoLink('Welcome to Calx\' Industrial Tools',
+                'https://example.com/getting-started'),
+            _buildVideoLink('Setting up Setups and Elements',
+                'https://example.com/setup-elements'),
+            _buildVideoLink(
+                'Conducting Time Studies', 'https://example.com/time-studies'),
+          ] else ...[
+            // Show all video links when deeper levels are selected
+            _buildVideoLink('Welcome to Calx\' Industrial Tools',
+                'https://example.com/getting-started'),
+            _buildVideoLink(
+                'Setting up Organizations', 'https://example.com/setup-org'),
+            _buildVideoLink('Adding Parts', 'https://example.com/add-parts'),
+            _buildVideoLink(
+                'Time Observations', 'https://example.com/time-obs'),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVideoLink(String title, String url) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        onTap: () {
+          // TODO: Implement video link opening
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Opening: $title')),
+          );
+        },
+        child: Row(
+          children: [
+            Icon(Icons.play_circle_outline, color: Colors.blue[600], size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  color: Colors.blue[600],
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _checkSetupsForSelectedProcess() async {
@@ -146,7 +1032,12 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   }
 
   Future<void> _checkPartsAndProcessesExistence() async {
+    debugPrint(
+        '_checkPartsAndProcessesExistence: selectedValueStream=$selectedValueStream, selectedValueStreamId=$selectedValueStreamId');
+
     if (_isDisposed || selectedValueStreamId == null) {
+      debugPrint(
+          'Early return: _isDisposed=$_isDisposed, selectedValueStreamId=$selectedValueStreamId');
       if (!_isDisposed) {
         setState(() {
           hasPartsInDatabase = false;
@@ -160,14 +1051,15 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       // Check if there are any parts for the selected value stream
       final partsResult = await db.customSelect('''
         SELECT COUNT(*) as count 
-        FROM process_parts pp
-        INNER JOIN processes p ON pp.process_id = p.id
+        FROM parts p
         WHERE p.value_stream_id = ?
       ''', variables: [
         drift.Variable.withInt(selectedValueStreamId!)
       ]).getSingle();
 
       final partsCount = partsResult.data['count'] as int;
+      debugPrint(
+          'Parts count for value stream $selectedValueStreamId: $partsCount');
 
       // Check if there are any processes for the selected value stream
       final processesResult = await db.customSelect('''
@@ -179,12 +1071,16 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       ]).getSingle();
 
       final processesCount = processesResult.data['count'] as int;
+      debugPrint(
+          'Processes count for value stream $selectedValueStreamId: $processesCount');
 
       if (!_isDisposed) {
         setState(() {
           hasPartsInDatabase = partsCount > 0;
           hasProcessesInDatabase = processesCount > 0;
         });
+        debugPrint(
+            'Updated flags: hasPartsInDatabase=$hasPartsInDatabase, hasProcessesInDatabase=$hasProcessesInDatabase');
       }
     } catch (e) {
       debugPrint('Error checking parts and processes existence: $e');
@@ -232,8 +1128,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   int? selectedValueStreamId;
   String? selectedProcess;
   late AppDatabase db;
-  List<ValueStream> _allValueStreams = [];
-  List<Plant> _allPlants = [];
   List<String> companyNames = [];
   Map<String, List<String>> companyPlants = {};
   Map<String, List<String>> plantValueStreams = {};
@@ -309,7 +1203,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   @override
   void dispose() {
     _isDisposed = true;
-    _debounceTimer?.cancel();
     routeObserver.unsubscribe(this);
     super.dispose();
   }
@@ -408,18 +1301,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         plantValueStreams[plant.name] = plantStreams;
       }
 
-      _allPlants = plants
-          .map((p) => Plant(
-                id: p.id,
-                organizationId: p.organizationId,
-                name: p.name,
-                street: p.street,
-                city: p.city,
-                state: p.state,
-                zip: p.zip,
-              ))
-          .toList();
-      _allValueStreams = valueStreams;
       _lastDataLoad = now;
     } catch (e) {
       debugPrint('Error loading dropdown data: $e');
@@ -427,74 +1308,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       companyNames = [];
       companyPlants = {};
       plantValueStreams = {};
-      _allPlants = [];
-      _allValueStreams = [];
     }
-  }
-
-  void _onCompanyChanged(String? value) {
-    setState(() {
-      selectedCompany = value;
-      selectedPlant = null;
-      selectedValueStream = null;
-      selectedValueStreamId = null;
-      selectedProcess = null;
-    });
-    _saveSelections();
-  }
-
-  void _onPlantChanged(String? value) {
-    setState(() {
-      selectedPlant = value;
-      selectedValueStream = null;
-      selectedValueStreamId = null;
-      selectedProcess = null;
-    });
-    _saveSelections();
-  }
-
-  Future<void> _onValueStreamChanged(String? value) async {
-    if (_isDisposed) return;
-
-    setState(() {
-      selectedValueStream = value;
-      selectedProcess = null;
-
-      if (value != null && value.isNotEmpty && selectedPlant != null) {
-        try {
-          final plant = _allPlants.firstWhere(
-            (p) => p.name == selectedPlant,
-            orElse: () => Plant(
-                id: -1,
-                organizationId: -1,
-                name: '',
-                street: '',
-                city: '',
-                state: '',
-                zip: ''),
-          );
-
-          if (plant.id > 0) {
-            final vs = _allValueStreams.firstWhere(
-              (v) => v.name == value && v.plantId == plant.id,
-              orElse: () => ValueStream(id: -1, plantId: -1, name: ''),
-            );
-            selectedValueStreamId = vs.id > 0 ? vs.id : null;
-          } else {
-            selectedValueStreamId = null;
-          }
-        } catch (e) {
-          debugPrint('Error finding value stream ID: $e');
-          selectedValueStreamId = null;
-        }
-      } else {
-        selectedValueStreamId = null;
-      }
-    });
-
-    _saveSelections();
-    await _loadProcessesForValueStream();
-    await _checkPartsAndProcessesExistence();
   }
 
   void _openPartInputScreen() async {
@@ -655,50 +1469,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         body: Center(child: CircularProgressIndicator()),
       );
     }
-    final String? orgCompany = selectedCompany;
-    final List<String> orgPlants =
-        orgCompany != null && companyPlants[orgCompany] != null
-            ? companyPlants[orgCompany]!
-            : <String>[];
-    final List<String> valueStreams =
-        (selectedPlant != null && plantValueStreams[selectedPlant!] != null)
-            ? plantValueStreams[selectedPlant!]!
-            : <String>[];
-
-    // Validate and clear invalid selections to prevent dropdown assertion errors
-    String? validCompany = selectedCompany;
-    String? validPlant = selectedPlant;
-    String? validValueStream = selectedValueStream;
-    String? validProcess = selectedProcess;
-
-    if (selectedCompany != null && !companyNames.contains(selectedCompany)) {
-      validCompany = null;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _onCompanyChanged(null);
-      });
-    }
-
-    if (selectedPlant != null && !orgPlants.contains(selectedPlant)) {
-      validPlant = null;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _onPlantChanged(null);
-      });
-    }
-
-    if (selectedValueStream != null &&
-        !valueStreams.contains(selectedValueStream)) {
-      validValueStream = null;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _onValueStreamChanged(null);
-      });
-    }
-
-    if (selectedProcess != null && !processNames.contains(selectedProcess)) {
-      validProcess = null;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _onProcessChanged(null);
-      });
-    }
 
     return Scaffold(
       appBar: AppBar(
@@ -738,131 +1508,110 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      SingleChildScrollView(
-                        child: IntrinsicHeight(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Left side: Full Hierarchy Tree
-                              Flexible(
-                                flex: 2,
-                                child: SizedBox(
-                                  height:
-                                      450, // Reduced height to prevent overflow
-                                  child: FullHierarchyTree(
-                                    width: null, // Let it expand to fit
-                                    height:
-                                        null, // Use intrinsic height instead of fixed
-                                    showHeader: true,
-                                    headerText: 'Organization',
-                                    expandedByDefault:
-                                        true, // Set to true for debugging
-                                    onItemSelected:
-                                        _onHierarchyTreeItemSelected,
-                                    selectedCompany: selectedCompany,
-                                    selectedPlant: selectedPlant,
-                                    selectedValueStream: selectedValueStream,
-                                    selectedProcess: selectedProcess,
-                                  ),
-                                ),
+                      Expanded(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Left side: Full Hierarchy Tree
+                            Flexible(
+                              flex: 2,
+                              child: FullHierarchyTree(
+                                width: 300, // Provide explicit width
+                                height:
+                                    null, // Use intrinsic height instead of fixed
+                                showHeader: true,
+                                headerText: 'Organization',
+                                expandedByDefault:
+                                    true, // Set to true for debugging
+                                onItemSelected: _onHierarchyTreeItemSelected,
+                                onAddItem: _onHierarchyTreeAddItem,
+                                selectedCompany: selectedCompany,
+                                selectedPlant: selectedPlant,
+                                selectedValueStream: selectedValueStream,
+                                selectedProcess: selectedProcess,
                               ),
-                              const SizedBox(width: 24),
+                            ),
+                            const SizedBox(width: 24),
 
-                              // Right side: Existing buttons and dropdowns
-                              Flexible(
-                                flex: 3,
-                                child: Column(
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
+                            // Right side: Three-panel design
+                            Flexible(
+                              flex: 3,
+                              child: Column(
+                                children: [
+                                  // Top panel: Context display
+                                  companyNames.isEmpty
+                                      ? _buildWelcomePanel()
+                                      : (selectedCompany != null &&
+                                              selectedCompany!.isNotEmpty &&
+                                              (selectedValueStream == null ||
+                                                  selectedValueStream!.isEmpty))
+                                          ? _buildCompanyPanel()
+                                          : (selectedValueStream != null &&
+                                                  selectedValueStream!
+                                                      .isNotEmpty &&
+                                                  (selectedProcess == null ||
+                                                      selectedProcess!.isEmpty))
+                                              ? _buildValueStreamPanel()
+                                              : (selectedProcess != null &&
+                                                      selectedProcess!
+                                                          .isNotEmpty)
+                                                  ? _buildProcessPanel()
+                                                  : Container(
+                                                      width: double.infinity,
+                                                      padding:
+                                                          const EdgeInsets.all(
+                                                              16),
+                                                      decoration: BoxDecoration(
+                                                        color:
+                                                            Colors.yellow[50],
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(12),
+                                                        border: Border.all(
+                                                            color: Colors
+                                                                .yellow[300]!),
+                                                      ),
+                                                      child: Text(
+                                                        _getSelectedItemDisplayText(),
+                                                        style: const TextStyle(
+                                                          fontSize: 18,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                        textAlign:
+                                                            TextAlign.center,
+                                                      ),
+                                                    ),
+                                  const SizedBox(height: 16),
+
+                                  // Bottom row: Actions and Video Links
+                                  Expanded(
+                                    child: Row(
                                       crossAxisAlignment:
-                                          CrossAxisAlignment.center,
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        Flexible(
-                                          child: HomeButtonColumn(
-                                            onSetupOrg: () async {
-                                              await Navigator.of(context).push(
-                                                MaterialPageRoute(
-                                                  builder: (_) =>
-                                                      const OrganizationSetupScreen(),
-                                                ),
-                                              );
-                                              await _loadDropdownData();
-                                            },
-                                            onLoadOrg: _openPlantSetupScreen,
-                                            onOpenObs:
-                                                _openTimeObservationScreen,
-                                            onAddPartNumber:
-                                                _openPartInputScreen,
-                                            onAddVSProcess: _onAddVSProcess,
-                                            onAddElements:
-                                                _openAddElementsScreen,
-                                            enableAddPartNumber:
-                                                (selectedCompany != null &&
-                                                    selectedCompany!
-                                                        .isNotEmpty &&
-                                                    selectedPlant != null &&
-                                                    selectedPlant!.isNotEmpty &&
-                                                    selectedValueStream !=
-                                                        null &&
-                                                    selectedValueStream!
-                                                        .isNotEmpty),
-                                            enableAddElements:
-                                                (selectedCompany != null &&
-                                                    selectedCompany!
-                                                        .isNotEmpty &&
-                                                    selectedPlant != null &&
-                                                    selectedPlant!.isNotEmpty &&
-                                                    selectedValueStream !=
-                                                        null &&
-                                                    selectedValueStream!
-                                                        .isNotEmpty &&
-                                                    selectedProcess != null &&
-                                                    selectedProcess!
-                                                        .isNotEmpty &&
-                                                    hasPartsInDatabase &&
-                                                    hasProcessesInDatabase),
-                                            enableOpenObs: (selectedCompany !=
-                                                    null &&
-                                                selectedCompany!.isNotEmpty &&
-                                                selectedPlant != null &&
-                                                selectedPlant!.isNotEmpty &&
-                                                selectedValueStream != null &&
-                                                selectedValueStream!
-                                                    .isNotEmpty &&
-                                                selectedProcess != null &&
-                                                selectedProcess!.isNotEmpty &&
-                                                hasSetupsForSelectedProcess),
+                                        // Left panel: Actions
+                                        Expanded(
+                                          child: SingleChildScrollView(
+                                            child:
+                                                _buildContextualActionsPanel(),
                                           ),
                                         ),
-                                        const SizedBox(width: 32),
-                                        Flexible(
-                                          child: HomeDropdownsColumn(
-                                            companyNames: companyNames,
-                                            selectedCompany: validCompany,
-                                            onCompanyChanged: _onCompanyChanged,
-                                            plantNames: orgPlants,
-                                            selectedPlant: validPlant,
-                                            onPlantChanged: _onPlantChanged,
-                                            valueStreams: valueStreams,
-                                            selectedValueStream:
-                                                validValueStream,
-                                            onValueStreamChanged:
-                                                _onValueStreamChanged,
-                                            processes: processNames,
-                                            selectedProcess: validProcess,
-                                            onProcessChanged: _onProcessChanged,
+                                        const SizedBox(width: 16),
+
+                                        // Right panel: Video Links
+                                        Expanded(
+                                          child: SingleChildScrollView(
+                                            child: _buildVideoLinksPanel(),
                                           ),
                                         ),
                                       ],
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     ],

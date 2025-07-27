@@ -36,6 +36,15 @@ typedef OnItemSelectedCallback = void Function({
   int? processId,
 });
 
+/// A callback function for adding new items at different hierarchy levels
+typedef OnAddItemCallback = void Function({
+  TreeItemType itemType,
+  String? companyName,
+  String? plantName,
+  String? valueStreamName,
+  int? valueStreamId,
+});
+
 /// A comprehensive tree widget that displays the full organizational hierarchy:
 /// Companies -> Plants -> Value Streams -> Processes
 /// Users can navigate and select items at any level of the hierarchy.
@@ -58,6 +67,9 @@ class FullHierarchyTree extends StatefulWidget {
   /// Callback when any item in the tree is selected
   final OnItemSelectedCallback? onItemSelected;
 
+  /// Callback when user wants to add a new item at any level
+  final OnAddItemCallback? onAddItem;
+
   /// Currently selected company name
   final String? selectedCompany;
 
@@ -78,6 +90,7 @@ class FullHierarchyTree extends StatefulWidget {
     this.headerText = 'Full Hierarchy',
     this.expandedByDefault = false,
     this.onItemSelected,
+    this.onAddItem,
     this.selectedCompany,
     this.selectedPlant,
     this.selectedValueStream,
@@ -372,7 +385,9 @@ class _FullHierarchyTreeState extends State<FullHierarchyTree> {
       case TreeItemType.valueStream:
         return widget.selectedValueStream == item.name;
       case TreeItemType.process:
-        return widget.selectedProcess == item.name;
+        // For processes, check both the process name AND the parent value stream
+        return widget.selectedProcess == item.name &&
+            widget.selectedValueStream == item.parentName;
     }
   }
 
@@ -471,12 +486,53 @@ class _FullHierarchyTreeState extends State<FullHierarchyTree> {
 
           // Tree content
           Expanded(
-            child: ListView.builder(
-              padding: EdgeInsets.zero,
-              itemCount: _treeItems.length,
-              itemBuilder: (context, index) {
-                return _buildTreeItemWidget(_treeItems[index]);
-              },
+            child: Column(
+              children: [
+                // Add Company button at the top
+                if (widget.onAddItem != null)
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.symmetric(
+                        horizontal: 8.0, vertical: 4.0),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: ListTile(
+                        dense: true,
+                        contentPadding:
+                            const EdgeInsets.only(left: 16.0, right: 8.0),
+                        leading: Icon(
+                          Icons.add,
+                          color: Colors.blue[700],
+                          size: 20,
+                        ),
+                        title: Text(
+                          'Add Company',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 13.0,
+                            color: Colors.blue[700],
+                          ),
+                        ),
+                        onTap: () {
+                          widget.onAddItem!(
+                            itemType: TreeItemType.company,
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+
+                // Tree items
+                Expanded(
+                  child: ListView.builder(
+                    padding: EdgeInsets.zero,
+                    itemCount: _treeItems.length,
+                    itemBuilder: (context, index) {
+                      return _buildTreeItemWidget(_treeItems[index]);
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -511,19 +567,16 @@ class _FullHierarchyTreeState extends State<FullHierarchyTree> {
       color: isSelected ? Colors.yellow[200] : Colors.transparent,
       child: ListTile(
         dense: true,
-        contentPadding: EdgeInsets.only(left: leftPadding, right: 16.0),
+        contentPadding: EdgeInsets.only(left: leftPadding, right: 8.0),
         leading: canExpand
             ? Icon(
-                isExpanded ? Icons.expand_more : Icons.chevron_right,
+                isExpanded
+                    ? Icons.keyboard_arrow_down
+                    : Icons.keyboard_arrow_right,
                 color: _getItemColor(item.type),
                 size: 20,
               )
-            : Icon(
-                _getItemIcon(item.type),
-                color:
-                    isSelected ? Colors.orange[700] : _getItemColor(item.type),
-                size: 18,
-              ),
+            : SizedBox(width: 20), // No icon for leaf items, just spacing
         title: Text(
           item.name,
           style: TextStyle(
@@ -533,6 +586,10 @@ class _FullHierarchyTreeState extends State<FullHierarchyTree> {
             color: isSelected ? Colors.black : _getItemTextColor(item.type),
           ),
         ),
+        trailing:
+            (widget.onAddItem != null && item.type != TreeItemType.process)
+                ? _buildAddButton(item)
+                : null,
         selected: isSelected,
         onTap: () {
           if (canExpand) {
@@ -542,6 +599,107 @@ class _FullHierarchyTreeState extends State<FullHierarchyTree> {
         },
       ),
     );
+  }
+
+  Widget _buildAddButton(FullTreeItem item) {
+    // Get the color of the item type being ADDED, not the parent
+    Color buttonColor;
+    switch (item.type) {
+      case TreeItemType.company:
+        buttonColor = Colors.green[600]!; // Adding a plant (green)
+        break;
+      case TreeItemType.plant:
+        buttonColor = Colors.purple[600]!; // Adding a value stream (purple)
+        break;
+      case TreeItemType.valueStream:
+        buttonColor = Colors.orange[600]!; // Adding a process (orange)
+        break;
+      case TreeItemType.process:
+        // This should not happen since processes don't have add buttons
+        buttonColor = Colors.grey[600]!;
+        break;
+    }
+
+    return IconButton(
+      icon: const Icon(Icons.add, size: 16),
+      color: buttonColor,
+      tooltip: _getAddTooltip(item.type),
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+      onPressed: () => _onAddButtonPressed(item),
+    );
+  }
+
+  String _getAddTooltip(TreeItemType type) {
+    switch (type) {
+      case TreeItemType.company:
+        return 'Add new plant to ${type.name}';
+      case TreeItemType.plant:
+        return 'Add new value stream to ${type.name}';
+      case TreeItemType.valueStream:
+        return 'Add new process to ${type.name}';
+      case TreeItemType.process:
+        return 'Add item'; // Should not be used as processes don't have children
+    }
+  }
+
+  void _onAddButtonPressed(FullTreeItem item) {
+    if (widget.onAddItem == null) return;
+
+    switch (item.type) {
+      case TreeItemType.company:
+        // Add plant to this company
+        widget.onAddItem!(
+          itemType: TreeItemType.plant,
+          companyName: item.name,
+        );
+        break;
+      case TreeItemType.plant:
+        // Add value stream to this plant
+        widget.onAddItem!(
+          itemType: TreeItemType.valueStream,
+          companyName: item.parentName,
+          plantName: item.name,
+        );
+        break;
+      case TreeItemType.valueStream:
+        // Add process to this value stream
+        widget.onAddItem!(
+          itemType: TreeItemType.process,
+          companyName: _getCompanyNameForValueStream(item),
+          plantName: item.parentName,
+          valueStreamName: item.name,
+          valueStreamId: item.id,
+        );
+        break;
+      case TreeItemType.process:
+        // Processes don't have children, so no add action
+        break;
+    }
+  }
+
+  String? _getCompanyNameForValueStream(FullTreeItem valueStreamItem) {
+    // Find the plant for this value stream, then find its company
+    final plant = _plants.firstWhere(
+      (p) => p.name == valueStreamItem.parentName,
+      orElse: () => PlantData(
+          id: -1,
+          organizationId: -1,
+          name: '',
+          street: '',
+          city: '',
+          state: '',
+          zip: ''),
+    );
+
+    if (plant.id > 0) {
+      final company = _organizations.firstWhere(
+        (org) => org.id == plant.organizationId,
+        orElse: () => Organization(id: -1, name: ''),
+      );
+      return company.id > 0 ? company.name : null;
+    }
+    return null;
   }
 
   bool _canItemExpand(FullTreeItem item) {
@@ -579,7 +737,8 @@ class _FullHierarchyTreeState extends State<FullHierarchyTree> {
       case TreeItemType.valueStream:
         return Colors.purple[700]!;
       case TreeItemType.process:
-        return Colors.grey[800]!;
+        return Colors
+            .orange[600]!; // Match the "+" button color on value streams
     }
   }
 
@@ -606,19 +765,6 @@ class _FullHierarchyTreeState extends State<FullHierarchyTree> {
         return 13.0;
       case TreeItemType.process:
         return 12.5;
-    }
-  }
-
-  IconData _getItemIcon(TreeItemType type) {
-    switch (type) {
-      case TreeItemType.company:
-        return Icons.business;
-      case TreeItemType.plant:
-        return Icons.location_city;
-      case TreeItemType.valueStream:
-        return Icons.account_tree;
-      case TreeItemType.process:
-        return Icons.settings;
     }
   }
 }

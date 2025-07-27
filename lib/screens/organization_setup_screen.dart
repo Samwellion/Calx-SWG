@@ -406,7 +406,12 @@ class OrganizationDetailsForm extends StatelessWidget {
 }
 
 class OrganizationSetupScreen extends StatefulWidget {
-  const OrganizationSetupScreen({super.key});
+  final String? selectedCompany;
+
+  const OrganizationSetupScreen({
+    super.key,
+    this.selectedCompany,
+  });
 
   @override
   State<OrganizationSetupScreen> createState() =>
@@ -442,7 +447,9 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
     final c = prefs.getString(_kCompanyKey);
     final p = prefs.getString(_kPlantKey);
     setState(() {
-      _selectedCompany = (c != null && c.isNotEmpty) ? c : null;
+      // Use the provided selectedCompany parameter if available, otherwise use saved preference
+      _selectedCompany =
+          widget.selectedCompany ?? ((c != null && c.isNotEmpty) ? c : null);
       _selectedPlant = (p != null && p.isNotEmpty) ? p : null;
     });
   }
