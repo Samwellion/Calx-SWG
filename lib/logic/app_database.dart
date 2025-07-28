@@ -1,12 +1,42 @@
 import 'package:drift/drift.dart';
 part 'app_database.g.dart';
 
+// Unit of Measure enum for ValueStreams
+enum UnitOfMeasure {
+  each('Each'),
+  pieces('Pieces'),
+  units('Units'),
+  pounds('Pounds'),
+  kilograms('Kilograms'),
+  tons('Tons'),
+  feet('Feet'),
+  meters('Meters'),
+  inches('Inches'),
+  centimeters('Centimeters'),
+  gallons('Gallons'),
+  liters('Liters'),
+  hours('Hours'),
+  days('Days'),
+  boxes('Boxes'),
+  pallets('Pallets'),
+  cases('Cases'),
+  dozens('Dozens');
+
+  const UnitOfMeasure(this.displayName);
+  final String displayName;
+}
+
 // Value Stream table: stores value stream information for each plant
 // Ensures value stream names are unique within each plant
 class ValueStreams extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get plantId => integer()();
   TextColumn get name => text()();
+
+  // New fields
+  IntColumn get mDemand => integer().nullable()(); // Monthly Demand
+  IntColumn get uom => intEnum<UnitOfMeasure>().nullable()(); // Unit of Measure
+  IntColumn get mngrEmpId => integer().nullable()(); // Manager Employee ID
 
   @override
   List<String> get customConstraints => [
@@ -53,6 +83,7 @@ class TimeStudy extends Table {
 @DriftDatabase(tables: [
   ProcessParts,
   ProcessShift,
+  VSShifts,
   Processes,
   Parts,
   Organizations,
@@ -87,7 +118,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 17;
+  int get schemaVersion => 20;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -319,6 +350,58 @@ class AppDatabase extends _$AppDatabase {
             await m.deleteTable('setup_elements');
             await m.createTable(setupElements);
           }
+          if (from == 17 && to == 18) {
+            // Add orderIndex column to Processes table
+            await m.addColumn(processes, processes.orderIndex);
+          }
+          if (from == 18 && to == 19) {
+            // Add new fields to ValueStreams and create VSShifts table
+            await m.addColumn(
+                valueStreams, valueStreams.mDemand as GeneratedColumn<Object>);
+            await m.addColumn(
+                valueStreams, valueStreams.uom as GeneratedColumn<Object>);
+            await m.addColumn(valueStreams,
+                valueStreams.mngrEmpId as GeneratedColumn<Object>);
+            await m.createTable(vSShifts);
+          }
+          if (from == 19 && to == 20) {
+            // Fix VSShifts table name - try to preserve data if the old table exists
+            try {
+              // Check if the old table exists and has data
+              final oldData =
+                  await customSelect('SELECT * FROM v_s_shifts').get();
+
+              // Create the new table with correct name
+              await m.createTable(vSShifts);
+
+              // If we had data in the old table, migrate it
+              if (oldData.isNotEmpty) {
+                for (final row in oldData) {
+                  await customInsert(
+                    'INSERT INTO vs_shifts (id, vs_id, shift_name, sun, mon, tue, wed, thu, fri, sat) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    variables: [
+                      Variable<int>(row.data['id'] as int),
+                      Variable<int>(row.data['vs_id'] as int),
+                      Variable<String>(row.data['shift_name'] as String),
+                      Variable<String>(row.data['sun'] as String? ?? ''),
+                      Variable<String>(row.data['mon'] as String? ?? ''),
+                      Variable<String>(row.data['tue'] as String? ?? ''),
+                      Variable<String>(row.data['wed'] as String? ?? ''),
+                      Variable<String>(row.data['thu'] as String? ?? ''),
+                      Variable<String>(row.data['fri'] as String? ?? ''),
+                      Variable<String>(row.data['sat'] as String? ?? ''),
+                    ],
+                  );
+                }
+              }
+
+              // Drop the old table
+              await m.deleteTable('v_s_shifts');
+            } catch (e) {
+              // If old table doesn't exist or migration fails, just create the new table
+              await m.createTable(vSShifts);
+            }
+          }
         },
       );
 
@@ -516,6 +599,26 @@ class ProcessShift extends Table {
   TextColumn get sat => text().nullable()(); // Saturday shift time
 }
 
+// VSShifts table: stores shift schedules for each value stream
+class VSShifts extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get vsId => integer().references(
+      ValueStreams, #id)(); // Links to ValueStream instead of Process
+  TextColumn get shiftName => text()();
+
+  // Shift times for each day of the week (Format: HH:MM:SS)
+  TextColumn get sun => text().nullable()(); // Sunday shift time
+  TextColumn get mon => text().nullable()(); // Monday shift time
+  TextColumn get tue => text().nullable()(); // Tuesday shift time
+  TextColumn get wed => text().nullable()(); // Wednesday shift time
+  TextColumn get thu => text().nullable()(); // Thursday shift time
+  TextColumn get fri => text().nullable()(); // Friday shift time
+  TextColumn get sat => text().nullable()(); // Saturday shift time
+
+  @override
+  String get tableName => 'vs_shifts';
+}
+
 // Process table: associates a process with a value stream
 // Ensures process names are unique within each value stream
 class Processes extends Table {
@@ -532,6 +635,8 @@ class Processes extends Table {
   RealColumn get uptime =>
       real().nullable()(); // Percentage as decimal (e.g., 0.85 for 85%)
   TextColumn get coTime => text().nullable()(); // Format: HH:MM:SS
+  IntColumn get orderIndex =>
+      integer().withDefault(const Constant(0))(); // For custom user ordering
 
   @override
   List<String> get customConstraints => [

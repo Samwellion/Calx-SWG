@@ -6,6 +6,7 @@ import 'process_input_screen.dart';
 import '../screens/organization_setup_screen.dart';
 import '../logic/app_database.dart';
 import 'plant_setup_screen.dart';
+import 'vs_detail_screen.dart';
 import '../database_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/app_footer.dart';
@@ -680,6 +681,19 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                 ),
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _openVSDetailScreen,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.yellow[600],
+                  ),
+                  child: const Text('Value Stream Details'),
+                ),
+              ),
+            ),
           ],
         ),
       );
@@ -717,7 +731,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.yellow[600],
                   ),
-                  child: const Text('Add Setup and Elements'),
+                  child: const Text('Setups and Elements'),
                 ),
               ),
             ),
@@ -732,7 +746,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.yellow[600],
                   ),
-                  child: const Text('Open Time Observation'),
+                  child: const Text('Time Observation'),
                 ),
               ),
             ),
@@ -851,6 +865,22 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           ),
         ),
       );
+
+      buttons.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _openVSDetailScreen,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.yellow[600],
+              ),
+              child: const Text('Value Stream Details'),
+            ),
+          ),
+        ),
+      );
     }
 
     // Show process-specific actions if process is selected
@@ -867,7 +897,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.yellow[600],
               ),
-              child: const Text('Add Setup and Elements'),
+              child: const Text('Setups and Elements'),
             ),
           ),
         ),
@@ -885,7 +915,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.yellow[600],
               ),
-              child: const Text('Open Time Observation'),
+              child: const Text('Time Observation'),
             ),
           ),
         ),
@@ -1116,6 +1146,36 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Error opening process input screen')),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _openVSDetailScreen() async {
+    if (selectedValueStreamId != null &&
+        selectedValueStream != null &&
+        selectedCompany != null &&
+        selectedPlant != null) {
+      try {
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => VSDetailScreen(
+              valueStreamName: selectedValueStream!,
+              valueStreamId: selectedValueStreamId!,
+              companyName: selectedCompany!,
+              plantName: selectedPlant!,
+            ),
+          ),
+        );
+        // Reload data after returning from VS detail screen
+        await _loadDropdownData();
+        await _loadSelections();
+      } catch (e) {
+        debugPrint('Error navigating to VS detail screen: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Error opening VS detail screen')),
           );
         }
       }

@@ -215,7 +215,13 @@ class _FullHierarchyTreeState extends State<FullHierarchyTree> {
                 final valueStreamProcesses = _processes
                     .where((p) => p.valueStreamId == valueStream.id)
                     .toList()
-                  ..sort((a, b) => a.processName.compareTo(b.processName));
+                  ..sort((a, b) {
+                    // Sort by orderIndex first, then by processName
+                    final orderComparison =
+                        a.orderIndex.compareTo(b.orderIndex);
+                    if (orderComparison != 0) return orderComparison;
+                    return a.processName.compareTo(b.processName);
+                  });
 
                 for (final process in valueStreamProcesses) {
                   items.add(FullTreeItem(
@@ -567,7 +573,9 @@ class _FullHierarchyTreeState extends State<FullHierarchyTree> {
       color: isSelected ? Colors.yellow[200] : Colors.transparent,
       child: ListTile(
         dense: true,
-        contentPadding: EdgeInsets.only(left: leftPadding, right: 8.0),
+        visualDensity: VisualDensity.compact,
+        contentPadding: EdgeInsets.only(
+            left: leftPadding, right: 8.0, top: 0.0, bottom: 0.0),
         leading: canExpand
             ? Icon(
                 isExpanded

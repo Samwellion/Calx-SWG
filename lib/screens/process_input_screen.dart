@@ -79,9 +79,9 @@ class _ProcessInputScreenState extends State<ProcessInputScreen> {
         actualValueStreamId = valueStreamCheck.first.data['id'] as int;
       } else {}
 
-      // Query processes using the correct value stream ID
+      // Query processes using the correct value stream ID, ordered by orderIndex then by name
       final result = await db.customSelectQuery(
-        'SELECT id, process_name, process_description FROM processes WHERE value_stream_id = ?',
+        'SELECT id, process_name, process_description, order_index FROM processes WHERE value_stream_id = ? ORDER BY order_index ASC, process_name ASC',
         variables: [drift.Variable.withInt(actualValueStreamId)],
       ).get();
 
@@ -174,12 +174,16 @@ class _ProcessInputScreenState extends State<ProcessInputScreen> {
     }
     setState(() => _saving = true);
     try {
+      // Get the next order index (current max + 1)
+      final nextOrderIndex = _processes.length;
+
       await db.upsertProcess(
         ProcessesCompanion(
           valueStreamId: drift.Value(widget.valueStreamId),
           processName: drift.Value(processName),
           processDescription: drift.Value(
               processDescription.isEmpty ? null : processDescription),
+          orderIndex: drift.Value(nextOrderIndex),
         ),
       );
 
@@ -233,6 +237,42 @@ class _ProcessInputScreenState extends State<ProcessInputScreen> {
         _error = 'Failed to update process: $e';
       });
     }
+  }
+
+  void _onReorder(int oldIndex, int newIndex) {
+    setState(() {
+      if (newIndex > oldIndex) {
+        newIndex -= 1;
+      }
+      final item = _processes.removeAt(oldIndex);
+      _processes.insert(newIndex, item);
+    });
+    _updateProcessOrder();
+  }
+
+  Future<void> _updateProcessOrder() async {
+    try {
+      // Update the order_index for each process based on current list order
+      for (int i = 0; i < _processes.length; i++) {
+        final processId = _processes[i]['id'] as int;
+        await db.customStatement(
+          'UPDATE processes SET order_index = ? WHERE id = ?',
+          [i, processId],
+        );
+      }
+    } catch (e) {
+      debugPrint('Error updating process order: $e');
+    }
+  }
+
+  void _cancelEdit(int processId) {
+    setState(() {
+      _editingStates[processId] = false;
+      // Reset the controller to original value
+      final process = _processes.firstWhere((p) => p['id'] == processId);
+      _processDescriptionControllers[processId]?.text =
+          process['process_description'] ?? '';
+    });
   }
 
   @override
@@ -401,109 +441,155 @@ class _ProcessInputScreenState extends State<ProcessInputScreen> {
                                               style: TextStyle(
                                                   fontWeight: FontWeight.bold,
                                                   fontSize: 18)),
+                                          const SizedBox(height: 4),
+                                          const Text(
+                                            'Drag processes to reorder them',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey,
+                                              fontStyle: FontStyle.italic,
+                                            ),
+                                          ),
                                           const SizedBox(height: 8),
                                           Expanded(
                                             child: _processes.isEmpty
                                                 ? const Text(
                                                     'No processes saved yet.')
-                                                : SingleChildScrollView(
-                                                    scrollDirection:
-                                                        Axis.vertical,
-                                                    child: LayoutBuilder(
-                                                        builder: (context,
-                                                            constraints) {
-                                                      return DataTable(
-                                                        columnSpacing: 20,
-                                                        columns: [
-                                                          DataColumn(
-                                                            label: SizedBox(
-                                                              width: constraints
-                                                                      .maxWidth *
-                                                                  0.2,
-                                                              child: const Text(
-                                                                  'Process Name'),
+                                                : Theme(
+                                                    data: Theme.of(context)
+                                                        .copyWith(
+                                                      canvasColor:
+                                                          Colors.transparent,
+                                                    ),
+                                                    child: ReorderableListView
+                                                        .builder(
+                                                      itemCount:
+                                                          _processes.length,
+                                                      onReorder: _onReorder,
+                                                      itemBuilder:
+                                                          (context, index) {
+                                                        final process =
+                                                            _processes[index];
+                                                        final isEditing =
+                                                            _editingStates[
+                                                                    process[
+                                                                        'id']] ??
+                                                                false;
+
+                                                        return Card(
+                                                          key: ValueKey(
+                                                              process['id']),
+                                                          margin:
+                                                              const EdgeInsets
+                                                                  .symmetric(
+                                                                  vertical: 4),
+                                                          color: Colors
+                                                              .yellow[100],
+                                                          child: ListTile(
+                                                            title: Text(
+                                                              process['process_name'] ??
+                                                                  '',
+                                                              style: const TextStyle(
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold),
                                                             ),
-                                                          ),
-                                                          DataColumn(
-                                                            label: SizedBox(
-                                                              width: constraints
-                                                                      .maxWidth *
-                                                                  0.5,
-                                                              child: const Text(
-                                                                  'Description'),
-                                                            ),
-                                                          ),
-                                                          const DataColumn(
-                                                            label:
-                                                                Text('Actions'),
-                                                          ),
-                                                        ],
-                                                        rows: _processes
-                                                            .map((process) {
-                                                          final isEditing =
-                                                              _editingStates[
-                                                                      process[
-                                                                          'id']] ??
-                                                                  false;
-                                                          return DataRow(
-                                                              cells: [
-                                                                DataCell(Text(
-                                                                    process['process_name'] ??
-                                                                        '')),
-                                                                DataCell(
-                                                                  isEditing
-                                                                      ? TextFormField(
-                                                                          controller:
-                                                                              _processDescriptionControllers[process['id']],
-                                                                        )
-                                                                      : Text(process[
-                                                                              'process_description'] ??
-                                                                          ''),
-                                                                ),
-                                                                DataCell(
-                                                                  Row(
-                                                                    children: [
-                                                                      if (isEditing)
-                                                                        IconButton(
-                                                                          icon: const Icon(
-                                                                              Icons.check,
-                                                                              color: Colors.green),
-                                                                          onPressed:
-                                                                              () {
-                                                                            _updateProcess(process['id']);
-                                                                          },
-                                                                        )
-                                                                      else
-                                                                        IconButton(
-                                                                          icon: const Icon(
-                                                                              Icons.edit,
-                                                                              color: Colors.blue),
-                                                                          onPressed:
-                                                                              () {
-                                                                            setState(() {
-                                                                              _editingStates[process['id']] = true;
-                                                                            });
-                                                                          },
-                                                                        ),
-                                                                      IconButton(
-                                                                        icon: const Icon(
-                                                                            Icons
-                                                                                .delete,
-                                                                            color:
-                                                                                Colors.red),
-                                                                        onPressed:
-                                                                            () {
-                                                                          _deleteProcess(
-                                                                              process['id']);
-                                                                        },
+                                                            subtitle: isEditing
+                                                                ? Padding(
+                                                                    padding: const EdgeInsets
+                                                                        .only(
+                                                                        top: 8),
+                                                                    child:
+                                                                        TextFormField(
+                                                                      controller:
+                                                                          _processDescriptionControllers[
+                                                                              process['id']],
+                                                                      decoration:
+                                                                          const InputDecoration(
+                                                                        labelText:
+                                                                            'Description',
+                                                                        border:
+                                                                            OutlineInputBorder(),
+                                                                        isDense:
+                                                                            true,
+                                                                        filled:
+                                                                            true,
+                                                                        fillColor:
+                                                                            Colors.white,
                                                                       ),
-                                                                    ],
+                                                                    ),
+                                                                  )
+                                                                : Text(process[
+                                                                        'process_description'] ??
+                                                                    ''),
+                                                            trailing: Row(
+                                                              mainAxisSize:
+                                                                  MainAxisSize
+                                                                      .min,
+                                                              children: [
+                                                                if (isEditing) ...[
+                                                                  IconButton(
+                                                                    icon: const Icon(
+                                                                        Icons
+                                                                            .check,
+                                                                        color: Colors
+                                                                            .green),
+                                                                    onPressed: () =>
+                                                                        _updateProcess(
+                                                                            process['id']),
+                                                                    tooltip:
+                                                                        'Save',
                                                                   ),
-                                                                ),
-                                                              ]);
-                                                        }).toList(),
-                                                      );
-                                                    }),
+                                                                  IconButton(
+                                                                    icon: const Icon(
+                                                                        Icons
+                                                                            .close,
+                                                                        color: Colors
+                                                                            .orange),
+                                                                    onPressed: () =>
+                                                                        _cancelEdit(
+                                                                            process['id']),
+                                                                    tooltip:
+                                                                        'Cancel',
+                                                                  ),
+                                                                ] else ...[
+                                                                  IconButton(
+                                                                    icon: const Icon(
+                                                                        Icons
+                                                                            .edit,
+                                                                        color: Colors
+                                                                            .blue),
+                                                                    onPressed:
+                                                                        () {
+                                                                      setState(
+                                                                          () {
+                                                                        _editingStates[process['id']] =
+                                                                            true;
+                                                                      });
+                                                                    },
+                                                                    tooltip:
+                                                                        'Edit',
+                                                                  ),
+                                                                  IconButton(
+                                                                    icon: const Icon(
+                                                                        Icons
+                                                                            .delete,
+                                                                        color: Colors
+                                                                            .red),
+                                                                    onPressed: () =>
+                                                                        _deleteProcess(
+                                                                            process['id']),
+                                                                    tooltip:
+                                                                        'Delete',
+                                                                  ),
+                                                                ],
+                                                              ],
+                                                            ),
+                                                          ),
+                                                        );
+                                                      },
+                                                    ),
                                                   ),
                                           ),
                                         ],

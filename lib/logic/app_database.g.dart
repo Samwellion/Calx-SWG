@@ -29,8 +29,26 @@ class $ValueStreamsTable extends ValueStreams
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
       'name', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _mDemandMeta =
+      const VerificationMeta('mDemand');
   @override
-  List<GeneratedColumn> get $columns => [id, plantId, name];
+  late final GeneratedColumn<int> mDemand = GeneratedColumn<int>(
+      'm_demand', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  @override
+  late final GeneratedColumnWithTypeConverter<UnitOfMeasure?, int> uom =
+      GeneratedColumn<int>('uom', aliasedName, true,
+              type: DriftSqlType.int, requiredDuringInsert: false)
+          .withConverter<UnitOfMeasure?>($ValueStreamsTable.$converteruomn);
+  static const VerificationMeta _mngrEmpIdMeta =
+      const VerificationMeta('mngrEmpId');
+  @override
+  late final GeneratedColumn<int> mngrEmpId = GeneratedColumn<int>(
+      'mngr_emp_id', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, plantId, name, mDemand, uom, mngrEmpId];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -56,6 +74,16 @@ class $ValueStreamsTable extends ValueStreams
     } else if (isInserting) {
       context.missing(_nameMeta);
     }
+    if (data.containsKey('m_demand')) {
+      context.handle(_mDemandMeta,
+          mDemand.isAcceptableOrUnknown(data['m_demand']!, _mDemandMeta));
+    }
+    if (data.containsKey('mngr_emp_id')) {
+      context.handle(
+          _mngrEmpIdMeta,
+          mngrEmpId.isAcceptableOrUnknown(
+              data['mngr_emp_id']!, _mngrEmpIdMeta));
+    }
     return context;
   }
 
@@ -71,6 +99,13 @@ class $ValueStreamsTable extends ValueStreams
           .read(DriftSqlType.int, data['${effectivePrefix}plant_id'])!,
       name: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
+      mDemand: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}m_demand']),
+      uom: $ValueStreamsTable.$converteruomn.fromSql(attachedDatabase
+          .typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}uom'])),
+      mngrEmpId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}mngr_emp_id']),
     );
   }
 
@@ -78,20 +113,42 @@ class $ValueStreamsTable extends ValueStreams
   $ValueStreamsTable createAlias(String alias) {
     return $ValueStreamsTable(attachedDatabase, alias);
   }
+
+  static JsonTypeConverter2<UnitOfMeasure, int, int> $converteruom =
+      const EnumIndexConverter<UnitOfMeasure>(UnitOfMeasure.values);
+  static JsonTypeConverter2<UnitOfMeasure?, int?, int?> $converteruomn =
+      JsonTypeConverter2.asNullable($converteruom);
 }
 
 class ValueStream extends DataClass implements Insertable<ValueStream> {
   final int id;
   final int plantId;
   final String name;
+  final int? mDemand;
+  final UnitOfMeasure? uom;
+  final int? mngrEmpId;
   const ValueStream(
-      {required this.id, required this.plantId, required this.name});
+      {required this.id,
+      required this.plantId,
+      required this.name,
+      this.mDemand,
+      this.uom,
+      this.mngrEmpId});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['plant_id'] = Variable<int>(plantId);
     map['name'] = Variable<String>(name);
+    if (!nullToAbsent || mDemand != null) {
+      map['m_demand'] = Variable<int>(mDemand);
+    }
+    if (!nullToAbsent || uom != null) {
+      map['uom'] = Variable<int>($ValueStreamsTable.$converteruomn.toSql(uom));
+    }
+    if (!nullToAbsent || mngrEmpId != null) {
+      map['mngr_emp_id'] = Variable<int>(mngrEmpId);
+    }
     return map;
   }
 
@@ -100,6 +157,13 @@ class ValueStream extends DataClass implements Insertable<ValueStream> {
       id: Value(id),
       plantId: Value(plantId),
       name: Value(name),
+      mDemand: mDemand == null && nullToAbsent
+          ? const Value.absent()
+          : Value(mDemand),
+      uom: uom == null && nullToAbsent ? const Value.absent() : Value(uom),
+      mngrEmpId: mngrEmpId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(mngrEmpId),
     );
   }
 
@@ -110,6 +174,10 @@ class ValueStream extends DataClass implements Insertable<ValueStream> {
       id: serializer.fromJson<int>(json['id']),
       plantId: serializer.fromJson<int>(json['plantId']),
       name: serializer.fromJson<String>(json['name']),
+      mDemand: serializer.fromJson<int?>(json['mDemand']),
+      uom: $ValueStreamsTable.$converteruomn
+          .fromJson(serializer.fromJson<int?>(json['uom'])),
+      mngrEmpId: serializer.fromJson<int?>(json['mngrEmpId']),
     );
   }
   @override
@@ -119,19 +187,36 @@ class ValueStream extends DataClass implements Insertable<ValueStream> {
       'id': serializer.toJson<int>(id),
       'plantId': serializer.toJson<int>(plantId),
       'name': serializer.toJson<String>(name),
+      'mDemand': serializer.toJson<int?>(mDemand),
+      'uom': serializer
+          .toJson<int?>($ValueStreamsTable.$converteruomn.toJson(uom)),
+      'mngrEmpId': serializer.toJson<int?>(mngrEmpId),
     };
   }
 
-  ValueStream copyWith({int? id, int? plantId, String? name}) => ValueStream(
+  ValueStream copyWith(
+          {int? id,
+          int? plantId,
+          String? name,
+          Value<int?> mDemand = const Value.absent(),
+          Value<UnitOfMeasure?> uom = const Value.absent(),
+          Value<int?> mngrEmpId = const Value.absent()}) =>
+      ValueStream(
         id: id ?? this.id,
         plantId: plantId ?? this.plantId,
         name: name ?? this.name,
+        mDemand: mDemand.present ? mDemand.value : this.mDemand,
+        uom: uom.present ? uom.value : this.uom,
+        mngrEmpId: mngrEmpId.present ? mngrEmpId.value : this.mngrEmpId,
       );
   ValueStream copyWithCompanion(ValueStreamsCompanion data) {
     return ValueStream(
       id: data.id.present ? data.id.value : this.id,
       plantId: data.plantId.present ? data.plantId.value : this.plantId,
       name: data.name.present ? data.name.value : this.name,
+      mDemand: data.mDemand.present ? data.mDemand.value : this.mDemand,
+      uom: data.uom.present ? data.uom.value : this.uom,
+      mngrEmpId: data.mngrEmpId.present ? data.mngrEmpId.value : this.mngrEmpId,
     );
   }
 
@@ -140,55 +225,84 @@ class ValueStream extends DataClass implements Insertable<ValueStream> {
     return (StringBuffer('ValueStream(')
           ..write('id: $id, ')
           ..write('plantId: $plantId, ')
-          ..write('name: $name')
+          ..write('name: $name, ')
+          ..write('mDemand: $mDemand, ')
+          ..write('uom: $uom, ')
+          ..write('mngrEmpId: $mngrEmpId')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, plantId, name);
+  int get hashCode => Object.hash(id, plantId, name, mDemand, uom, mngrEmpId);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is ValueStream &&
           other.id == this.id &&
           other.plantId == this.plantId &&
-          other.name == this.name);
+          other.name == this.name &&
+          other.mDemand == this.mDemand &&
+          other.uom == this.uom &&
+          other.mngrEmpId == this.mngrEmpId);
 }
 
 class ValueStreamsCompanion extends UpdateCompanion<ValueStream> {
   final Value<int> id;
   final Value<int> plantId;
   final Value<String> name;
+  final Value<int?> mDemand;
+  final Value<UnitOfMeasure?> uom;
+  final Value<int?> mngrEmpId;
   const ValueStreamsCompanion({
     this.id = const Value.absent(),
     this.plantId = const Value.absent(),
     this.name = const Value.absent(),
+    this.mDemand = const Value.absent(),
+    this.uom = const Value.absent(),
+    this.mngrEmpId = const Value.absent(),
   });
   ValueStreamsCompanion.insert({
     this.id = const Value.absent(),
     required int plantId,
     required String name,
+    this.mDemand = const Value.absent(),
+    this.uom = const Value.absent(),
+    this.mngrEmpId = const Value.absent(),
   })  : plantId = Value(plantId),
         name = Value(name);
   static Insertable<ValueStream> custom({
     Expression<int>? id,
     Expression<int>? plantId,
     Expression<String>? name,
+    Expression<int>? mDemand,
+    Expression<int>? uom,
+    Expression<int>? mngrEmpId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (plantId != null) 'plant_id': plantId,
       if (name != null) 'name': name,
+      if (mDemand != null) 'm_demand': mDemand,
+      if (uom != null) 'uom': uom,
+      if (mngrEmpId != null) 'mngr_emp_id': mngrEmpId,
     });
   }
 
   ValueStreamsCompanion copyWith(
-      {Value<int>? id, Value<int>? plantId, Value<String>? name}) {
+      {Value<int>? id,
+      Value<int>? plantId,
+      Value<String>? name,
+      Value<int?>? mDemand,
+      Value<UnitOfMeasure?>? uom,
+      Value<int?>? mngrEmpId}) {
     return ValueStreamsCompanion(
       id: id ?? this.id,
       plantId: plantId ?? this.plantId,
       name: name ?? this.name,
+      mDemand: mDemand ?? this.mDemand,
+      uom: uom ?? this.uom,
+      mngrEmpId: mngrEmpId ?? this.mngrEmpId,
     );
   }
 
@@ -204,6 +318,16 @@ class ValueStreamsCompanion extends UpdateCompanion<ValueStream> {
     if (name.present) {
       map['name'] = Variable<String>(name.value);
     }
+    if (mDemand.present) {
+      map['m_demand'] = Variable<int>(mDemand.value);
+    }
+    if (uom.present) {
+      map['uom'] =
+          Variable<int>($ValueStreamsTable.$converteruomn.toSql(uom.value));
+    }
+    if (mngrEmpId.present) {
+      map['mngr_emp_id'] = Variable<int>(mngrEmpId.value);
+    }
     return map;
   }
 
@@ -212,7 +336,10 @@ class ValueStreamsCompanion extends UpdateCompanion<ValueStream> {
     return (StringBuffer('ValueStreamsCompanion(')
           ..write('id: $id, ')
           ..write('plantId: $plantId, ')
-          ..write('name: $name')
+          ..write('name: $name, ')
+          ..write('mDemand: $mDemand, ')
+          ..write('uom: $uom, ')
+          ..write('mngrEmpId: $mngrEmpId')
           ..write(')'))
         .toString();
   }
@@ -280,6 +407,14 @@ class $ProcessesTable extends Processes
   late final GeneratedColumn<String> coTime = GeneratedColumn<String>(
       'co_time', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _orderIndexMeta =
+      const VerificationMeta('orderIndex');
+  @override
+  late final GeneratedColumn<int> orderIndex = GeneratedColumn<int>(
+      'order_index', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -290,7 +425,8 @@ class $ProcessesTable extends Processes
         staff,
         wip,
         uptime,
-        coTime
+        coTime,
+        orderIndex
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -349,6 +485,12 @@ class $ProcessesTable extends Processes
       context.handle(_coTimeMeta,
           coTime.isAcceptableOrUnknown(data['co_time']!, _coTimeMeta));
     }
+    if (data.containsKey('order_index')) {
+      context.handle(
+          _orderIndexMeta,
+          orderIndex.isAcceptableOrUnknown(
+              data['order_index']!, _orderIndexMeta));
+    }
     return context;
   }
 
@@ -376,6 +518,8 @@ class $ProcessesTable extends Processes
           .read(DriftSqlType.double, data['${effectivePrefix}uptime']),
       coTime: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}co_time']),
+      orderIndex: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}order_index'])!,
     );
   }
 
@@ -395,6 +539,7 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
   final int? wip;
   final double? uptime;
   final String? coTime;
+  final int orderIndex;
   const ProcessesData(
       {required this.id,
       required this.valueStreamId,
@@ -404,7 +549,8 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
       this.staff,
       this.wip,
       this.uptime,
-      this.coTime});
+      this.coTime,
+      required this.orderIndex});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -429,6 +575,7 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
     if (!nullToAbsent || coTime != null) {
       map['co_time'] = Variable<String>(coTime);
     }
+    map['order_index'] = Variable<int>(orderIndex);
     return map;
   }
 
@@ -450,6 +597,7 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
           uptime == null && nullToAbsent ? const Value.absent() : Value(uptime),
       coTime:
           coTime == null && nullToAbsent ? const Value.absent() : Value(coTime),
+      orderIndex: Value(orderIndex),
     );
   }
 
@@ -467,6 +615,7 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
       wip: serializer.fromJson<int?>(json['wip']),
       uptime: serializer.fromJson<double?>(json['uptime']),
       coTime: serializer.fromJson<String?>(json['coTime']),
+      orderIndex: serializer.fromJson<int>(json['orderIndex']),
     );
   }
   @override
@@ -482,6 +631,7 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
       'wip': serializer.toJson<int?>(wip),
       'uptime': serializer.toJson<double?>(uptime),
       'coTime': serializer.toJson<String?>(coTime),
+      'orderIndex': serializer.toJson<int>(orderIndex),
     };
   }
 
@@ -494,7 +644,8 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
           Value<int?> staff = const Value.absent(),
           Value<int?> wip = const Value.absent(),
           Value<double?> uptime = const Value.absent(),
-          Value<String?> coTime = const Value.absent()}) =>
+          Value<String?> coTime = const Value.absent(),
+          int? orderIndex}) =>
       ProcessesData(
         id: id ?? this.id,
         valueStreamId: valueStreamId ?? this.valueStreamId,
@@ -507,6 +658,7 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
         wip: wip.present ? wip.value : this.wip,
         uptime: uptime.present ? uptime.value : this.uptime,
         coTime: coTime.present ? coTime.value : this.coTime,
+        orderIndex: orderIndex ?? this.orderIndex,
       );
   ProcessesData copyWithCompanion(ProcessesCompanion data) {
     return ProcessesData(
@@ -525,6 +677,8 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
       wip: data.wip.present ? data.wip.value : this.wip,
       uptime: data.uptime.present ? data.uptime.value : this.uptime,
       coTime: data.coTime.present ? data.coTime.value : this.coTime,
+      orderIndex:
+          data.orderIndex.present ? data.orderIndex.value : this.orderIndex,
     );
   }
 
@@ -539,14 +693,15 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
           ..write('staff: $staff, ')
           ..write('wip: $wip, ')
           ..write('uptime: $uptime, ')
-          ..write('coTime: $coTime')
+          ..write('coTime: $coTime, ')
+          ..write('orderIndex: $orderIndex')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode => Object.hash(id, valueStreamId, processName,
-      processDescription, dailyDemand, staff, wip, uptime, coTime);
+      processDescription, dailyDemand, staff, wip, uptime, coTime, orderIndex);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -559,7 +714,8 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
           other.staff == this.staff &&
           other.wip == this.wip &&
           other.uptime == this.uptime &&
-          other.coTime == this.coTime);
+          other.coTime == this.coTime &&
+          other.orderIndex == this.orderIndex);
 }
 
 class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
@@ -572,6 +728,7 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
   final Value<int?> wip;
   final Value<double?> uptime;
   final Value<String?> coTime;
+  final Value<int> orderIndex;
   const ProcessesCompanion({
     this.id = const Value.absent(),
     this.valueStreamId = const Value.absent(),
@@ -582,6 +739,7 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
     this.wip = const Value.absent(),
     this.uptime = const Value.absent(),
     this.coTime = const Value.absent(),
+    this.orderIndex = const Value.absent(),
   });
   ProcessesCompanion.insert({
     this.id = const Value.absent(),
@@ -593,6 +751,7 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
     this.wip = const Value.absent(),
     this.uptime = const Value.absent(),
     this.coTime = const Value.absent(),
+    this.orderIndex = const Value.absent(),
   })  : valueStreamId = Value(valueStreamId),
         processName = Value(processName);
   static Insertable<ProcessesData> custom({
@@ -605,6 +764,7 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
     Expression<int>? wip,
     Expression<double>? uptime,
     Expression<String>? coTime,
+    Expression<int>? orderIndex,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -616,6 +776,7 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
       if (wip != null) 'wip': wip,
       if (uptime != null) 'uptime': uptime,
       if (coTime != null) 'co_time': coTime,
+      if (orderIndex != null) 'order_index': orderIndex,
     });
   }
 
@@ -628,7 +789,8 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
       Value<int?>? staff,
       Value<int?>? wip,
       Value<double?>? uptime,
-      Value<String?>? coTime}) {
+      Value<String?>? coTime,
+      Value<int>? orderIndex}) {
     return ProcessesCompanion(
       id: id ?? this.id,
       valueStreamId: valueStreamId ?? this.valueStreamId,
@@ -639,6 +801,7 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
       wip: wip ?? this.wip,
       uptime: uptime ?? this.uptime,
       coTime: coTime ?? this.coTime,
+      orderIndex: orderIndex ?? this.orderIndex,
     );
   }
 
@@ -672,6 +835,9 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
     if (coTime.present) {
       map['co_time'] = Variable<String>(coTime.value);
     }
+    if (orderIndex.present) {
+      map['order_index'] = Variable<int>(orderIndex.value);
+    }
     return map;
   }
 
@@ -686,7 +852,8 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
           ..write('staff: $staff, ')
           ..write('wip: $wip, ')
           ..write('uptime: $uptime, ')
-          ..write('coTime: $coTime')
+          ..write('coTime: $coTime, ')
+          ..write('orderIndex: $orderIndex')
           ..write(')'))
         .toString();
   }
@@ -1500,6 +1667,478 @@ class ProcessShiftCompanion extends UpdateCompanion<ProcessShiftData> {
     return (StringBuffer('ProcessShiftCompanion(')
           ..write('id: $id, ')
           ..write('processId: $processId, ')
+          ..write('shiftName: $shiftName, ')
+          ..write('sun: $sun, ')
+          ..write('mon: $mon, ')
+          ..write('tue: $tue, ')
+          ..write('wed: $wed, ')
+          ..write('thu: $thu, ')
+          ..write('fri: $fri, ')
+          ..write('sat: $sat')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $VSShiftsTable extends VSShifts with TableInfo<$VSShiftsTable, VSShift> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $VSShiftsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _vsIdMeta = const VerificationMeta('vsId');
+  @override
+  late final GeneratedColumn<int> vsId = GeneratedColumn<int>(
+      'vs_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES value_streams (id)'));
+  static const VerificationMeta _shiftNameMeta =
+      const VerificationMeta('shiftName');
+  @override
+  late final GeneratedColumn<String> shiftName = GeneratedColumn<String>(
+      'shift_name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _sunMeta = const VerificationMeta('sun');
+  @override
+  late final GeneratedColumn<String> sun = GeneratedColumn<String>(
+      'sun', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _monMeta = const VerificationMeta('mon');
+  @override
+  late final GeneratedColumn<String> mon = GeneratedColumn<String>(
+      'mon', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _tueMeta = const VerificationMeta('tue');
+  @override
+  late final GeneratedColumn<String> tue = GeneratedColumn<String>(
+      'tue', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _wedMeta = const VerificationMeta('wed');
+  @override
+  late final GeneratedColumn<String> wed = GeneratedColumn<String>(
+      'wed', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _thuMeta = const VerificationMeta('thu');
+  @override
+  late final GeneratedColumn<String> thu = GeneratedColumn<String>(
+      'thu', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _friMeta = const VerificationMeta('fri');
+  @override
+  late final GeneratedColumn<String> fri = GeneratedColumn<String>(
+      'fri', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _satMeta = const VerificationMeta('sat');
+  @override
+  late final GeneratedColumn<String> sat = GeneratedColumn<String>(
+      'sat', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, vsId, shiftName, sun, mon, tue, wed, thu, fri, sat];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'vs_shifts';
+  @override
+  VerificationContext validateIntegrity(Insertable<VSShift> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('vs_id')) {
+      context.handle(
+          _vsIdMeta, vsId.isAcceptableOrUnknown(data['vs_id']!, _vsIdMeta));
+    } else if (isInserting) {
+      context.missing(_vsIdMeta);
+    }
+    if (data.containsKey('shift_name')) {
+      context.handle(_shiftNameMeta,
+          shiftName.isAcceptableOrUnknown(data['shift_name']!, _shiftNameMeta));
+    } else if (isInserting) {
+      context.missing(_shiftNameMeta);
+    }
+    if (data.containsKey('sun')) {
+      context.handle(
+          _sunMeta, sun.isAcceptableOrUnknown(data['sun']!, _sunMeta));
+    }
+    if (data.containsKey('mon')) {
+      context.handle(
+          _monMeta, mon.isAcceptableOrUnknown(data['mon']!, _monMeta));
+    }
+    if (data.containsKey('tue')) {
+      context.handle(
+          _tueMeta, tue.isAcceptableOrUnknown(data['tue']!, _tueMeta));
+    }
+    if (data.containsKey('wed')) {
+      context.handle(
+          _wedMeta, wed.isAcceptableOrUnknown(data['wed']!, _wedMeta));
+    }
+    if (data.containsKey('thu')) {
+      context.handle(
+          _thuMeta, thu.isAcceptableOrUnknown(data['thu']!, _thuMeta));
+    }
+    if (data.containsKey('fri')) {
+      context.handle(
+          _friMeta, fri.isAcceptableOrUnknown(data['fri']!, _friMeta));
+    }
+    if (data.containsKey('sat')) {
+      context.handle(
+          _satMeta, sat.isAcceptableOrUnknown(data['sat']!, _satMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  VSShift map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return VSShift(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      vsId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}vs_id'])!,
+      shiftName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}shift_name'])!,
+      sun: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}sun']),
+      mon: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}mon']),
+      tue: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}tue']),
+      wed: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}wed']),
+      thu: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}thu']),
+      fri: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}fri']),
+      sat: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}sat']),
+    );
+  }
+
+  @override
+  $VSShiftsTable createAlias(String alias) {
+    return $VSShiftsTable(attachedDatabase, alias);
+  }
+}
+
+class VSShift extends DataClass implements Insertable<VSShift> {
+  final int id;
+  final int vsId;
+  final String shiftName;
+  final String? sun;
+  final String? mon;
+  final String? tue;
+  final String? wed;
+  final String? thu;
+  final String? fri;
+  final String? sat;
+  const VSShift(
+      {required this.id,
+      required this.vsId,
+      required this.shiftName,
+      this.sun,
+      this.mon,
+      this.tue,
+      this.wed,
+      this.thu,
+      this.fri,
+      this.sat});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['vs_id'] = Variable<int>(vsId);
+    map['shift_name'] = Variable<String>(shiftName);
+    if (!nullToAbsent || sun != null) {
+      map['sun'] = Variable<String>(sun);
+    }
+    if (!nullToAbsent || mon != null) {
+      map['mon'] = Variable<String>(mon);
+    }
+    if (!nullToAbsent || tue != null) {
+      map['tue'] = Variable<String>(tue);
+    }
+    if (!nullToAbsent || wed != null) {
+      map['wed'] = Variable<String>(wed);
+    }
+    if (!nullToAbsent || thu != null) {
+      map['thu'] = Variable<String>(thu);
+    }
+    if (!nullToAbsent || fri != null) {
+      map['fri'] = Variable<String>(fri);
+    }
+    if (!nullToAbsent || sat != null) {
+      map['sat'] = Variable<String>(sat);
+    }
+    return map;
+  }
+
+  VSShiftsCompanion toCompanion(bool nullToAbsent) {
+    return VSShiftsCompanion(
+      id: Value(id),
+      vsId: Value(vsId),
+      shiftName: Value(shiftName),
+      sun: sun == null && nullToAbsent ? const Value.absent() : Value(sun),
+      mon: mon == null && nullToAbsent ? const Value.absent() : Value(mon),
+      tue: tue == null && nullToAbsent ? const Value.absent() : Value(tue),
+      wed: wed == null && nullToAbsent ? const Value.absent() : Value(wed),
+      thu: thu == null && nullToAbsent ? const Value.absent() : Value(thu),
+      fri: fri == null && nullToAbsent ? const Value.absent() : Value(fri),
+      sat: sat == null && nullToAbsent ? const Value.absent() : Value(sat),
+    );
+  }
+
+  factory VSShift.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return VSShift(
+      id: serializer.fromJson<int>(json['id']),
+      vsId: serializer.fromJson<int>(json['vsId']),
+      shiftName: serializer.fromJson<String>(json['shiftName']),
+      sun: serializer.fromJson<String?>(json['sun']),
+      mon: serializer.fromJson<String?>(json['mon']),
+      tue: serializer.fromJson<String?>(json['tue']),
+      wed: serializer.fromJson<String?>(json['wed']),
+      thu: serializer.fromJson<String?>(json['thu']),
+      fri: serializer.fromJson<String?>(json['fri']),
+      sat: serializer.fromJson<String?>(json['sat']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'vsId': serializer.toJson<int>(vsId),
+      'shiftName': serializer.toJson<String>(shiftName),
+      'sun': serializer.toJson<String?>(sun),
+      'mon': serializer.toJson<String?>(mon),
+      'tue': serializer.toJson<String?>(tue),
+      'wed': serializer.toJson<String?>(wed),
+      'thu': serializer.toJson<String?>(thu),
+      'fri': serializer.toJson<String?>(fri),
+      'sat': serializer.toJson<String?>(sat),
+    };
+  }
+
+  VSShift copyWith(
+          {int? id,
+          int? vsId,
+          String? shiftName,
+          Value<String?> sun = const Value.absent(),
+          Value<String?> mon = const Value.absent(),
+          Value<String?> tue = const Value.absent(),
+          Value<String?> wed = const Value.absent(),
+          Value<String?> thu = const Value.absent(),
+          Value<String?> fri = const Value.absent(),
+          Value<String?> sat = const Value.absent()}) =>
+      VSShift(
+        id: id ?? this.id,
+        vsId: vsId ?? this.vsId,
+        shiftName: shiftName ?? this.shiftName,
+        sun: sun.present ? sun.value : this.sun,
+        mon: mon.present ? mon.value : this.mon,
+        tue: tue.present ? tue.value : this.tue,
+        wed: wed.present ? wed.value : this.wed,
+        thu: thu.present ? thu.value : this.thu,
+        fri: fri.present ? fri.value : this.fri,
+        sat: sat.present ? sat.value : this.sat,
+      );
+  VSShift copyWithCompanion(VSShiftsCompanion data) {
+    return VSShift(
+      id: data.id.present ? data.id.value : this.id,
+      vsId: data.vsId.present ? data.vsId.value : this.vsId,
+      shiftName: data.shiftName.present ? data.shiftName.value : this.shiftName,
+      sun: data.sun.present ? data.sun.value : this.sun,
+      mon: data.mon.present ? data.mon.value : this.mon,
+      tue: data.tue.present ? data.tue.value : this.tue,
+      wed: data.wed.present ? data.wed.value : this.wed,
+      thu: data.thu.present ? data.thu.value : this.thu,
+      fri: data.fri.present ? data.fri.value : this.fri,
+      sat: data.sat.present ? data.sat.value : this.sat,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('VSShift(')
+          ..write('id: $id, ')
+          ..write('vsId: $vsId, ')
+          ..write('shiftName: $shiftName, ')
+          ..write('sun: $sun, ')
+          ..write('mon: $mon, ')
+          ..write('tue: $tue, ')
+          ..write('wed: $wed, ')
+          ..write('thu: $thu, ')
+          ..write('fri: $fri, ')
+          ..write('sat: $sat')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, vsId, shiftName, sun, mon, tue, wed, thu, fri, sat);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is VSShift &&
+          other.id == this.id &&
+          other.vsId == this.vsId &&
+          other.shiftName == this.shiftName &&
+          other.sun == this.sun &&
+          other.mon == this.mon &&
+          other.tue == this.tue &&
+          other.wed == this.wed &&
+          other.thu == this.thu &&
+          other.fri == this.fri &&
+          other.sat == this.sat);
+}
+
+class VSShiftsCompanion extends UpdateCompanion<VSShift> {
+  final Value<int> id;
+  final Value<int> vsId;
+  final Value<String> shiftName;
+  final Value<String?> sun;
+  final Value<String?> mon;
+  final Value<String?> tue;
+  final Value<String?> wed;
+  final Value<String?> thu;
+  final Value<String?> fri;
+  final Value<String?> sat;
+  const VSShiftsCompanion({
+    this.id = const Value.absent(),
+    this.vsId = const Value.absent(),
+    this.shiftName = const Value.absent(),
+    this.sun = const Value.absent(),
+    this.mon = const Value.absent(),
+    this.tue = const Value.absent(),
+    this.wed = const Value.absent(),
+    this.thu = const Value.absent(),
+    this.fri = const Value.absent(),
+    this.sat = const Value.absent(),
+  });
+  VSShiftsCompanion.insert({
+    this.id = const Value.absent(),
+    required int vsId,
+    required String shiftName,
+    this.sun = const Value.absent(),
+    this.mon = const Value.absent(),
+    this.tue = const Value.absent(),
+    this.wed = const Value.absent(),
+    this.thu = const Value.absent(),
+    this.fri = const Value.absent(),
+    this.sat = const Value.absent(),
+  })  : vsId = Value(vsId),
+        shiftName = Value(shiftName);
+  static Insertable<VSShift> custom({
+    Expression<int>? id,
+    Expression<int>? vsId,
+    Expression<String>? shiftName,
+    Expression<String>? sun,
+    Expression<String>? mon,
+    Expression<String>? tue,
+    Expression<String>? wed,
+    Expression<String>? thu,
+    Expression<String>? fri,
+    Expression<String>? sat,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (vsId != null) 'vs_id': vsId,
+      if (shiftName != null) 'shift_name': shiftName,
+      if (sun != null) 'sun': sun,
+      if (mon != null) 'mon': mon,
+      if (tue != null) 'tue': tue,
+      if (wed != null) 'wed': wed,
+      if (thu != null) 'thu': thu,
+      if (fri != null) 'fri': fri,
+      if (sat != null) 'sat': sat,
+    });
+  }
+
+  VSShiftsCompanion copyWith(
+      {Value<int>? id,
+      Value<int>? vsId,
+      Value<String>? shiftName,
+      Value<String?>? sun,
+      Value<String?>? mon,
+      Value<String?>? tue,
+      Value<String?>? wed,
+      Value<String?>? thu,
+      Value<String?>? fri,
+      Value<String?>? sat}) {
+    return VSShiftsCompanion(
+      id: id ?? this.id,
+      vsId: vsId ?? this.vsId,
+      shiftName: shiftName ?? this.shiftName,
+      sun: sun ?? this.sun,
+      mon: mon ?? this.mon,
+      tue: tue ?? this.tue,
+      wed: wed ?? this.wed,
+      thu: thu ?? this.thu,
+      fri: fri ?? this.fri,
+      sat: sat ?? this.sat,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (vsId.present) {
+      map['vs_id'] = Variable<int>(vsId.value);
+    }
+    if (shiftName.present) {
+      map['shift_name'] = Variable<String>(shiftName.value);
+    }
+    if (sun.present) {
+      map['sun'] = Variable<String>(sun.value);
+    }
+    if (mon.present) {
+      map['mon'] = Variable<String>(mon.value);
+    }
+    if (tue.present) {
+      map['tue'] = Variable<String>(tue.value);
+    }
+    if (wed.present) {
+      map['wed'] = Variable<String>(wed.value);
+    }
+    if (thu.present) {
+      map['thu'] = Variable<String>(thu.value);
+    }
+    if (fri.present) {
+      map['fri'] = Variable<String>(fri.value);
+    }
+    if (sat.present) {
+      map['sat'] = Variable<String>(sat.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('VSShiftsCompanion(')
+          ..write('id: $id, ')
+          ..write('vsId: $vsId, ')
           ..write('shiftName: $shiftName, ')
           ..write('sun: $sun, ')
           ..write('mon: $mon, ')
@@ -3701,6 +4340,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ProcessesTable processes = $ProcessesTable(this);
   late final $ProcessPartsTable processParts = $ProcessPartsTable(this);
   late final $ProcessShiftTable processShift = $ProcessShiftTable(this);
+  late final $VSShiftsTable vSShifts = $VSShiftsTable(this);
   late final $OrganizationsTable organizations = $OrganizationsTable(this);
   late final $PartsTable parts = $PartsTable(this);
   late final $PlantsTable plants = $PlantsTable(this);
@@ -3717,6 +4357,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         processes,
         processParts,
         processShift,
+        vSShifts,
         organizations,
         parts,
         plants,
@@ -3732,12 +4373,18 @@ typedef $$ValueStreamsTableCreateCompanionBuilder = ValueStreamsCompanion
   Value<int> id,
   required int plantId,
   required String name,
+  Value<int?> mDemand,
+  Value<UnitOfMeasure?> uom,
+  Value<int?> mngrEmpId,
 });
 typedef $$ValueStreamsTableUpdateCompanionBuilder = ValueStreamsCompanion
     Function({
   Value<int> id,
   Value<int> plantId,
   Value<String> name,
+  Value<int?> mDemand,
+  Value<UnitOfMeasure?> uom,
+  Value<int?> mngrEmpId,
 });
 
 final class $$ValueStreamsTableReferences
@@ -3755,6 +4402,21 @@ final class $$ValueStreamsTableReferences
         .filter((f) => f.valueStreamId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_processesRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
+  static MultiTypedResultKey<$VSShiftsTable, List<VSShift>> _vSShiftsRefsTable(
+          _$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(db.vSShifts,
+          aliasName:
+              $_aliasNameGenerator(db.valueStreams.id, db.vSShifts.vsId));
+
+  $$VSShiftsTableProcessedTableManager get vSShiftsRefs {
+    final manager = $$VSShiftsTableTableManager($_db, $_db.vSShifts)
+        .filter((f) => f.vsId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_vSShiftsRefsTable($_db));
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: cache));
   }
@@ -3793,6 +4455,17 @@ class $$ValueStreamsTableFilterComposer
   ColumnFilters<String> get name => $composableBuilder(
       column: $table.name, builder: (column) => ColumnFilters(column));
 
+  ColumnFilters<int> get mDemand => $composableBuilder(
+      column: $table.mDemand, builder: (column) => ColumnFilters(column));
+
+  ColumnWithTypeConverterFilters<UnitOfMeasure?, UnitOfMeasure, int> get uom =>
+      $composableBuilder(
+          column: $table.uom,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnFilters<int> get mngrEmpId => $composableBuilder(
+      column: $table.mngrEmpId, builder: (column) => ColumnFilters(column));
+
   Expression<bool> processesRefs(
       Expression<bool> Function($$ProcessesTableFilterComposer f) f) {
     final $$ProcessesTableFilterComposer composer = $composerBuilder(
@@ -3806,6 +4479,27 @@ class $$ValueStreamsTableFilterComposer
             $$ProcessesTableFilterComposer(
               $db: $db,
               $table: $db.processes,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<bool> vSShiftsRefs(
+      Expression<bool> Function($$VSShiftsTableFilterComposer f) f) {
+    final $$VSShiftsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.vSShifts,
+        getReferencedColumn: (t) => t.vsId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$VSShiftsTableFilterComposer(
+              $db: $db,
+              $table: $db.vSShifts,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -3853,6 +4547,15 @@ class $$ValueStreamsTableOrderingComposer
 
   ColumnOrderings<String> get name => $composableBuilder(
       column: $table.name, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get mDemand => $composableBuilder(
+      column: $table.mDemand, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get uom => $composableBuilder(
+      column: $table.uom, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get mngrEmpId => $composableBuilder(
+      column: $table.mngrEmpId, builder: (column) => ColumnOrderings(column));
 }
 
 class $$ValueStreamsTableAnnotationComposer
@@ -3873,6 +4576,15 @@ class $$ValueStreamsTableAnnotationComposer
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
 
+  GeneratedColumn<int> get mDemand =>
+      $composableBuilder(column: $table.mDemand, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<UnitOfMeasure?, int> get uom =>
+      $composableBuilder(column: $table.uom, builder: (column) => column);
+
+  GeneratedColumn<int> get mngrEmpId =>
+      $composableBuilder(column: $table.mngrEmpId, builder: (column) => column);
+
   Expression<T> processesRefs<T extends Object>(
       Expression<T> Function($$ProcessesTableAnnotationComposer a) f) {
     final $$ProcessesTableAnnotationComposer composer = $composerBuilder(
@@ -3886,6 +4598,27 @@ class $$ValueStreamsTableAnnotationComposer
             $$ProcessesTableAnnotationComposer(
               $db: $db,
               $table: $db.processes,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<T> vSShiftsRefs<T extends Object>(
+      Expression<T> Function($$VSShiftsTableAnnotationComposer a) f) {
+    final $$VSShiftsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.vSShifts,
+        getReferencedColumn: (t) => t.vsId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$VSShiftsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.vSShifts,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -3927,7 +4660,8 @@ class $$ValueStreamsTableTableManager extends RootTableManager<
     $$ValueStreamsTableUpdateCompanionBuilder,
     (ValueStream, $$ValueStreamsTableReferences),
     ValueStream,
-    PrefetchHooks Function({bool processesRefs, bool partsRefs})> {
+    PrefetchHooks Function(
+        {bool processesRefs, bool vSShiftsRefs, bool partsRefs})> {
   $$ValueStreamsTableTableManager(_$AppDatabase db, $ValueStreamsTable table)
       : super(TableManagerState(
           db: db,
@@ -3942,21 +4676,33 @@ class $$ValueStreamsTableTableManager extends RootTableManager<
             Value<int> id = const Value.absent(),
             Value<int> plantId = const Value.absent(),
             Value<String> name = const Value.absent(),
+            Value<int?> mDemand = const Value.absent(),
+            Value<UnitOfMeasure?> uom = const Value.absent(),
+            Value<int?> mngrEmpId = const Value.absent(),
           }) =>
               ValueStreamsCompanion(
             id: id,
             plantId: plantId,
             name: name,
+            mDemand: mDemand,
+            uom: uom,
+            mngrEmpId: mngrEmpId,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
             required int plantId,
             required String name,
+            Value<int?> mDemand = const Value.absent(),
+            Value<UnitOfMeasure?> uom = const Value.absent(),
+            Value<int?> mngrEmpId = const Value.absent(),
           }) =>
               ValueStreamsCompanion.insert(
             id: id,
             plantId: plantId,
             name: name,
+            mDemand: mDemand,
+            uom: uom,
+            mngrEmpId: mngrEmpId,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (
@@ -3964,11 +4710,15 @@ class $$ValueStreamsTableTableManager extends RootTableManager<
                     $$ValueStreamsTableReferences(db, table, e)
                   ))
               .toList(),
-          prefetchHooksCallback: ({processesRefs = false, partsRefs = false}) {
+          prefetchHooksCallback: (
+              {processesRefs = false,
+              vSShiftsRefs = false,
+              partsRefs = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [
                 if (processesRefs) db.processes,
+                if (vSShiftsRefs) db.vSShifts,
                 if (partsRefs) db.parts
               ],
               addJoins: null,
@@ -3986,6 +4736,19 @@ class $$ValueStreamsTableTableManager extends RootTableManager<
                         referencedItemsForCurrentItem:
                             (item, referencedItems) => referencedItems
                                 .where((e) => e.valueStreamId == item.id),
+                        typedResults: items),
+                  if (vSShiftsRefs)
+                    await $_getPrefetchedData<ValueStream, $ValueStreamsTable,
+                            VSShift>(
+                        currentTable: table,
+                        referencedTable: $$ValueStreamsTableReferences
+                            ._vSShiftsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$ValueStreamsTableReferences(db, table, p0)
+                                .vSShiftsRefs,
+                        referencedItemsForCurrentItem:
+                            (item, referencedItems) =>
+                                referencedItems.where((e) => e.vsId == item.id),
                         typedResults: items),
                   if (partsRefs)
                     await $_getPrefetchedData<ValueStream, $ValueStreamsTable,
@@ -4018,7 +4781,8 @@ typedef $$ValueStreamsTableProcessedTableManager = ProcessedTableManager<
     $$ValueStreamsTableUpdateCompanionBuilder,
     (ValueStream, $$ValueStreamsTableReferences),
     ValueStream,
-    PrefetchHooks Function({bool processesRefs, bool partsRefs})>;
+    PrefetchHooks Function(
+        {bool processesRefs, bool vSShiftsRefs, bool partsRefs})>;
 typedef $$ProcessesTableCreateCompanionBuilder = ProcessesCompanion Function({
   Value<int> id,
   required int valueStreamId,
@@ -4029,6 +4793,7 @@ typedef $$ProcessesTableCreateCompanionBuilder = ProcessesCompanion Function({
   Value<int?> wip,
   Value<double?> uptime,
   Value<String?> coTime,
+  Value<int> orderIndex,
 });
 typedef $$ProcessesTableUpdateCompanionBuilder = ProcessesCompanion Function({
   Value<int> id,
@@ -4040,6 +4805,7 @@ typedef $$ProcessesTableUpdateCompanionBuilder = ProcessesCompanion Function({
   Value<int?> wip,
   Value<double?> uptime,
   Value<String?> coTime,
+  Value<int> orderIndex,
 });
 
 final class $$ProcessesTableReferences
@@ -4125,6 +4891,9 @@ class $$ProcessesTableFilterComposer
 
   ColumnFilters<String> get coTime => $composableBuilder(
       column: $table.coTime, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get orderIndex => $composableBuilder(
+      column: $table.orderIndex, builder: (column) => ColumnFilters(column));
 
   $$ValueStreamsTableFilterComposer get valueStreamId {
     final $$ValueStreamsTableFilterComposer composer = $composerBuilder(
@@ -4223,6 +4992,9 @@ class $$ProcessesTableOrderingComposer
   ColumnOrderings<String> get coTime => $composableBuilder(
       column: $table.coTime, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get orderIndex => $composableBuilder(
+      column: $table.orderIndex, builder: (column) => ColumnOrderings(column));
+
   $$ValueStreamsTableOrderingComposer get valueStreamId {
     final $$ValueStreamsTableOrderingComposer composer = $composerBuilder(
         composer: this,
@@ -4276,6 +5048,9 @@ class $$ProcessesTableAnnotationComposer
 
   GeneratedColumn<String> get coTime =>
       $composableBuilder(column: $table.coTime, builder: (column) => column);
+
+  GeneratedColumn<int> get orderIndex => $composableBuilder(
+      column: $table.orderIndex, builder: (column) => column);
 
   $$ValueStreamsTableAnnotationComposer get valueStreamId {
     final $$ValueStreamsTableAnnotationComposer composer = $composerBuilder(
@@ -4373,6 +5148,7 @@ class $$ProcessesTableTableManager extends RootTableManager<
             Value<int?> wip = const Value.absent(),
             Value<double?> uptime = const Value.absent(),
             Value<String?> coTime = const Value.absent(),
+            Value<int> orderIndex = const Value.absent(),
           }) =>
               ProcessesCompanion(
             id: id,
@@ -4384,6 +5160,7 @@ class $$ProcessesTableTableManager extends RootTableManager<
             wip: wip,
             uptime: uptime,
             coTime: coTime,
+            orderIndex: orderIndex,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -4395,6 +5172,7 @@ class $$ProcessesTableTableManager extends RootTableManager<
             Value<int?> wip = const Value.absent(),
             Value<double?> uptime = const Value.absent(),
             Value<String?> coTime = const Value.absent(),
+            Value<int> orderIndex = const Value.absent(),
           }) =>
               ProcessesCompanion.insert(
             id: id,
@@ -4406,6 +5184,7 @@ class $$ProcessesTableTableManager extends RootTableManager<
             wip: wip,
             uptime: uptime,
             coTime: coTime,
+            orderIndex: orderIndex,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (
@@ -5274,6 +6053,344 @@ typedef $$ProcessShiftTableProcessedTableManager = ProcessedTableManager<
     (ProcessShiftData, $$ProcessShiftTableReferences),
     ProcessShiftData,
     PrefetchHooks Function({bool processId})>;
+typedef $$VSShiftsTableCreateCompanionBuilder = VSShiftsCompanion Function({
+  Value<int> id,
+  required int vsId,
+  required String shiftName,
+  Value<String?> sun,
+  Value<String?> mon,
+  Value<String?> tue,
+  Value<String?> wed,
+  Value<String?> thu,
+  Value<String?> fri,
+  Value<String?> sat,
+});
+typedef $$VSShiftsTableUpdateCompanionBuilder = VSShiftsCompanion Function({
+  Value<int> id,
+  Value<int> vsId,
+  Value<String> shiftName,
+  Value<String?> sun,
+  Value<String?> mon,
+  Value<String?> tue,
+  Value<String?> wed,
+  Value<String?> thu,
+  Value<String?> fri,
+  Value<String?> sat,
+});
+
+final class $$VSShiftsTableReferences
+    extends BaseReferences<_$AppDatabase, $VSShiftsTable, VSShift> {
+  $$VSShiftsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $ValueStreamsTable _vsIdTable(_$AppDatabase db) => db.valueStreams
+      .createAlias($_aliasNameGenerator(db.vSShifts.vsId, db.valueStreams.id));
+
+  $$ValueStreamsTableProcessedTableManager get vsId {
+    final $_column = $_itemColumn<int>('vs_id')!;
+
+    final manager = $$ValueStreamsTableTableManager($_db, $_db.valueStreams)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_vsIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$VSShiftsTableFilterComposer
+    extends Composer<_$AppDatabase, $VSShiftsTable> {
+  $$VSShiftsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get shiftName => $composableBuilder(
+      column: $table.shiftName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get sun => $composableBuilder(
+      column: $table.sun, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get mon => $composableBuilder(
+      column: $table.mon, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get tue => $composableBuilder(
+      column: $table.tue, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get wed => $composableBuilder(
+      column: $table.wed, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get thu => $composableBuilder(
+      column: $table.thu, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get fri => $composableBuilder(
+      column: $table.fri, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get sat => $composableBuilder(
+      column: $table.sat, builder: (column) => ColumnFilters(column));
+
+  $$ValueStreamsTableFilterComposer get vsId {
+    final $$ValueStreamsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.vsId,
+        referencedTable: $db.valueStreams,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ValueStreamsTableFilterComposer(
+              $db: $db,
+              $table: $db.valueStreams,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$VSShiftsTableOrderingComposer
+    extends Composer<_$AppDatabase, $VSShiftsTable> {
+  $$VSShiftsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get shiftName => $composableBuilder(
+      column: $table.shiftName, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get sun => $composableBuilder(
+      column: $table.sun, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get mon => $composableBuilder(
+      column: $table.mon, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get tue => $composableBuilder(
+      column: $table.tue, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get wed => $composableBuilder(
+      column: $table.wed, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get thu => $composableBuilder(
+      column: $table.thu, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get fri => $composableBuilder(
+      column: $table.fri, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get sat => $composableBuilder(
+      column: $table.sat, builder: (column) => ColumnOrderings(column));
+
+  $$ValueStreamsTableOrderingComposer get vsId {
+    final $$ValueStreamsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.vsId,
+        referencedTable: $db.valueStreams,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ValueStreamsTableOrderingComposer(
+              $db: $db,
+              $table: $db.valueStreams,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$VSShiftsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $VSShiftsTable> {
+  $$VSShiftsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get shiftName =>
+      $composableBuilder(column: $table.shiftName, builder: (column) => column);
+
+  GeneratedColumn<String> get sun =>
+      $composableBuilder(column: $table.sun, builder: (column) => column);
+
+  GeneratedColumn<String> get mon =>
+      $composableBuilder(column: $table.mon, builder: (column) => column);
+
+  GeneratedColumn<String> get tue =>
+      $composableBuilder(column: $table.tue, builder: (column) => column);
+
+  GeneratedColumn<String> get wed =>
+      $composableBuilder(column: $table.wed, builder: (column) => column);
+
+  GeneratedColumn<String> get thu =>
+      $composableBuilder(column: $table.thu, builder: (column) => column);
+
+  GeneratedColumn<String> get fri =>
+      $composableBuilder(column: $table.fri, builder: (column) => column);
+
+  GeneratedColumn<String> get sat =>
+      $composableBuilder(column: $table.sat, builder: (column) => column);
+
+  $$ValueStreamsTableAnnotationComposer get vsId {
+    final $$ValueStreamsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.vsId,
+        referencedTable: $db.valueStreams,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ValueStreamsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.valueStreams,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$VSShiftsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $VSShiftsTable,
+    VSShift,
+    $$VSShiftsTableFilterComposer,
+    $$VSShiftsTableOrderingComposer,
+    $$VSShiftsTableAnnotationComposer,
+    $$VSShiftsTableCreateCompanionBuilder,
+    $$VSShiftsTableUpdateCompanionBuilder,
+    (VSShift, $$VSShiftsTableReferences),
+    VSShift,
+    PrefetchHooks Function({bool vsId})> {
+  $$VSShiftsTableTableManager(_$AppDatabase db, $VSShiftsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$VSShiftsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$VSShiftsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$VSShiftsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<int> vsId = const Value.absent(),
+            Value<String> shiftName = const Value.absent(),
+            Value<String?> sun = const Value.absent(),
+            Value<String?> mon = const Value.absent(),
+            Value<String?> tue = const Value.absent(),
+            Value<String?> wed = const Value.absent(),
+            Value<String?> thu = const Value.absent(),
+            Value<String?> fri = const Value.absent(),
+            Value<String?> sat = const Value.absent(),
+          }) =>
+              VSShiftsCompanion(
+            id: id,
+            vsId: vsId,
+            shiftName: shiftName,
+            sun: sun,
+            mon: mon,
+            tue: tue,
+            wed: wed,
+            thu: thu,
+            fri: fri,
+            sat: sat,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required int vsId,
+            required String shiftName,
+            Value<String?> sun = const Value.absent(),
+            Value<String?> mon = const Value.absent(),
+            Value<String?> tue = const Value.absent(),
+            Value<String?> wed = const Value.absent(),
+            Value<String?> thu = const Value.absent(),
+            Value<String?> fri = const Value.absent(),
+            Value<String?> sat = const Value.absent(),
+          }) =>
+              VSShiftsCompanion.insert(
+            id: id,
+            vsId: vsId,
+            shiftName: shiftName,
+            sun: sun,
+            mon: mon,
+            tue: tue,
+            wed: wed,
+            thu: thu,
+            fri: fri,
+            sat: sat,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) =>
+                  (e.readTable(table), $$VSShiftsTableReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: ({vsId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (vsId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.vsId,
+                    referencedTable: $$VSShiftsTableReferences._vsIdTable(db),
+                    referencedColumn:
+                        $$VSShiftsTableReferences._vsIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$VSShiftsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $VSShiftsTable,
+    VSShift,
+    $$VSShiftsTableFilterComposer,
+    $$VSShiftsTableOrderingComposer,
+    $$VSShiftsTableAnnotationComposer,
+    $$VSShiftsTableCreateCompanionBuilder,
+    $$VSShiftsTableUpdateCompanionBuilder,
+    (VSShift, $$VSShiftsTableReferences),
+    VSShift,
+    PrefetchHooks Function({bool vsId})>;
 typedef $$OrganizationsTableCreateCompanionBuilder = OrganizationsCompanion
     Function({
   Value<int> id,
@@ -7413,6 +8530,8 @@ class $AppDatabaseManager {
       $$ProcessPartsTableTableManager(_db, _db.processParts);
   $$ProcessShiftTableTableManager get processShift =>
       $$ProcessShiftTableTableManager(_db, _db.processShift);
+  $$VSShiftsTableTableManager get vSShifts =>
+      $$VSShiftsTableTableManager(_db, _db.vSShifts);
   $$OrganizationsTableTableManager get organizations =>
       $$OrganizationsTableTableManager(_db, _db.organizations);
   $$PartsTableTableManager get parts =>
