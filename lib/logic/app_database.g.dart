@@ -415,6 +415,23 @@ class $ProcessesTable extends Processes
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
+  static const VerificationMeta _positionXMeta =
+      const VerificationMeta('positionX');
+  @override
+  late final GeneratedColumn<double> positionX = GeneratedColumn<double>(
+      'position_x', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _positionYMeta =
+      const VerificationMeta('positionY');
+  @override
+  late final GeneratedColumn<double> positionY = GeneratedColumn<double>(
+      'position_y', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _colorMeta = const VerificationMeta('color');
+  @override
+  late final GeneratedColumn<String> color = GeneratedColumn<String>(
+      'color', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -426,7 +443,10 @@ class $ProcessesTable extends Processes
         wip,
         uptime,
         coTime,
-        orderIndex
+        orderIndex,
+        positionX,
+        positionY,
+        color
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -491,6 +511,18 @@ class $ProcessesTable extends Processes
           orderIndex.isAcceptableOrUnknown(
               data['order_index']!, _orderIndexMeta));
     }
+    if (data.containsKey('position_x')) {
+      context.handle(_positionXMeta,
+          positionX.isAcceptableOrUnknown(data['position_x']!, _positionXMeta));
+    }
+    if (data.containsKey('position_y')) {
+      context.handle(_positionYMeta,
+          positionY.isAcceptableOrUnknown(data['position_y']!, _positionYMeta));
+    }
+    if (data.containsKey('color')) {
+      context.handle(
+          _colorMeta, color.isAcceptableOrUnknown(data['color']!, _colorMeta));
+    }
     return context;
   }
 
@@ -520,6 +552,12 @@ class $ProcessesTable extends Processes
           .read(DriftSqlType.string, data['${effectivePrefix}co_time']),
       orderIndex: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}order_index'])!,
+      positionX: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}position_x']),
+      positionY: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}position_y']),
+      color: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}color']),
     );
   }
 
@@ -540,6 +578,9 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
   final double? uptime;
   final String? coTime;
   final int orderIndex;
+  final double? positionX;
+  final double? positionY;
+  final String? color;
   const ProcessesData(
       {required this.id,
       required this.valueStreamId,
@@ -550,7 +591,10 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
       this.wip,
       this.uptime,
       this.coTime,
-      required this.orderIndex});
+      required this.orderIndex,
+      this.positionX,
+      this.positionY,
+      this.color});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -576,6 +620,15 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
       map['co_time'] = Variable<String>(coTime);
     }
     map['order_index'] = Variable<int>(orderIndex);
+    if (!nullToAbsent || positionX != null) {
+      map['position_x'] = Variable<double>(positionX);
+    }
+    if (!nullToAbsent || positionY != null) {
+      map['position_y'] = Variable<double>(positionY);
+    }
+    if (!nullToAbsent || color != null) {
+      map['color'] = Variable<String>(color);
+    }
     return map;
   }
 
@@ -598,6 +651,14 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
       coTime:
           coTime == null && nullToAbsent ? const Value.absent() : Value(coTime),
       orderIndex: Value(orderIndex),
+      positionX: positionX == null && nullToAbsent
+          ? const Value.absent()
+          : Value(positionX),
+      positionY: positionY == null && nullToAbsent
+          ? const Value.absent()
+          : Value(positionY),
+      color:
+          color == null && nullToAbsent ? const Value.absent() : Value(color),
     );
   }
 
@@ -616,6 +677,9 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
       uptime: serializer.fromJson<double?>(json['uptime']),
       coTime: serializer.fromJson<String?>(json['coTime']),
       orderIndex: serializer.fromJson<int>(json['orderIndex']),
+      positionX: serializer.fromJson<double?>(json['positionX']),
+      positionY: serializer.fromJson<double?>(json['positionY']),
+      color: serializer.fromJson<String?>(json['color']),
     );
   }
   @override
@@ -632,6 +696,9 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
       'uptime': serializer.toJson<double?>(uptime),
       'coTime': serializer.toJson<String?>(coTime),
       'orderIndex': serializer.toJson<int>(orderIndex),
+      'positionX': serializer.toJson<double?>(positionX),
+      'positionY': serializer.toJson<double?>(positionY),
+      'color': serializer.toJson<String?>(color),
     };
   }
 
@@ -645,7 +712,10 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
           Value<int?> wip = const Value.absent(),
           Value<double?> uptime = const Value.absent(),
           Value<String?> coTime = const Value.absent(),
-          int? orderIndex}) =>
+          int? orderIndex,
+          Value<double?> positionX = const Value.absent(),
+          Value<double?> positionY = const Value.absent(),
+          Value<String?> color = const Value.absent()}) =>
       ProcessesData(
         id: id ?? this.id,
         valueStreamId: valueStreamId ?? this.valueStreamId,
@@ -659,6 +729,9 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
         uptime: uptime.present ? uptime.value : this.uptime,
         coTime: coTime.present ? coTime.value : this.coTime,
         orderIndex: orderIndex ?? this.orderIndex,
+        positionX: positionX.present ? positionX.value : this.positionX,
+        positionY: positionY.present ? positionY.value : this.positionY,
+        color: color.present ? color.value : this.color,
       );
   ProcessesData copyWithCompanion(ProcessesCompanion data) {
     return ProcessesData(
@@ -679,6 +752,9 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
       coTime: data.coTime.present ? data.coTime.value : this.coTime,
       orderIndex:
           data.orderIndex.present ? data.orderIndex.value : this.orderIndex,
+      positionX: data.positionX.present ? data.positionX.value : this.positionX,
+      positionY: data.positionY.present ? data.positionY.value : this.positionY,
+      color: data.color.present ? data.color.value : this.color,
     );
   }
 
@@ -694,14 +770,29 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
           ..write('wip: $wip, ')
           ..write('uptime: $uptime, ')
           ..write('coTime: $coTime, ')
-          ..write('orderIndex: $orderIndex')
+          ..write('orderIndex: $orderIndex, ')
+          ..write('positionX: $positionX, ')
+          ..write('positionY: $positionY, ')
+          ..write('color: $color')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, valueStreamId, processName,
-      processDescription, dailyDemand, staff, wip, uptime, coTime, orderIndex);
+  int get hashCode => Object.hash(
+      id,
+      valueStreamId,
+      processName,
+      processDescription,
+      dailyDemand,
+      staff,
+      wip,
+      uptime,
+      coTime,
+      orderIndex,
+      positionX,
+      positionY,
+      color);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -715,7 +806,10 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
           other.wip == this.wip &&
           other.uptime == this.uptime &&
           other.coTime == this.coTime &&
-          other.orderIndex == this.orderIndex);
+          other.orderIndex == this.orderIndex &&
+          other.positionX == this.positionX &&
+          other.positionY == this.positionY &&
+          other.color == this.color);
 }
 
 class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
@@ -729,6 +823,9 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
   final Value<double?> uptime;
   final Value<String?> coTime;
   final Value<int> orderIndex;
+  final Value<double?> positionX;
+  final Value<double?> positionY;
+  final Value<String?> color;
   const ProcessesCompanion({
     this.id = const Value.absent(),
     this.valueStreamId = const Value.absent(),
@@ -740,6 +837,9 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
     this.uptime = const Value.absent(),
     this.coTime = const Value.absent(),
     this.orderIndex = const Value.absent(),
+    this.positionX = const Value.absent(),
+    this.positionY = const Value.absent(),
+    this.color = const Value.absent(),
   });
   ProcessesCompanion.insert({
     this.id = const Value.absent(),
@@ -752,6 +852,9 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
     this.uptime = const Value.absent(),
     this.coTime = const Value.absent(),
     this.orderIndex = const Value.absent(),
+    this.positionX = const Value.absent(),
+    this.positionY = const Value.absent(),
+    this.color = const Value.absent(),
   })  : valueStreamId = Value(valueStreamId),
         processName = Value(processName);
   static Insertable<ProcessesData> custom({
@@ -765,6 +868,9 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
     Expression<double>? uptime,
     Expression<String>? coTime,
     Expression<int>? orderIndex,
+    Expression<double>? positionX,
+    Expression<double>? positionY,
+    Expression<String>? color,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -777,6 +883,9 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
       if (uptime != null) 'uptime': uptime,
       if (coTime != null) 'co_time': coTime,
       if (orderIndex != null) 'order_index': orderIndex,
+      if (positionX != null) 'position_x': positionX,
+      if (positionY != null) 'position_y': positionY,
+      if (color != null) 'color': color,
     });
   }
 
@@ -790,7 +899,10 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
       Value<int?>? wip,
       Value<double?>? uptime,
       Value<String?>? coTime,
-      Value<int>? orderIndex}) {
+      Value<int>? orderIndex,
+      Value<double?>? positionX,
+      Value<double?>? positionY,
+      Value<String?>? color}) {
     return ProcessesCompanion(
       id: id ?? this.id,
       valueStreamId: valueStreamId ?? this.valueStreamId,
@@ -802,6 +914,9 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
       uptime: uptime ?? this.uptime,
       coTime: coTime ?? this.coTime,
       orderIndex: orderIndex ?? this.orderIndex,
+      positionX: positionX ?? this.positionX,
+      positionY: positionY ?? this.positionY,
+      color: color ?? this.color,
     );
   }
 
@@ -838,6 +953,15 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
     if (orderIndex.present) {
       map['order_index'] = Variable<int>(orderIndex.value);
     }
+    if (positionX.present) {
+      map['position_x'] = Variable<double>(positionX.value);
+    }
+    if (positionY.present) {
+      map['position_y'] = Variable<double>(positionY.value);
+    }
+    if (color.present) {
+      map['color'] = Variable<String>(color.value);
+    }
     return map;
   }
 
@@ -853,7 +977,10 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
           ..write('wip: $wip, ')
           ..write('uptime: $uptime, ')
           ..write('coTime: $coTime, ')
-          ..write('orderIndex: $orderIndex')
+          ..write('orderIndex: $orderIndex, ')
+          ..write('positionX: $positionX, ')
+          ..write('positionY: $positionY, ')
+          ..write('color: $color')
           ..write(')'))
         .toString();
   }
@@ -2375,9 +2502,21 @@ class $PartsTable extends Parts with TableInfo<$PartsTable, Part> {
   late final GeneratedColumn<String> partDescription = GeneratedColumn<String>(
       'part_description', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _monthlyDemandMeta =
+      const VerificationMeta('monthlyDemand');
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, valueStreamId, organizationId, partNumber, partDescription];
+  late final GeneratedColumn<int> monthlyDemand = GeneratedColumn<int>(
+      'monthly_demand', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        valueStreamId,
+        organizationId,
+        partNumber,
+        partDescription,
+        monthlyDemand
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -2421,6 +2560,12 @@ class $PartsTable extends Parts with TableInfo<$PartsTable, Part> {
           partDescription.isAcceptableOrUnknown(
               data['part_description']!, _partDescriptionMeta));
     }
+    if (data.containsKey('monthly_demand')) {
+      context.handle(
+          _monthlyDemandMeta,
+          monthlyDemand.isAcceptableOrUnknown(
+              data['monthly_demand']!, _monthlyDemandMeta));
+    }
     return context;
   }
 
@@ -2440,6 +2585,8 @@ class $PartsTable extends Parts with TableInfo<$PartsTable, Part> {
           .read(DriftSqlType.string, data['${effectivePrefix}part_number'])!,
       partDescription: attachedDatabase.typeMapping.read(
           DriftSqlType.string, data['${effectivePrefix}part_description']),
+      monthlyDemand: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}monthly_demand']),
     );
   }
 
@@ -2455,12 +2602,14 @@ class Part extends DataClass implements Insertable<Part> {
   final int organizationId;
   final String partNumber;
   final String? partDescription;
+  final int? monthlyDemand;
   const Part(
       {required this.id,
       required this.valueStreamId,
       required this.organizationId,
       required this.partNumber,
-      this.partDescription});
+      this.partDescription,
+      this.monthlyDemand});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -2470,6 +2619,9 @@ class Part extends DataClass implements Insertable<Part> {
     map['part_number'] = Variable<String>(partNumber);
     if (!nullToAbsent || partDescription != null) {
       map['part_description'] = Variable<String>(partDescription);
+    }
+    if (!nullToAbsent || monthlyDemand != null) {
+      map['monthly_demand'] = Variable<int>(monthlyDemand);
     }
     return map;
   }
@@ -2483,6 +2635,9 @@ class Part extends DataClass implements Insertable<Part> {
       partDescription: partDescription == null && nullToAbsent
           ? const Value.absent()
           : Value(partDescription),
+      monthlyDemand: monthlyDemand == null && nullToAbsent
+          ? const Value.absent()
+          : Value(monthlyDemand),
     );
   }
 
@@ -2495,6 +2650,7 @@ class Part extends DataClass implements Insertable<Part> {
       organizationId: serializer.fromJson<int>(json['organizationId']),
       partNumber: serializer.fromJson<String>(json['partNumber']),
       partDescription: serializer.fromJson<String?>(json['partDescription']),
+      monthlyDemand: serializer.fromJson<int?>(json['monthlyDemand']),
     );
   }
   @override
@@ -2506,6 +2662,7 @@ class Part extends DataClass implements Insertable<Part> {
       'organizationId': serializer.toJson<int>(organizationId),
       'partNumber': serializer.toJson<String>(partNumber),
       'partDescription': serializer.toJson<String?>(partDescription),
+      'monthlyDemand': serializer.toJson<int?>(monthlyDemand),
     };
   }
 
@@ -2514,7 +2671,8 @@ class Part extends DataClass implements Insertable<Part> {
           int? valueStreamId,
           int? organizationId,
           String? partNumber,
-          Value<String?> partDescription = const Value.absent()}) =>
+          Value<String?> partDescription = const Value.absent(),
+          Value<int?> monthlyDemand = const Value.absent()}) =>
       Part(
         id: id ?? this.id,
         valueStreamId: valueStreamId ?? this.valueStreamId,
@@ -2523,6 +2681,8 @@ class Part extends DataClass implements Insertable<Part> {
         partDescription: partDescription.present
             ? partDescription.value
             : this.partDescription,
+        monthlyDemand:
+            monthlyDemand.present ? monthlyDemand.value : this.monthlyDemand,
       );
   Part copyWithCompanion(PartsCompanion data) {
     return Part(
@@ -2538,6 +2698,9 @@ class Part extends DataClass implements Insertable<Part> {
       partDescription: data.partDescription.present
           ? data.partDescription.value
           : this.partDescription,
+      monthlyDemand: data.monthlyDemand.present
+          ? data.monthlyDemand.value
+          : this.monthlyDemand,
     );
   }
 
@@ -2548,14 +2711,15 @@ class Part extends DataClass implements Insertable<Part> {
           ..write('valueStreamId: $valueStreamId, ')
           ..write('organizationId: $organizationId, ')
           ..write('partNumber: $partNumber, ')
-          ..write('partDescription: $partDescription')
+          ..write('partDescription: $partDescription, ')
+          ..write('monthlyDemand: $monthlyDemand')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
-      id, valueStreamId, organizationId, partNumber, partDescription);
+  int get hashCode => Object.hash(id, valueStreamId, organizationId, partNumber,
+      partDescription, monthlyDemand);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2564,7 +2728,8 @@ class Part extends DataClass implements Insertable<Part> {
           other.valueStreamId == this.valueStreamId &&
           other.organizationId == this.organizationId &&
           other.partNumber == this.partNumber &&
-          other.partDescription == this.partDescription);
+          other.partDescription == this.partDescription &&
+          other.monthlyDemand == this.monthlyDemand);
 }
 
 class PartsCompanion extends UpdateCompanion<Part> {
@@ -2573,12 +2738,14 @@ class PartsCompanion extends UpdateCompanion<Part> {
   final Value<int> organizationId;
   final Value<String> partNumber;
   final Value<String?> partDescription;
+  final Value<int?> monthlyDemand;
   const PartsCompanion({
     this.id = const Value.absent(),
     this.valueStreamId = const Value.absent(),
     this.organizationId = const Value.absent(),
     this.partNumber = const Value.absent(),
     this.partDescription = const Value.absent(),
+    this.monthlyDemand = const Value.absent(),
   });
   PartsCompanion.insert({
     this.id = const Value.absent(),
@@ -2586,6 +2753,7 @@ class PartsCompanion extends UpdateCompanion<Part> {
     required int organizationId,
     required String partNumber,
     this.partDescription = const Value.absent(),
+    this.monthlyDemand = const Value.absent(),
   })  : valueStreamId = Value(valueStreamId),
         organizationId = Value(organizationId),
         partNumber = Value(partNumber);
@@ -2595,6 +2763,7 @@ class PartsCompanion extends UpdateCompanion<Part> {
     Expression<int>? organizationId,
     Expression<String>? partNumber,
     Expression<String>? partDescription,
+    Expression<int>? monthlyDemand,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2602,6 +2771,7 @@ class PartsCompanion extends UpdateCompanion<Part> {
       if (organizationId != null) 'organization_id': organizationId,
       if (partNumber != null) 'part_number': partNumber,
       if (partDescription != null) 'part_description': partDescription,
+      if (monthlyDemand != null) 'monthly_demand': monthlyDemand,
     });
   }
 
@@ -2610,13 +2780,15 @@ class PartsCompanion extends UpdateCompanion<Part> {
       Value<int>? valueStreamId,
       Value<int>? organizationId,
       Value<String>? partNumber,
-      Value<String?>? partDescription}) {
+      Value<String?>? partDescription,
+      Value<int?>? monthlyDemand}) {
     return PartsCompanion(
       id: id ?? this.id,
       valueStreamId: valueStreamId ?? this.valueStreamId,
       organizationId: organizationId ?? this.organizationId,
       partNumber: partNumber ?? this.partNumber,
       partDescription: partDescription ?? this.partDescription,
+      monthlyDemand: monthlyDemand ?? this.monthlyDemand,
     );
   }
 
@@ -2638,6 +2810,9 @@ class PartsCompanion extends UpdateCompanion<Part> {
     if (partDescription.present) {
       map['part_description'] = Variable<String>(partDescription.value);
     }
+    if (monthlyDemand.present) {
+      map['monthly_demand'] = Variable<int>(monthlyDemand.value);
+    }
     return map;
   }
 
@@ -2648,7 +2823,8 @@ class PartsCompanion extends UpdateCompanion<Part> {
           ..write('valueStreamId: $valueStreamId, ')
           ..write('organizationId: $organizationId, ')
           ..write('partNumber: $partNumber, ')
-          ..write('partDescription: $partDescription')
+          ..write('partDescription: $partDescription, ')
+          ..write('monthlyDemand: $monthlyDemand')
           ..write(')'))
         .toString();
   }
@@ -4794,6 +4970,9 @@ typedef $$ProcessesTableCreateCompanionBuilder = ProcessesCompanion Function({
   Value<double?> uptime,
   Value<String?> coTime,
   Value<int> orderIndex,
+  Value<double?> positionX,
+  Value<double?> positionY,
+  Value<String?> color,
 });
 typedef $$ProcessesTableUpdateCompanionBuilder = ProcessesCompanion Function({
   Value<int> id,
@@ -4806,6 +4985,9 @@ typedef $$ProcessesTableUpdateCompanionBuilder = ProcessesCompanion Function({
   Value<double?> uptime,
   Value<String?> coTime,
   Value<int> orderIndex,
+  Value<double?> positionX,
+  Value<double?> positionY,
+  Value<String?> color,
 });
 
 final class $$ProcessesTableReferences
@@ -4894,6 +5076,15 @@ class $$ProcessesTableFilterComposer
 
   ColumnFilters<int> get orderIndex => $composableBuilder(
       column: $table.orderIndex, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get positionX => $composableBuilder(
+      column: $table.positionX, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get positionY => $composableBuilder(
+      column: $table.positionY, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get color => $composableBuilder(
+      column: $table.color, builder: (column) => ColumnFilters(column));
 
   $$ValueStreamsTableFilterComposer get valueStreamId {
     final $$ValueStreamsTableFilterComposer composer = $composerBuilder(
@@ -4995,6 +5186,15 @@ class $$ProcessesTableOrderingComposer
   ColumnOrderings<int> get orderIndex => $composableBuilder(
       column: $table.orderIndex, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<double> get positionX => $composableBuilder(
+      column: $table.positionX, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get positionY => $composableBuilder(
+      column: $table.positionY, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get color => $composableBuilder(
+      column: $table.color, builder: (column) => ColumnOrderings(column));
+
   $$ValueStreamsTableOrderingComposer get valueStreamId {
     final $$ValueStreamsTableOrderingComposer composer = $composerBuilder(
         composer: this,
@@ -5051,6 +5251,15 @@ class $$ProcessesTableAnnotationComposer
 
   GeneratedColumn<int> get orderIndex => $composableBuilder(
       column: $table.orderIndex, builder: (column) => column);
+
+  GeneratedColumn<double> get positionX =>
+      $composableBuilder(column: $table.positionX, builder: (column) => column);
+
+  GeneratedColumn<double> get positionY =>
+      $composableBuilder(column: $table.positionY, builder: (column) => column);
+
+  GeneratedColumn<String> get color =>
+      $composableBuilder(column: $table.color, builder: (column) => column);
 
   $$ValueStreamsTableAnnotationComposer get valueStreamId {
     final $$ValueStreamsTableAnnotationComposer composer = $composerBuilder(
@@ -5149,6 +5358,9 @@ class $$ProcessesTableTableManager extends RootTableManager<
             Value<double?> uptime = const Value.absent(),
             Value<String?> coTime = const Value.absent(),
             Value<int> orderIndex = const Value.absent(),
+            Value<double?> positionX = const Value.absent(),
+            Value<double?> positionY = const Value.absent(),
+            Value<String?> color = const Value.absent(),
           }) =>
               ProcessesCompanion(
             id: id,
@@ -5161,6 +5373,9 @@ class $$ProcessesTableTableManager extends RootTableManager<
             uptime: uptime,
             coTime: coTime,
             orderIndex: orderIndex,
+            positionX: positionX,
+            positionY: positionY,
+            color: color,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -5173,6 +5388,9 @@ class $$ProcessesTableTableManager extends RootTableManager<
             Value<double?> uptime = const Value.absent(),
             Value<String?> coTime = const Value.absent(),
             Value<int> orderIndex = const Value.absent(),
+            Value<double?> positionX = const Value.absent(),
+            Value<double?> positionY = const Value.absent(),
+            Value<String?> color = const Value.absent(),
           }) =>
               ProcessesCompanion.insert(
             id: id,
@@ -5185,6 +5403,9 @@ class $$ProcessesTableTableManager extends RootTableManager<
             uptime: uptime,
             coTime: coTime,
             orderIndex: orderIndex,
+            positionX: positionX,
+            positionY: positionY,
+            color: color,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (
@@ -6602,6 +6823,7 @@ typedef $$PartsTableCreateCompanionBuilder = PartsCompanion Function({
   required int organizationId,
   required String partNumber,
   Value<String?> partDescription,
+  Value<int?> monthlyDemand,
 });
 typedef $$PartsTableUpdateCompanionBuilder = PartsCompanion Function({
   Value<int> id,
@@ -6609,6 +6831,7 @@ typedef $$PartsTableUpdateCompanionBuilder = PartsCompanion Function({
   Value<int> organizationId,
   Value<String> partNumber,
   Value<String?> partDescription,
+  Value<int?> monthlyDemand,
 });
 
 final class $$PartsTableReferences
@@ -6663,6 +6886,9 @@ class $$PartsTableFilterComposer extends Composer<_$AppDatabase, $PartsTable> {
   ColumnFilters<String> get partDescription => $composableBuilder(
       column: $table.partDescription,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get monthlyDemand => $composableBuilder(
+      column: $table.monthlyDemand, builder: (column) => ColumnFilters(column));
 
   $$ValueStreamsTableFilterComposer get valueStreamId {
     final $$ValueStreamsTableFilterComposer composer = $composerBuilder(
@@ -6724,6 +6950,10 @@ class $$PartsTableOrderingComposer
       column: $table.partDescription,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get monthlyDemand => $composableBuilder(
+      column: $table.monthlyDemand,
+      builder: (column) => ColumnOrderings(column));
+
   $$ValueStreamsTableOrderingComposer get valueStreamId {
     final $$ValueStreamsTableOrderingComposer composer = $composerBuilder(
         composer: this,
@@ -6782,6 +7012,9 @@ class $$PartsTableAnnotationComposer
 
   GeneratedColumn<String> get partDescription => $composableBuilder(
       column: $table.partDescription, builder: (column) => column);
+
+  GeneratedColumn<int> get monthlyDemand => $composableBuilder(
+      column: $table.monthlyDemand, builder: (column) => column);
 
   $$ValueStreamsTableAnnotationComposer get valueStreamId {
     final $$ValueStreamsTableAnnotationComposer composer = $composerBuilder(
@@ -6852,6 +7085,7 @@ class $$PartsTableTableManager extends RootTableManager<
             Value<int> organizationId = const Value.absent(),
             Value<String> partNumber = const Value.absent(),
             Value<String?> partDescription = const Value.absent(),
+            Value<int?> monthlyDemand = const Value.absent(),
           }) =>
               PartsCompanion(
             id: id,
@@ -6859,6 +7093,7 @@ class $$PartsTableTableManager extends RootTableManager<
             organizationId: organizationId,
             partNumber: partNumber,
             partDescription: partDescription,
+            monthlyDemand: monthlyDemand,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -6866,6 +7101,7 @@ class $$PartsTableTableManager extends RootTableManager<
             required int organizationId,
             required String partNumber,
             Value<String?> partDescription = const Value.absent(),
+            Value<int?> monthlyDemand = const Value.absent(),
           }) =>
               PartsCompanion.insert(
             id: id,
@@ -6873,6 +7109,7 @@ class $$PartsTableTableManager extends RootTableManager<
             organizationId: organizationId,
             partNumber: partNumber,
             partDescription: partDescription,
+            monthlyDemand: monthlyDemand,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) =>

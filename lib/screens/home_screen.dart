@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'part_input_screen.dart';
 import 'process_input_screen.dart';
+import 'detailed_process_input_screen.dart';
 import '../screens/organization_setup_screen.dart';
 import '../logic/app_database.dart';
 import 'plant_setup_screen.dart';
@@ -664,7 +665,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.yellow[600],
                   ),
-                  child: const Text('Add Part Number'),
+                  child: const Text('Add / Edit Part Number'),
                 ),
               ),
             ),
@@ -677,7 +678,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.yellow[600],
                   ),
-                  child: const Text('Add VS Process'),
+                  child: const Text('Add / Edit Process'),
                 ),
               ),
             ),
@@ -720,6 +721,19 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
               ),
             ),
             const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _openDetailedProcessScreen,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.yellow[600],
+                  ),
+                  child: const Text('Detailed Process Edit'),
+                ),
+              ),
+            ),
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: SizedBox(
@@ -844,7 +858,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.yellow[600],
               ),
-              child: const Text('Add Part Number'),
+              child: const Text('Add / Edit Part Number'),
             ),
           ),
         ),
@@ -860,7 +874,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.yellow[600],
               ),
-              child: const Text('Add VS Process'),
+              child: const Text('Add / Edit Process'),
             ),
           ),
         ),
@@ -1411,6 +1425,58 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           ),
         ),
       );
+    }
+  }
+
+  Future<void> _openDetailedProcessScreen() async {
+    if (selectedProcess == null ||
+        selectedProcess!.isEmpty ||
+        selectedValueStreamId == null ||
+        selectedValueStream == null ||
+        selectedCompany == null ||
+        selectedPlant == null) {
+      return;
+    }
+
+    try {
+      // Get the process ID for the selected process
+      final result = await db.customSelect(
+        'SELECT id FROM processes WHERE process_name = ? AND value_stream_id = ?',
+        variables: [
+          drift.Variable.withString(selectedProcess!),
+          drift.Variable.withInt(selectedValueStreamId!),
+        ],
+      ).getSingleOrNull();
+
+      if (result != null) {
+        final processId = result.data['id'] as int;
+
+        // ignore: use_build_context_synchronously
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => DetailedProcessInputScreen(
+              valueStreamId: selectedValueStreamId!,
+              valueStreamName: selectedValueStream!,
+              companyName: selectedCompany!,
+              plantName: selectedPlant!,
+              processId: processId,
+            ),
+          ),
+        );
+
+        // Refresh data after returning from detailed screen
+        await _loadProcessesForValueStream();
+        await _checkSetupsForSelectedProcess();
+        await _checkPartsAndProcessesExistence();
+      }
+    } catch (e) {
+      debugPrint('Error opening detailed process screen: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Error opening detailed process screen')),
+        );
+      }
     }
   }
 

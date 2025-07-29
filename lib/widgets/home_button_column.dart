@@ -31,12 +31,12 @@ class HomeButtonColumn extends StatelessWidget {
         _buildHomeButton(label: 'Setup Organization', onPressed: onSetupOrg),
         const SizedBox(height: 20),
         _buildHomeButton(
-          label: 'Add Part Number',
+          label: 'Add / Edit Part Number',
           onPressed: enableAddPartNumber ? onAddPartNumber : null,
         ),
         const SizedBox(height: 20),
         _buildHomeButton(
-          label: 'Add VS Process',
+          label: 'Add / Edit Process',
           onPressed: enableAddPartNumber ? onAddVSProcess : null,
         ),
         const SizedBox(height: 20),

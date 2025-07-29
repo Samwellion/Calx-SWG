@@ -5,12 +5,14 @@ class HomeScreenPrefs {
   static const String _plantKey = 'selectedPlant';
   static const String _valueStreamKey = 'selectedValueStream';
   static const String _processKey = 'selectedProcess';
+  static const String _partNumberKey = 'selectedPartNumber';
 
   static Future<void> saveSelections({
     String? company,
     String? plant,
     String? valueStream,
     String? process,
+    String? partNumber,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     if (company != null) await prefs.setString(_companyKey, company);
@@ -19,6 +21,7 @@ class HomeScreenPrefs {
       await prefs.setString(_valueStreamKey, valueStream);
     }
     if (process != null) await prefs.setString(_processKey, process);
+    if (partNumber != null) await prefs.setString(_partNumberKey, partNumber);
   }
 
   static Future<Map<String, String?>> loadSelections() async {
@@ -28,6 +31,7 @@ class HomeScreenPrefs {
       'plant': prefs.getString(_plantKey),
       'valueStream': prefs.getString(_valueStreamKey),
       'process': prefs.getString(_processKey),
+      'partNumber': prefs.getString(_partNumberKey),
     };
   }
 
@@ -37,5 +41,6 @@ class HomeScreenPrefs {
     await prefs.remove(_plantKey);
     await prefs.remove(_valueStreamKey);
     await prefs.remove(_processKey);
+    await prefs.remove(_partNumberKey);
   }
 }

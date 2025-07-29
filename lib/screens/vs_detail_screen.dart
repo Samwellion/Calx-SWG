@@ -5,6 +5,7 @@ import '../database_provider.dart';
 import '../logic/app_database.dart';
 import '../widgets/app_footer.dart';
 import '../widgets/home_button_wrapper.dart';
+import 'process_canvas_screen.dart';
 
 class VSDetailScreen extends StatefulWidget {
   final String valueStreamName;
@@ -1037,6 +1038,23 @@ class _VSDetailScreenState extends State<VSDetailScreen> {
         appBar: AppBar(
           title: Text('${widget.valueStreamName} Details'),
           backgroundColor: Colors.white,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.dashboard_outlined),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ProcessCanvasScreen(
+                      valueStreamId: widget.valueStreamId,
+                      valueStreamName: widget.valueStreamName,
+                    ),
+                  ),
+                );
+              },
+              tooltip: 'Process Canvas',
+            ),
+          ],
         ),
         backgroundColor: Colors.yellow[100],
         body: Column(

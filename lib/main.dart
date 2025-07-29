@@ -4,6 +4,7 @@ import 'screens/home_screen.dart';
 
 void main() {
   runApp(MaterialApp(
+    title: 'Calx - NewTimeObs',
     home: const HomeScreen(),
     // Removed routes table since we're using home property
   ));

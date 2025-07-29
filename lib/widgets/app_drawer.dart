@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../screens/home_screen.dart';
 import '../screens/organization_setup_screen.dart';
 import '../screens/plant_setup_screen.dart';
+import '../screens/part_input_screen.dart';
+import '../screens/process_input_screen.dart';
 import '../screens/elements_input_screen.dart';
 import '../screens/time_observation_form.dart';
 import '../screens/setup_element_viewer.dart';
@@ -21,11 +23,13 @@ class _AppDrawerState extends State<AppDrawer> {
   static const _kCompanyKey = 'selectedCompany';
   static const _kPlantKey = 'selectedPlant';
   static const _kValueStreamKey = 'selectedValueStream';
+  static const _kValueStreamIdKey = 'selectedValueStreamId';
   static const _kProcessKey = 'selectedProcess';
 
   String? selectedCompany;
   String? selectedPlant;
   String? selectedValueStream;
+  int? selectedValueStreamId;
   String? selectedProcess;
 
   @override
@@ -43,6 +47,8 @@ class _AppDrawerState extends State<AppDrawer> {
       selectedPlant = (p != null && p.isNotEmpty) ? p : null;
       final vs = prefs.getString(_kValueStreamKey);
       selectedValueStream = (vs != null && vs.isNotEmpty) ? vs : null;
+      final vsid = prefs.getInt(_kValueStreamIdKey);
+      selectedValueStreamId = (vsid != null && vsid != -1) ? vsid : null;
       final proc = prefs.getString(_kProcessKey);
       selectedProcess = (proc != null && proc.isNotEmpty) ? proc : null;
     });
@@ -248,10 +254,26 @@ class _AppDrawerState extends State<AppDrawer> {
                   icon: Icons.precision_manufacturing,
                   title: 'Part Number Setup',
                   onTap: () {
-                    Navigator.pop(context); // Close the drawer first
-                    // TODO: Navigate to actual Part Setup screen when implemented
-                    _showRequirementsDialog(context, 'Part Number Setup',
-                        ['Feature not yet implemented']);
+                    if (selectedValueStreamId != null &&
+                        selectedValueStream != null &&
+                        selectedCompany != null &&
+                        selectedPlant != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PartInputScreen(
+                            valueStreamId: selectedValueStreamId!,
+                            valueStreamName: selectedValueStream!,
+                            companyName: selectedCompany!,
+                            plantName: selectedPlant!,
+                          ),
+                        ),
+                      );
+                    } else {
+                      Navigator.pop(context); // Close the drawer first
+                      _showRequirementsDialog(context, 'Part Number Setup',
+                          ['Company', 'Plant', 'Value Stream']);
+                    }
                   },
                 )
               else
@@ -268,10 +290,26 @@ class _AppDrawerState extends State<AppDrawer> {
                   icon: Icons.settings,
                   title: 'Process Setup',
                   onTap: () {
-                    Navigator.pop(context); // Close the drawer first
-                    // TODO: Navigate to process input screen
-                    _showRequirementsDialog(context, 'Process Setup',
-                        ['Feature access from Home screen']);
+                    if (selectedValueStreamId != null &&
+                        selectedValueStream != null &&
+                        selectedCompany != null &&
+                        selectedPlant != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ProcessInputScreen(
+                            valueStreamId: selectedValueStreamId!,
+                            valueStreamName: selectedValueStream!,
+                            companyName: selectedCompany!,
+                            plantName: selectedPlant!,
+                          ),
+                        ),
+                      );
+                    } else {
+                      Navigator.pop(context); // Close the drawer first
+                      _showRequirementsDialog(context, 'Process Setup',
+                          ['Company', 'Plant', 'Value Stream']);
+                    }
                   },
                 )
               else

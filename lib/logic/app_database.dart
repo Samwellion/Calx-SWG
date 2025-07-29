@@ -1,4 +1,6 @@
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 part 'app_database.g.dart';
 
 // Unit of Measure enum for ValueStreams
@@ -118,7 +120,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 20;
+  int get schemaVersion => 22;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -402,6 +404,20 @@ class AppDatabase extends _$AppDatabase {
               await m.createTable(vSShifts);
             }
           }
+          if (from == 20 && to == 21) {
+            // Add canvas positioning fields to Processes table
+            await m.addColumn(
+                processes, processes.positionX as GeneratedColumn<Object>);
+            await m.addColumn(
+                processes, processes.positionY as GeneratedColumn<Object>);
+            await m.addColumn(
+                processes, processes.color as GeneratedColumn<Object>);
+          }
+          if (from == 21 && to == 22) {
+            // Add monthlyDemand field to Parts table
+            await m.addColumn(
+                parts, parts.monthlyDemand as GeneratedColumn<Object>);
+          }
         },
       );
 
@@ -415,6 +431,90 @@ class AppDatabase extends _$AppDatabase {
   // Upsert process - handles unique constraint on (value_stream_id, process_name)
   Future<int> upsertProcess(ProcessesCompanion entry) async {
     return into(processes).insertOnConflictUpdate(entry);
+  }
+
+  // Copy VSShifts to ProcessShift when a new process is added
+  Future<void> copyVSShiftsToProcessShift(
+      int valueStreamId, int processId) async {
+    try {
+      // Get all shift records for the value stream
+      final vsShifts = await (select(vSShifts)
+            ..where((vs) => vs.vsId.equals(valueStreamId)))
+          .get();
+
+      if (vsShifts.isNotEmpty) {
+        // Copy each VSShift record to ProcessShift table
+        for (final vsShift in vsShifts) {
+          await into(processShift).insert(
+            ProcessShiftCompanion.insert(
+              processId: processId,
+              shiftName: vsShift.shiftName,
+              sun: Value(vsShift.sun),
+              mon: Value(vsShift.mon),
+              tue: Value(vsShift.tue),
+              wed: Value(vsShift.wed),
+              thu: Value(vsShift.thu),
+              fri: Value(vsShift.fri),
+              sat: Value(vsShift.sat),
+            ),
+          );
+        }
+      } else {
+        // No VSShifts records exist, create a placeholder record
+        await into(processShift).insert(
+          ProcessShiftCompanion.insert(
+            processId: processId,
+            shiftName: 'TBD',
+            sun: const Value(null),
+            mon: const Value(null),
+            tue: const Value(null),
+            wed: const Value(null),
+            thu: const Value(null),
+            fri: const Value(null),
+            sat: const Value(null),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error copying VSShifts to ProcessShift: $e');
+      rethrow;
+    }
+  }
+
+  // Get ProcessShift records for a specific process
+  Future<List<ProcessShiftData>> getProcessShifts(int processId) async {
+    try {
+      final shifts = await (select(processShift)
+            ..where((ps) => ps.processId.equals(processId)))
+          .get();
+
+      // If no shifts exist, create a "TBD" record
+      if (shifts.isEmpty) {
+        await into(processShift).insert(
+          ProcessShiftCompanion.insert(
+            processId: processId,
+            shiftName: 'TBD',
+            sun: const Value(null),
+            mon: const Value(null),
+            tue: const Value(null),
+            wed: const Value(null),
+            thu: const Value(null),
+            fri: const Value(null),
+            sat: const Value(null),
+          ),
+        );
+
+        // Return the newly created record
+        return await (select(processShift)
+              ..where((ps) => ps.processId.equals(processId)))
+            .get();
+      }
+
+      return shifts;
+    } catch (e) {
+      debugPrint('Error getting ProcessShifts: $e');
+      rethrow;
+    }
   }
 
   // Setup management methods
@@ -505,6 +605,85 @@ class AppDatabase extends _$AppDatabase {
         .get();
   }
 
+  // Process Canvas Methods
+  Future<List<ProcessesData>> getProcessesForValueStream(int valueStreamId) {
+    return (select(processes)
+          ..where((p) => p.valueStreamId.equals(valueStreamId)))
+        .get();
+  }
+
+  Future<ProcessPart?> getProcessPartByPartNumberAndProcessId(
+      String partNumber, int processId) async {
+    return await (select(processParts)
+          ..where((pp) =>
+              pp.partNumber.equals(partNumber) &
+              pp.processId.equals(processId)))
+        .getSingleOrNull();
+  }
+
+  Future<String?> getSelectedPartNumber() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('selectedPartNumber');
+  }
+
+  Future<void> updateProcessPosition(int processId, double x, double y) async {
+    await (update(processes)..where((p) => p.id.equals(processId)))
+        .write(ProcessesCompanion(
+      positionX: Value(x),
+      positionY: Value(y),
+    ));
+  }
+
+  Future<void> updateProcess(
+    int processId, {
+    String? name,
+    String? description,
+    String? colorHex,
+    int? staff,
+    int? dailyDemand,
+    int? wip,
+    double? uptime,
+    String? coTime,
+  }) async {
+    final companion = ProcessesCompanion(
+      processName: name != null ? Value(name) : const Value.absent(),
+      processDescription:
+          description != null ? Value(description) : const Value.absent(),
+      color: colorHex != null ? Value(colorHex) : const Value.absent(),
+      staff: staff != null ? Value(staff) : const Value.absent(),
+      dailyDemand:
+          dailyDemand != null ? Value(dailyDemand) : const Value.absent(),
+      wip: wip != null ? Value(wip) : const Value.absent(),
+      uptime: uptime != null ? Value(uptime) : const Value.absent(),
+      coTime: coTime != null ? Value(coTime) : const Value.absent(),
+    );
+
+    await (update(processes)..where((p) => p.id.equals(processId)))
+        .write(companion);
+  }
+
+  Future<void> updateProcessPart(
+    String partNumber,
+    int processId, {
+    String? cycleTime,
+    double? fpy,
+  }) async {
+    final companion = ProcessPartsCompanion(
+      cycleTime: cycleTime != null ? Value(cycleTime) : const Value.absent(),
+      fpy: fpy != null ? Value(fpy) : const Value.absent(),
+    );
+
+    await (update(processParts)
+          ..where((pp) =>
+              pp.partNumber.equals(partNumber) &
+              pp.processId.equals(processId)))
+        .write(companion);
+  }
+
+  Future<void> deleteProcess(int processId) async {
+    await (delete(processes)..where((p) => p.id.equals(processId))).go();
+  }
+
   // Add the method here:
   Future<void> upsertPlant({
     required int organizationId,
@@ -579,6 +758,7 @@ class ProcessParts extends Table {
   // New fields for process parts management
   IntColumn get dailyDemand => integer().nullable()();
   TextColumn get cycleTime => text().nullable()(); // Format: HH:MM:SS
+  TextColumn get userOverrideTime => text().nullable()(); // Format: HH:MM:SS
   RealColumn get fpy =>
       real().nullable()(); // First Pass Yield as decimal (e.g., 0.95 for 95%)
 }
@@ -635,8 +815,14 @@ class Processes extends Table {
   RealColumn get uptime =>
       real().nullable()(); // Percentage as decimal (e.g., 0.85 for 85%)
   TextColumn get coTime => text().nullable()(); // Format: HH:MM:SS
+  TextColumn get taktTime => text().nullable()(); // Format: HH:MM:SS
   IntColumn get orderIndex =>
       integer().withDefault(const Constant(0))(); // For custom user ordering
+
+  // Canvas positioning fields
+  RealColumn get positionX => real().nullable()(); // X position on canvas
+  RealColumn get positionY => real().nullable()(); // Y position on canvas
+  TextColumn get color => text().nullable()(); // Color as hex string
 
   @override
   List<String> get customConstraints => [
@@ -652,6 +838,8 @@ class Parts extends Table {
   IntColumn get organizationId => integer().references(Organizations, #id)();
   TextColumn get partNumber => text()();
   TextColumn get partDescription => text().nullable()();
+  IntColumn get monthlyDemand =>
+      integer().nullable()(); // Monthly demand for the part
 
   @override
   List<String> get customConstraints => [

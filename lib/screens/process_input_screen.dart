@@ -174,10 +174,56 @@ class _ProcessInputScreenState extends State<ProcessInputScreen> {
     }
     setState(() => _saving = true);
     try {
+      // Debug: Check for existing processes with similar names
+      final existingProcesses = await db.customSelectQuery(
+        '''SELECT process_name, LOWER(process_name) as lower_name
+           FROM processes 
+           WHERE value_stream_id = ? 
+           AND (process_name = ? OR LOWER(process_name) = LOWER(?))''',
+        variables: [
+          drift.Variable.withInt(widget.valueStreamId),
+          drift.Variable.withString(processName),
+          drift.Variable.withString(processName),
+        ],
+      ).get();
+
+      if (existingProcesses.isNotEmpty) {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Duplicate Process Found'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                      'Found ${existingProcesses.length} existing process(es) with similar names:'),
+                  const SizedBox(height: 8),
+                  for (final existing in existingProcesses)
+                    Text('- "${existing.data['process_name']}"'),
+                  const SizedBox(height: 16),
+                  Text('Attempted to save: "$processName"'),
+                  Text('Value Stream ID: ${widget.valueStreamId}'),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
+        setState(() => _saving = false);
+        return;
+      }
+
       // Get the next order index (current max + 1)
       final nextOrderIndex = _processes.length;
 
-      await db.upsertProcess(
+      final processId = await db.upsertProcess(
         ProcessesCompanion(
           valueStreamId: drift.Value(widget.valueStreamId),
           processName: drift.Value(processName),
@@ -186,6 +232,9 @@ class _ProcessInputScreenState extends State<ProcessInputScreen> {
           orderIndex: drift.Value(nextOrderIndex),
         ),
       );
+
+      // Copy VSShifts to ProcessShift for the new process
+      await db.copyVSShiftsToProcessShift(widget.valueStreamId, processId);
 
       await _loadProcesses();
       _processNameController.clear();
@@ -404,6 +453,7 @@ class _ProcessInputScreenState extends State<ProcessInputScreen> {
                                                               'Save Process'),
                                                     ),
                                                   ),
+                                                  const SizedBox(height: 16),
                                                 ],
                                               ),
                                             ),
