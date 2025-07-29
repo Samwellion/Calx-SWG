@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:drift/drift.dart' as drift;
 
 import '../widgets/app_footer.dart';
+import '../widgets/app_drawer.dart';
 import '../widgets/detailed_selection_display_card.dart';
 import '../widgets/element_list_card.dart';
-import '../screens/home_screen.dart';
-import '../screens/organization_setup_screen.dart';
-import '../screens/plant_setup_screen.dart';
+import '../widgets/home_button_wrapper.dart';
 
 import '../logic/app_database.dart';
 import '../database_provider.dart';
@@ -125,7 +124,8 @@ class _ElementsInputScreenState extends State<ElementsInputScreen> {
     final elements = await (db.select(db.setupElements)
           ..where((tbl) =>
               tbl.processPartId.equals(processPartId!) &
-              tbl.setupId.equals(setup.id)))
+              tbl.setupId.equals(setup.id))
+          ..orderBy([(tbl) => drift.OrderingTerm.asc(tbl.orderIndex)]))
         .get();
 
     setState(() {
@@ -484,286 +484,308 @@ class _ElementsInputScreenState extends State<ElementsInputScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (bool didPop, dynamic result) async {
-        if (didPop) return;
-        final shouldPop = await _handleNavigation();
-        if (shouldPop && mounted) {
-          // ignore: use_build_context_synchronously
-          Navigator.of(context).pop();
-        }
+    final existingFab = FloatingActionButton(
+      heroTag: "setup",
+      onPressed: () {
+        _showSetupDialog();
       },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Element Input'),
-          backgroundColor: Colors.white,
-        ),
-        drawer: _buildCustomDrawer(),
-        backgroundColor: Colors.yellow[100],
-        floatingActionButton: FloatingActionButton(
-          heroTag: "setup",
-          onPressed: () {
-            _showSetupDialog();
+      backgroundColor: Colors.yellow[300],
+      child: const Icon(Icons.settings),
+    );
+
+    return HomeButtonWrapper(
+        existingFab: existingFab,
+        child: PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (bool didPop, dynamic result) async {
+            if (didPop) return;
+            final shouldPop = await _handleNavigation();
+            if (shouldPop && mounted) {
+              // ignore: use_build_context_synchronously
+              Navigator.of(context).pop();
+            }
           },
-          backgroundColor: Colors.yellow[300],
-          child: const Icon(Icons.settings),
-        ),
-        body: Column(
-          children: [
-            // Removed HomeHeader
-            Expanded(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1100),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Input area (left)
-                        Flexible(
-                          flex: 1,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
+          child: Scaffold(
+            appBar: AppBar(
+              title: const Text('Element Input'),
+              backgroundColor: Colors.white,
+            ),
+            drawer: const AppDrawer(),
+            backgroundColor: Colors.yellow[100],
+            resizeToAvoidBottomInset: true,
+            floatingActionButton: existingFab,
+            body: SafeArea(
+              child: Column(
+                children: [
+                  // Removed HomeHeader
+                  Expanded(
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1100),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              DetailedSelectionDisplayCard(
-                                companyName: widget.companyName,
-                                plantName: widget.plantName,
-                                valueStreamName: widget.valueStreamName,
-                                processName: widget.processName,
-                                setupName: setupName,
-                                partNumber: selectedPartNumber,
-                              ),
-                              Card(
-                                color: Colors.yellow[50],
-                                elevation: 2,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Center(
-                                        child: Text('Add Element',
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .titleMedium
-                                                ?.copyWith(
-                                                    fontWeight:
-                                                        FontWeight.bold)),
-                                      ),
-                                      if (setupName == null &&
-                                          initialDialogCompleted) ...[
-                                        const SizedBox(height: 8),
-                                        Container(
-                                          padding: const EdgeInsets.all(8),
-                                          decoration: BoxDecoration(
-                                            color: Colors.orange[100],
-                                            borderRadius:
-                                                BorderRadius.circular(4),
-                                            border: Border.all(
-                                                color: Colors.orange),
-                                          ),
-                                          child: const Text(
-                                            'Please complete setup dialog first (tap settings button)',
-                                            style: TextStyle(
-                                              color: Colors.orange,
-                                              fontWeight: FontWeight.bold,
+                              // Input area (left)
+                              Flexible(
+                                flex: 1,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    DetailedSelectionDisplayCard(
+                                      companyName: widget.companyName,
+                                      plantName: widget.plantName,
+                                      valueStreamName: widget.valueStreamName,
+                                      processName: widget.processName,
+                                      setupName: setupName,
+                                      partNumber: selectedPartNumber,
+                                    ),
+                                    Card(
+                                      color: Colors.yellow[50],
+                                      elevation: 2,
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(16.0),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Center(
+                                              child: Text('Add Element',
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .titleMedium
+                                                      ?.copyWith(
+                                                          fontWeight:
+                                                              FontWeight.bold)),
                                             ),
-                                            textAlign: TextAlign.center,
-                                          ),
-                                        ),
-                                      ],
-                                      const SizedBox(height: 16),
-                                      TextField(
-                                        controller: newElementNameController,
-                                        decoration: const InputDecoration(
-                                          labelText: 'Element Name',
-                                          filled: true,
-                                          fillColor: Colors.white,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      TextField(
-                                        controller: newTimeController,
-                                        decoration: const InputDecoration(
-                                          labelText: 'Time (HH:MM:SS)',
-                                          filled: true,
-                                          fillColor: Colors.white,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      SizedBox(
-                                        width: double.infinity,
-                                        child: ElevatedButton(
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.yellow[300],
-                                            foregroundColor: Colors.black,
-                                            padding: const EdgeInsets.symmetric(
-                                                vertical: 16),
-                                            textStyle: const TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                            elevation: 6,
-                                          ),
-                                          onPressed: () async {
-                                            if (processPartId != null &&
-                                                setupName != null &&
-                                                setupDateTime != null &&
-                                                newElementNameController
-                                                    .text.isNotEmpty &&
-                                                newTimeController
-                                                    .text.isNotEmpty) {
-                                              try {
-                                                // First get the setup ID from the setup name
-                                                final setup = await (db
-                                                        .select(db.setups)
-                                                      ..where((s) =>
-                                                          s.processPartId.equals(
-                                                              processPartId!) &
-                                                          s.setupName.equals(
-                                                              setupName!)))
-                                                    .getSingleOrNull();
-
-                                                if (setup == null) {
-                                                  if (mounted) {
-                                                    // ignore: use_build_context_synchronously
-                                                    ScaffoldMessenger.of(
-                                                        // ignore: use_build_context_synchronously
-                                                        context).showSnackBar(
-                                                      const SnackBar(
-                                                        content: Text(
-                                                            'Setup not found'),
-                                                        backgroundColor:
-                                                            Colors.red,
-                                                      ),
-                                                    );
-                                                  }
-                                                  return;
-                                                }
-
-                                                // Get the count of existing elements to set the order index
-                                                final existingElements = await (db
-                                                        .select(
-                                                            db.setupElements)
-                                                      ..where((tbl) =>
-                                                          tbl.processPartId.equals(
-                                                              processPartId!) &
-                                                          tbl.setupId.equals(
-                                                              setup.id)))
-                                                    .get();
-                                                final nextOrderIndex =
-                                                    existingElements.length;
-
-                                                // Add to database for immediate display
-                                                await db
-                                                    .into(db.setupElements)
-                                                    .insert(
-                                                      SetupElementsCompanion(
-                                                        processPartId:
-                                                            drift.Value(
-                                                                processPartId!),
-                                                        setupId: drift.Value(
-                                                            setup.id),
-                                                        setupDateTime:
-                                                            drift.Value(
-                                                                setupDateTime!),
-                                                        elementName: drift.Value(
-                                                            newElementNameController
-                                                                .text),
-                                                        time: drift.Value(
-                                                            newTimeController
-                                                                .text),
-                                                        orderIndex: drift.Value(
-                                                            nextOrderIndex),
-                                                      ),
-                                                    );
-
-                                                // Update current elements list for tracking changes
-                                                await _refreshCurrentElements();
-
-                                                // Increment refresh key to force ElementListCard rebuild
-                                                setState(() {
-                                                  _elementListRefreshKey++;
-                                                });
-
-                                                // Clear the input fields
-                                                newElementNameController
-                                                    .clear();
-                                                newTimeController.text =
-                                                    '00:00:00';
-                                              } catch (e) {
-                                                // Show error message if insertion fails
-                                                if (mounted) {
-                                                  // ignore: use_build_context_synchronously
-                                                  ScaffoldMessenger.of(context)
-                                                      .showSnackBar(
-                                                    SnackBar(
-                                                      content: Text(
-                                                          'Error adding element: $e'),
-                                                      backgroundColor:
-                                                          Colors.red,
-                                                    ),
-                                                  );
-                                                }
-                                              }
-                                            } else {
-                                              // Show message if required fields are missing
-                                              if (mounted) {
-                                                ScaffoldMessenger.of(context)
-                                                    .showSnackBar(
-                                                  const SnackBar(
-                                                    content: Text(
-                                                        'Please complete the setup dialog first and fill in all fields'),
-                                                    backgroundColor:
-                                                        Colors.orange,
+                                            if (setupName == null &&
+                                                initialDialogCompleted) ...[
+                                              const SizedBox(height: 8),
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.all(8),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.orange[100],
+                                                  borderRadius:
+                                                      BorderRadius.circular(4),
+                                                  border: Border.all(
+                                                      color: Colors.orange),
+                                                ),
+                                                child: const Text(
+                                                  'Please complete setup dialog first (tap settings button)',
+                                                  style: TextStyle(
+                                                    color: Colors.orange,
+                                                    fontWeight: FontWeight.bold,
                                                   ),
-                                                );
-                                              }
-                                            }
-                                          },
-                                          child: const Text('Add Element'),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                              ),
+                                            ],
+                                            const SizedBox(height: 16),
+                                            TextField(
+                                              controller:
+                                                  newElementNameController,
+                                              decoration: const InputDecoration(
+                                                labelText: 'Element Name',
+                                                filled: true,
+                                                fillColor: Colors.white,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 16),
+                                            TextField(
+                                              controller: newTimeController,
+                                              decoration: const InputDecoration(
+                                                labelText: 'Time (HH:MM:SS)',
+                                                filled: true,
+                                                fillColor: Colors.white,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 16),
+                                            SizedBox(
+                                              width: double.infinity,
+                                              child: ElevatedButton(
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor:
+                                                      Colors.yellow[300],
+                                                  foregroundColor: Colors.black,
+                                                  padding: const EdgeInsets
+                                                      .symmetric(vertical: 16),
+                                                  textStyle: const TextStyle(
+                                                    fontSize: 18,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            12),
+                                                  ),
+                                                  elevation: 6,
+                                                ),
+                                                onPressed: () async {
+                                                  if (processPartId != null &&
+                                                      setupName != null &&
+                                                      setupDateTime != null &&
+                                                      newElementNameController
+                                                          .text.isNotEmpty &&
+                                                      newTimeController
+                                                          .text.isNotEmpty) {
+                                                    try {
+                                                      // First get the setup ID from the setup name
+                                                      final setup = await (db
+                                                              .select(db.setups)
+                                                            ..where((s) =>
+                                                                s.processPartId
+                                                                    .equals(
+                                                                        processPartId!) &
+                                                                s.setupName.equals(
+                                                                    setupName!)))
+                                                          .getSingleOrNull();
+
+                                                      if (setup == null) {
+                                                        if (mounted) {
+                                                          // ignore: use_build_context_synchronously
+                                                          ScaffoldMessenger.of(
+                                                              // ignore: use_build_context_synchronously
+                                                              context).showSnackBar(
+                                                            const SnackBar(
+                                                              content: Text(
+                                                                  'Setup not found'),
+                                                              backgroundColor:
+                                                                  Colors.red,
+                                                            ),
+                                                          );
+                                                        }
+                                                        return;
+                                                      }
+
+                                                      // Get the count of existing elements to set the order index
+                                                      final existingElements = await (db
+                                                              .select(db
+                                                                  .setupElements)
+                                                            ..where((tbl) =>
+                                                                tbl.processPartId
+                                                                    .equals(
+                                                                        processPartId!) &
+                                                                tbl.setupId
+                                                                    .equals(setup
+                                                                        .id)))
+                                                          .get();
+                                                      final nextOrderIndex =
+                                                          existingElements
+                                                              .length;
+
+                                                      // Add to database for immediate display
+                                                      await db
+                                                          .into(
+                                                              db.setupElements)
+                                                          .insert(
+                                                            SetupElementsCompanion(
+                                                              processPartId:
+                                                                  drift.Value(
+                                                                      processPartId!),
+                                                              setupId:
+                                                                  drift.Value(
+                                                                      setup.id),
+                                                              setupDateTime:
+                                                                  drift.Value(
+                                                                      setupDateTime!),
+                                                              elementName:
+                                                                  drift.Value(
+                                                                      newElementNameController
+                                                                          .text),
+                                                              time: drift.Value(
+                                                                  newTimeController
+                                                                      .text),
+                                                              orderIndex:
+                                                                  drift.Value(
+                                                                      nextOrderIndex),
+                                                            ),
+                                                          );
+
+                                                      // Update current elements list for tracking changes
+                                                      await _refreshCurrentElements();
+
+                                                      // Increment refresh key to force ElementListCard rebuild
+                                                      setState(() {
+                                                        _elementListRefreshKey++;
+                                                      });
+
+                                                      // Clear the input fields
+                                                      newElementNameController
+                                                          .clear();
+                                                      newTimeController.text =
+                                                          '00:00:00';
+                                                    } catch (e) {
+                                                      // Show error message if insertion fails
+                                                      if (mounted) {
+                                                        // ignore: use_build_context_synchronously
+                                                        ScaffoldMessenger.of(
+                                                            // ignore: use_build_context_synchronously
+                                                            context).showSnackBar(
+                                                          SnackBar(
+                                                            content: Text(
+                                                                'Error adding element: $e'),
+                                                            backgroundColor:
+                                                                Colors.red,
+                                                          ),
+                                                        );
+                                                      }
+                                                    }
+                                                  } else {
+                                                    // Show message if required fields are missing
+                                                    if (mounted) {
+                                                      ScaffoldMessenger.of(
+                                                              context)
+                                                          .showSnackBar(
+                                                        const SnackBar(
+                                                          content: Text(
+                                                              'Please complete the setup dialog first and fill in all fields'),
+                                                          backgroundColor:
+                                                              Colors.orange,
+                                                        ),
+                                                      );
+                                                    }
+                                                  }
+                                                },
+                                                child:
+                                                    const Text('Add Element'),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 24),
+                              // Elements list (right) - now using ElementListCard widget
+                              Flexible(
+                                flex: 2,
+                                child: ElementListCard(
+                                  key: ValueKey(
+                                      '${processPartId}_${setupName}_$_elementListRefreshKey'),
+                                  processPartId: processPartId,
+                                  setupName: setupName,
+                                  onElementChanged: () {
+                                    // Update current elements when changes occur in the card
+                                    _refreshCurrentElements();
+                                  },
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(width: 24),
-                        // Elements list (right) - now using ElementListCard widget
-                        Flexible(
-                          flex: 2,
-                          child: ElementListCard(
-                            key: ValueKey(
-                                '${processPartId}_${setupName}_$_elementListRefreshKey'),
-                            processPartId: processPartId,
-                            setupName: setupName,
-                            onElementChanged: () {
-                              // Update current elements when changes occur in the card
-                              _refreshCurrentElements();
-                            },
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
+                  AppFooter(),
+                ],
               ),
             ),
-            AppFooter(),
-          ],
-        ),
-      ),
-    );
+          ),
+        ));
   }
 
   // Refresh current elements list when ElementListCard changes
@@ -780,7 +802,8 @@ class _ElementsInputScreenState extends State<ElementsInputScreen> {
         final elements = await (db.select(db.setupElements)
               ..where((tbl) =>
                   tbl.processPartId.equals(processPartId!) &
-                  tbl.setupId.equals(existingSetup.id)))
+                  tbl.setupId.equals(existingSetup.id))
+              ..orderBy([(tbl) => drift.OrderingTerm.asc(tbl.orderIndex)]))
             .get();
 
         setState(() {
@@ -788,152 +811,5 @@ class _ElementsInputScreenState extends State<ElementsInputScreen> {
         });
       }
     }
-  }
-
-  // Build custom drawer with navigation protection
-  Widget _buildCustomDrawer() {
-    return Drawer(
-      backgroundColor: Colors.white,
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: <Widget>[
-          GestureDetector(
-            onTap: () async {
-              Navigator.pop(context); // Close drawer
-              final shouldNavigate = await _handleNavigation();
-              if (shouldNavigate && mounted) {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const HomeScreen()),
-                );
-              }
-            },
-            child: DrawerHeader(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-              ),
-              child: Row(
-                children: [
-                  Image.asset(
-                    'assets/images/calx_logo.png',
-                    height: 60,
-                    width: 60,
-                    fit: BoxFit.contain,
-                  ),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                    child: Text(
-                      'Calx LLC Industrial Tools',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 24,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.home),
-            title: const Text('Home'),
-            onTap: () async {
-              Navigator.pop(context); // Close drawer
-              final shouldNavigate = await _handleNavigation();
-              if (shouldNavigate && mounted) {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const HomeScreen()),
-                );
-              }
-            },
-          ),
-          ExpansionTile(
-            leading: const Icon(Icons.business),
-            title: const Text('Organizational Setup'),
-            children: <Widget>[
-              ListTile(
-                leading: const Icon(Icons.account_tree),
-                title: const Text('Organization Setup'),
-                contentPadding: const EdgeInsets.only(left: 72.0, right: 16.0),
-                onTap: () async {
-                  Navigator.pop(context); // Close drawer
-                  final shouldNavigate = await _handleNavigation();
-                  if (shouldNavigate && mounted) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) =>
-                              const OrganizationSetupScreen()),
-                    );
-                  }
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.location_city),
-                title: const Text('Plant & Value Stream Setup'),
-                contentPadding: const EdgeInsets.only(left: 72.0, right: 16.0),
-                onTap: () async {
-                  Navigator.pop(context); // Close drawer
-                  final shouldNavigate = await _handleNavigation();
-                  if (shouldNavigate && mounted) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const PlantSetupScreen()),
-                    );
-                  }
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.precision_manufacturing),
-                title: const Text('Part Number Setup'),
-                contentPadding: const EdgeInsets.only(left: 72.0, right: 16.0),
-                onTap: () {
-                  Navigator.pop(context); // Close the drawer
-                  _showPartSetupDialog();
-                },
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showPartSetupDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Part Number Setup'),
-          content: const Text(
-            'To access Part Number Setup, please first select a Company, Plant, and Value Stream from the Home screen.',
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Go to Home'),
-              onPressed: () async {
-                Navigator.of(context).pop(); // Close dialog
-                final shouldNavigate = await _handleNavigation();
-                if (shouldNavigate && mounted) {
-                  Navigator.pushReplacement(
-                    // ignore: use_build_context_synchronously
-                    context,
-                    MaterialPageRoute(builder: (context) => const HomeScreen()),
-                  );
-                }
-              },
-            ),
-            TextButton(
-              child: const Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-              },
-            ),
-          ],
-        );
-      },
-    );
   }
 }

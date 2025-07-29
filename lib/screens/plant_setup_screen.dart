@@ -1,23 +1,26 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/organization_data.dart' as org_data;
 import '../widgets/app_footer.dart';
+import '../widgets/app_drawer.dart';
+import '../widgets/home_button_wrapper.dart';
 import '../database_provider.dart';
 import '../logic/plant_repository.dart';
 import '../widgets/plant_details_panel.dart';
 import '../widgets/plant_list.dart';
-import '../screens/home_screen.dart';
-import '../screens/organization_setup_screen.dart';
 
 // Global map to hold plant name -> value streams (one-to-many)
 Map<String, List<String>> plantValueStreams = {};
 
 class PlantSetupScreen extends StatefulWidget {
-  final int initialPlantIndex;
+  final int? initialPlantIndex;
+  final String? selectedPlantName;
 
   const PlantSetupScreen({
     super.key,
-    this.initialPlantIndex = 0, // Default to the first plant if not provided
+    this.initialPlantIndex,
+    this.selectedPlantName, // Plant name from preferences
   });
 
   @override
@@ -120,145 +123,6 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
     }
   }
 
-  // Custom navigation handler for drawer
-  Future<void> _handleNavigation(VoidCallback navigationAction) async {
-    final canNavigate = await _onWillPop();
-    if (canNavigate) {
-      navigationAction();
-    }
-  }
-
-  Widget _buildCustomDrawer() {
-    return Drawer(
-      backgroundColor: Colors.white,
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: <Widget>[
-          GestureDetector(
-            onTap: () {
-              _handleNavigation(() {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const HomeScreen()),
-                );
-              });
-            },
-            child: DrawerHeader(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-              ),
-              child: Row(
-                children: [
-                  Image.asset(
-                    'assets/images/calx_logo.png',
-                    height: 60,
-                    width: 60,
-                    fit: BoxFit.contain,
-                  ),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                    child: Text(
-                      'Calx LLC Industrial Tools',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 24,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.home),
-            title: const Text('Home'),
-            onTap: () {
-              _handleNavigation(() {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const HomeScreen()),
-                );
-              });
-            },
-          ),
-          ExpansionTile(
-            leading: const Icon(Icons.business),
-            title: const Text('Organizational Setup'),
-            children: <Widget>[
-              ListTile(
-                leading: const Icon(Icons.account_tree),
-                title: const Text('Organization Setup'),
-                contentPadding: const EdgeInsets.only(left: 72.0, right: 16.0),
-                onTap: () {
-                  _handleNavigation(() {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) =>
-                              const OrganizationSetupScreen()),
-                    );
-                  });
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.location_city),
-                title: const Text('Plant & Value Stream Setup'),
-                contentPadding: const EdgeInsets.only(left: 72.0, right: 16.0),
-                onTap: () {
-                  // This navigates to the same screen, so just close the drawer
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.precision_manufacturing),
-                title: const Text('Part Number Setup'),
-                contentPadding: const EdgeInsets.only(left: 72.0, right: 16.0),
-                onTap: () {
-                  Navigator.pop(context); // Close the drawer first
-                  _showPartSetupDialog();
-                },
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showPartSetupDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Part Number Setup'),
-          content: const Text(
-            'To access Part Number Setup, please first select a Company, Plant, and Value Stream from the Home screen.',
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Go to Home'),
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-                _handleNavigation(() {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => const HomeScreen()),
-                  );
-                });
-              },
-            ),
-            TextButton(
-              child: const Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   Future<void> _saveCurrentPlantDetails() async {
     if (_selectedPlantIdx == null) return;
 
@@ -290,10 +154,60 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
     final dbPlants = await _repository.getAllPlants();
     org_data.OrganizationData.plants = dbPlants;
 
+    // Determine the initial plant index
+    await _determineInitialPlantIndex();
+
     // Load data for the initially selected plant
     if (mounted) {
       await _loadSelectedPlantData();
     }
+  }
+
+  Future<void> _determineInitialPlantIndex() async {
+    final plants = org_data.OrganizationData.plants;
+
+    if (plants.isEmpty) {
+      _selectedPlantIdx = null;
+      return;
+    }
+
+    // Priority 1: Use explicit initial plant index if provided
+    if (widget.initialPlantIndex != null &&
+        widget.initialPlantIndex! >= 0 &&
+        widget.initialPlantIndex! < plants.length) {
+      _selectedPlantIdx = widget.initialPlantIndex!;
+      return;
+    }
+
+    // Priority 2: Use plant name if provided
+    if (widget.selectedPlantName != null &&
+        widget.selectedPlantName!.isNotEmpty) {
+      final plantIndex =
+          plants.indexWhere((plant) => plant.name == widget.selectedPlantName);
+      if (plantIndex >= 0) {
+        _selectedPlantIdx = plantIndex;
+        return;
+      }
+    }
+
+    // Priority 3: Try to get plant from saved preferences
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedPlantName = prefs.getString('selectedPlant');
+      if (savedPlantName != null && savedPlantName.isNotEmpty) {
+        final plantIndex =
+            plants.indexWhere((plant) => plant.name == savedPlantName);
+        if (plantIndex >= 0) {
+          _selectedPlantIdx = plantIndex;
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading plant preference: $e');
+    }
+
+    // Priority 4: Default to first plant
+    _selectedPlantIdx = 0;
   }
 
   void _ensurePlantDataInitialized(List<org_data.PlantData> plants) {
@@ -396,167 +310,172 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
               Navigator.of(context).pop();
             }
           },
-          child: Scaffold(
-            appBar: AppBar(
-              title: const Text('Plant Setup'),
-              backgroundColor: Colors.white,
-            ),
-            drawer: _buildCustomDrawer(),
-            backgroundColor: Colors.yellow[100],
-            resizeToAvoidBottomInset: true,
-            body: LayoutBuilder(
-              builder: (context, constraints) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Main body
-                    Expanded(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(width: 24),
-                          // Plant list - aligned to top, takes only needed space
-                          Align(
-                            alignment: Alignment.topCenter,
-                            child: PlantList(
-                              plants: plants,
-                              selectedPlantIdx: _selectedPlantIdx,
-                              onPlantSelected: (idx) async {
-                                // 1. Save the current plant's details
-                                await _saveCurrentPlantDetails();
+          child: HomeButtonWrapper(
+            child: Scaffold(
+              appBar: AppBar(
+                title: const Text('Plant Setup'),
+                backgroundColor: Colors.white,
+              ),
+              drawer: const AppDrawer(),
+              backgroundColor: Colors.yellow[100],
+              resizeToAvoidBottomInset: true,
+              body: LayoutBuilder(
+                builder: (context, constraints) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Main body
+                      Expanded(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(width: 24),
+                            // Plant list - aligned to top, takes only needed space
+                            Align(
+                              alignment: Alignment.topCenter,
+                              child: PlantList(
+                                plants: plants,
+                                selectedPlantIdx: _selectedPlantIdx,
+                                onPlantSelected: (idx) async {
+                                  // 1. Save the current plant's details
+                                  await _saveCurrentPlantDetails();
 
-                                // 2. Set loading state and update index
-                                setState(() {
-                                  _selectedPlantIdx = idx;
-                                  _isLoading = true;
-                                });
+                                  // 2. Set loading state and update index
+                                  setState(() {
+                                    _selectedPlantIdx = idx;
+                                    _isLoading = true;
+                                  });
 
-                                // 3. Load data for the newly selected plant
-                                await _loadSelectedPlantData();
+                                  // 3. Load data for the newly selected plant
+                                  await _loadSelectedPlantData();
 
-                                // 4. Turn off loading state
-                                setState(() {
-                                  _isLoading = false;
-                                });
-                              },
+                                  // 4. Turn off loading state
+                                  setState(() {
+                                    _isLoading = false;
+                                  });
+                                },
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 32),
-                          // Plant details panel - takes remaining space
-                          if (_isLoading)
-                            const Expanded(
-                              child: Center(child: CircularProgressIndicator()),
-                            )
-                          else if (selectedPlant != null)
-                            Expanded(
-                              child: PlantDetailsPanel(
-                                plant: selectedPlant,
-                                valueStreams:
-                                    plantValueStreams[selectedPlant.name]!,
-                                controller: _controllers[selectedPlant.name]!,
-                                onAdd: () async {
-                                  final value =
-                                      _controllers[selectedPlant.name]!
-                                          .text
-                                          .trim();
-                                  if (value.isNotEmpty &&
-                                      !plantValueStreams[selectedPlant.name]!
-                                          .contains(value)) {
+                            const SizedBox(width: 32),
+                            // Plant details panel - takes remaining space
+                            if (_isLoading)
+                              const Expanded(
+                                child:
+                                    Center(child: CircularProgressIndicator()),
+                              )
+                            else if (selectedPlant != null)
+                              Expanded(
+                                child: PlantDetailsPanel(
+                                  plant: selectedPlant,
+                                  valueStreams:
+                                      plantValueStreams[selectedPlant.name]!,
+                                  controller: _controllers[selectedPlant.name]!,
+                                  onAdd: () async {
+                                    final value =
+                                        _controllers[selectedPlant.name]!
+                                            .text
+                                            .trim();
+                                    if (value.isNotEmpty &&
+                                        !plantValueStreams[selectedPlant.name]!
+                                            .contains(value)) {
+                                      setState(() {
+                                        plantValueStreams[selectedPlant.name]!
+                                            .add(value);
+                                        // Only clear the value stream input field
+                                        _controllers[selectedPlant.name]!
+                                            .clear();
+                                        _markAsChanged(); // Mark as changed when value stream is added
+                                      });
+                                      // Auto-save immediately when value stream is added
+                                      await _saveCurrentPlantDetails();
+                                    }
+                                    // Do NOT reload or reset plant address fields here
+                                  },
+                                  onRemove: (idx) async {
                                     setState(() {
                                       plantValueStreams[selectedPlant.name]!
-                                          .add(value);
-                                      // Only clear the value stream input field
-                                      _controllers[selectedPlant.name]!.clear();
-                                      _markAsChanged(); // Mark as changed when value stream is added
+                                          .removeAt(idx);
+                                      _markAsChanged(); // Mark as changed when value stream is removed
                                     });
-                                    // Auto-save immediately when value stream is added
+                                    // Auto-save immediately when value stream is removed
                                     await _saveCurrentPlantDetails();
-                                  }
-                                  // Do NOT reload or reset plant address fields here
-                                },
-                                onRemove: (idx) async {
-                                  setState(() {
-                                    plantValueStreams[selectedPlant.name]!
-                                        .removeAt(idx);
-                                    _markAsChanged(); // Mark as changed when value stream is removed
-                                  });
-                                  // Auto-save immediately when value stream is removed
-                                  await _saveCurrentPlantDetails();
-                                },
-                                onPlantChanged: (updated) {
-                                  // This now just updates the model in memory.
-                                  // The save happens via the dedicated button.
-                                  setState(() {
-                                    final i = org_data.OrganizationData.plants
-                                        .indexWhere((p) =>
-                                            p.name == selectedPlant.name);
-                                    if (i != -1) {
-                                      org_data.OrganizationData.plants[i] =
-                                          updated;
-                                    }
-                                  });
-                                },
-                                // Pass down the controllers
-                                plantNameController: _plantNameController,
-                                streetController: _streetController,
-                                cityController: _cityController,
-                                stateController: _stateController,
-                                zipController: _zipController,
-                              ),
-                            )
-                          else
-                            Expanded(
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.yellow[50],
-                                  borderRadius: BorderRadius.circular(12),
-                                  border:
-                                      Border.all(color: Colors.yellow[300]!),
+                                  },
+                                  onPlantChanged: (updated) {
+                                    // This now just updates the model in memory.
+                                    // The save happens via the dedicated button.
+                                    setState(() {
+                                      final i = org_data.OrganizationData.plants
+                                          .indexWhere((p) =>
+                                              p.name == selectedPlant.name);
+                                      if (i != -1) {
+                                        org_data.OrganizationData.plants[i] =
+                                            updated;
+                                      }
+                                    });
+                                  },
+                                  // Pass down the controllers
+                                  plantNameController: _plantNameController,
+                                  streetController: _streetController,
+                                  cityController: _cityController,
+                                  stateController: _stateController,
+                                  zipController: _zipController,
                                 ),
-                                padding: const EdgeInsets.all(32),
-                                child: const Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.factory_outlined,
-                                        size: 64,
-                                        color: Colors.grey,
-                                      ),
-                                      SizedBox(height: 16),
-                                      Text(
-                                        'No Plants Available',
-                                        style: TextStyle(
-                                          fontSize: 24,
-                                          fontWeight: FontWeight.bold,
+                              )
+                            else
+                              Expanded(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.yellow[50],
+                                    borderRadius: BorderRadius.circular(12),
+                                    border:
+                                        Border.all(color: Colors.yellow[300]!),
+                                  ),
+                                  padding: const EdgeInsets.all(32),
+                                  child: const Center(
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.factory_outlined,
+                                          size: 64,
                                           color: Colors.grey,
                                         ),
-                                      ),
-                                      SizedBox(height: 8),
-                                      Text(
-                                        'Please go to Organization Setup to add plants first.',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          color: Colors.grey,
+                                        SizedBox(height: 16),
+                                        Text(
+                                          'No Plants Available',
+                                          style: TextStyle(
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.grey,
+                                          ),
                                         ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ],
+                                        SizedBox(height: 8),
+                                        Text(
+                                          'Please go to Organization Setup to add plants first.',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            color: Colors.grey,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                    // Footer replaced with AppFooter
-                    const AppFooter(),
-                  ],
-                );
-              },
-            ),
-          ), // Close the PopScope widget
-        );
+                      // Footer replaced with AppFooter
+                      const AppFooter(),
+                    ],
+                  );
+                },
+              ),
+            ), // Close the Scaffold
+          ), // Close the HomeButtonWrapper
+        ); // Close the PopScope widget
       },
     );
   }

@@ -1,5 +1,32 @@
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 part 'app_database.g.dart';
+
+// Unit of Measure enum for ValueStreams
+enum UnitOfMeasure {
+  each('Each'),
+  pieces('Pieces'),
+  units('Units'),
+  pounds('Pounds'),
+  kilograms('Kilograms'),
+  tons('Tons'),
+  feet('Feet'),
+  meters('Meters'),
+  inches('Inches'),
+  centimeters('Centimeters'),
+  gallons('Gallons'),
+  liters('Liters'),
+  hours('Hours'),
+  days('Days'),
+  boxes('Boxes'),
+  pallets('Pallets'),
+  cases('Cases'),
+  dozens('Dozens');
+
+  const UnitOfMeasure(this.displayName);
+  final String displayName;
+}
 
 // Value Stream table: stores value stream information for each plant
 // Ensures value stream names are unique within each plant
@@ -7,6 +34,11 @@ class ValueStreams extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get plantId => integer()();
   TextColumn get name => text()();
+
+  // New fields
+  IntColumn get mDemand => integer().nullable()(); // Monthly Demand
+  IntColumn get uom => intEnum<UnitOfMeasure>().nullable()(); // Unit of Measure
+  IntColumn get mngrEmpId => integer().nullable()(); // Manager Employee ID
 
   @override
   List<String> get customConstraints => [
@@ -22,6 +54,11 @@ class SetupElements extends Table {
   TextColumn get elementName => text()();
   TextColumn get time => text()(); // Format: HH:MM:SS
   IntColumn get orderIndex => integer().withDefault(const Constant(0))();
+  // Fields migrated from TaskStudy table
+  TextColumn get lrt => text().nullable()(); // LRT time in HH:MM:SS format
+  TextColumn get overrideTime =>
+      text().nullable()(); // Override time in HH:MM:SS format
+  TextColumn get comments => text().nullable()();
 }
 
 class Setups extends Table {
@@ -38,16 +75,6 @@ class Study extends Table {
   TextColumn get observerName => text()();
 }
 
-class TaskStudy extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  IntColumn get studyId => integer().references(Study, #id)();
-  TextColumn get taskName => text()();
-  TextColumn get lrt => text()(); // LRT time in HH:MM:SS format
-  TextColumn get overrideTime =>
-      text().nullable()(); // Override time in HH:MM:SS format
-  TextColumn get comments => text().nullable()();
-}
-
 class TimeStudy extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get studyId => integer().references(Study, #id)();
@@ -57,6 +84,8 @@ class TimeStudy extends Table {
 
 @DriftDatabase(tables: [
   ProcessParts,
+  ProcessShift,
+  VSShifts,
   Processes,
   Parts,
   Organizations,
@@ -65,7 +94,6 @@ class TimeStudy extends Table {
   SetupElements,
   Setups,
   Study,
-  TaskStudy,
   TimeStudy
 ])
 class AppDatabase extends _$AppDatabase {
@@ -92,7 +120,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 22;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -100,11 +128,28 @@ class AppDatabase extends _$AppDatabase {
           return m.createAll();
         },
         onUpgrade: (Migrator m, int from, int to) async {
-          print('Migrating database from version $from to $to');
+          // Force complete recreation for version 17 - Added ProcessShift table and new fields to ProcessParts
+          if (to >= 17) {
+            await m.deleteTable('parts');
+            await m.deleteTable('processes');
+            await m.deleteTable('value_streams');
+            await m.deleteTable('plants');
+            await m.deleteTable('organizations');
+            await m.deleteTable('setup_elements');
+            await m.deleteTable('setups');
+            await m.deleteTable('study');
+            await m.deleteTable('task_study');
+            await m.deleteTable('time_study');
+            await m.deleteTable('process_parts');
+            await m.deleteTable('process_shift');
 
-          // Force complete recreation for version 14
-          if (to >= 14) {
-            print('Performing complete database recreation for schema v14...');
+            // Recreate all tables with current schema
+            await m.createAll();
+            return;
+          }
+
+          // Force complete recreation for version 16 - Added new fields to Processes table
+          if (to >= 16) {
             await m.deleteTable('parts');
             await m.deleteTable('processes');
             await m.deleteTable('value_streams');
@@ -119,13 +164,49 @@ class AppDatabase extends _$AppDatabase {
 
             // Recreate all tables with current schema
             await m.createAll();
-            print('Database recreation completed with all constraints');
+            return;
+          }
+
+          // Force complete recreation for version 15 - TaskStudy consolidated into SetupElements
+          if (to >= 15) {
+            await m.deleteTable('parts');
+            await m.deleteTable('processes');
+            await m.deleteTable('value_streams');
+            await m.deleteTable('plants');
+            await m.deleteTable('organizations');
+            await m.deleteTable('setup_elements');
+            await m.deleteTable('setups');
+            await m.deleteTable('study');
+            await m.deleteTable('task_study');
+            await m.deleteTable('time_study');
+            await m.deleteTable('process_parts');
+
+            // Recreate all tables with current schema
+            await m.createAll();
+            return;
+          }
+
+          // Force complete recreation for version 14
+          if (to >= 14) {
+            await m.deleteTable('parts');
+            await m.deleteTable('processes');
+            await m.deleteTable('value_streams');
+            await m.deleteTable('plants');
+            await m.deleteTable('organizations');
+            await m.deleteTable('setup_elements');
+            await m.deleteTable('setups');
+            await m.deleteTable('study');
+            await m.deleteTable('task_study');
+            await m.deleteTable('time_study');
+            await m.deleteTable('process_parts');
+
+            // Recreate all tables with current schema
+            await m.createAll();
             return;
           }
 
           // Force complete recreation for version 13
           if (to >= 13) {
-            print('Performing complete database recreation for schema v13...');
             await m.deleteTable('parts');
             await m.deleteTable('processes');
             await m.deleteTable('value_streams');
@@ -139,7 +220,6 @@ class AppDatabase extends _$AppDatabase {
 
             // Recreate all tables with current schema
             await m.createAll();
-            print('Database recreation completed with all constraints');
             return;
           }
 
@@ -272,6 +352,72 @@ class AppDatabase extends _$AppDatabase {
             await m.deleteTable('setup_elements');
             await m.createTable(setupElements);
           }
+          if (from == 17 && to == 18) {
+            // Add orderIndex column to Processes table
+            await m.addColumn(processes, processes.orderIndex);
+          }
+          if (from == 18 && to == 19) {
+            // Add new fields to ValueStreams and create VSShifts table
+            await m.addColumn(
+                valueStreams, valueStreams.mDemand as GeneratedColumn<Object>);
+            await m.addColumn(
+                valueStreams, valueStreams.uom as GeneratedColumn<Object>);
+            await m.addColumn(valueStreams,
+                valueStreams.mngrEmpId as GeneratedColumn<Object>);
+            await m.createTable(vSShifts);
+          }
+          if (from == 19 && to == 20) {
+            // Fix VSShifts table name - try to preserve data if the old table exists
+            try {
+              // Check if the old table exists and has data
+              final oldData =
+                  await customSelect('SELECT * FROM v_s_shifts').get();
+
+              // Create the new table with correct name
+              await m.createTable(vSShifts);
+
+              // If we had data in the old table, migrate it
+              if (oldData.isNotEmpty) {
+                for (final row in oldData) {
+                  await customInsert(
+                    'INSERT INTO vs_shifts (id, vs_id, shift_name, sun, mon, tue, wed, thu, fri, sat) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    variables: [
+                      Variable<int>(row.data['id'] as int),
+                      Variable<int>(row.data['vs_id'] as int),
+                      Variable<String>(row.data['shift_name'] as String),
+                      Variable<String>(row.data['sun'] as String? ?? ''),
+                      Variable<String>(row.data['mon'] as String? ?? ''),
+                      Variable<String>(row.data['tue'] as String? ?? ''),
+                      Variable<String>(row.data['wed'] as String? ?? ''),
+                      Variable<String>(row.data['thu'] as String? ?? ''),
+                      Variable<String>(row.data['fri'] as String? ?? ''),
+                      Variable<String>(row.data['sat'] as String? ?? ''),
+                    ],
+                  );
+                }
+              }
+
+              // Drop the old table
+              await m.deleteTable('v_s_shifts');
+            } catch (e) {
+              // If old table doesn't exist or migration fails, just create the new table
+              await m.createTable(vSShifts);
+            }
+          }
+          if (from == 20 && to == 21) {
+            // Add canvas positioning fields to Processes table
+            await m.addColumn(
+                processes, processes.positionX as GeneratedColumn<Object>);
+            await m.addColumn(
+                processes, processes.positionY as GeneratedColumn<Object>);
+            await m.addColumn(
+                processes, processes.color as GeneratedColumn<Object>);
+          }
+          if (from == 21 && to == 22) {
+            // Add monthlyDemand field to Parts table
+            await m.addColumn(
+                parts, parts.monthlyDemand as GeneratedColumn<Object>);
+          }
         },
       );
 
@@ -285,6 +431,90 @@ class AppDatabase extends _$AppDatabase {
   // Upsert process - handles unique constraint on (value_stream_id, process_name)
   Future<int> upsertProcess(ProcessesCompanion entry) async {
     return into(processes).insertOnConflictUpdate(entry);
+  }
+
+  // Copy VSShifts to ProcessShift when a new process is added
+  Future<void> copyVSShiftsToProcessShift(
+      int valueStreamId, int processId) async {
+    try {
+      // Get all shift records for the value stream
+      final vsShifts = await (select(vSShifts)
+            ..where((vs) => vs.vsId.equals(valueStreamId)))
+          .get();
+
+      if (vsShifts.isNotEmpty) {
+        // Copy each VSShift record to ProcessShift table
+        for (final vsShift in vsShifts) {
+          await into(processShift).insert(
+            ProcessShiftCompanion.insert(
+              processId: processId,
+              shiftName: vsShift.shiftName,
+              sun: Value(vsShift.sun),
+              mon: Value(vsShift.mon),
+              tue: Value(vsShift.tue),
+              wed: Value(vsShift.wed),
+              thu: Value(vsShift.thu),
+              fri: Value(vsShift.fri),
+              sat: Value(vsShift.sat),
+            ),
+          );
+        }
+      } else {
+        // No VSShifts records exist, create a placeholder record
+        await into(processShift).insert(
+          ProcessShiftCompanion.insert(
+            processId: processId,
+            shiftName: 'TBD',
+            sun: const Value(null),
+            mon: const Value(null),
+            tue: const Value(null),
+            wed: const Value(null),
+            thu: const Value(null),
+            fri: const Value(null),
+            sat: const Value(null),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error copying VSShifts to ProcessShift: $e');
+      rethrow;
+    }
+  }
+
+  // Get ProcessShift records for a specific process
+  Future<List<ProcessShiftData>> getProcessShifts(int processId) async {
+    try {
+      final shifts = await (select(processShift)
+            ..where((ps) => ps.processId.equals(processId)))
+          .get();
+
+      // If no shifts exist, create a "TBD" record
+      if (shifts.isEmpty) {
+        await into(processShift).insert(
+          ProcessShiftCompanion.insert(
+            processId: processId,
+            shiftName: 'TBD',
+            sun: const Value(null),
+            mon: const Value(null),
+            tue: const Value(null),
+            wed: const Value(null),
+            thu: const Value(null),
+            fri: const Value(null),
+            sat: const Value(null),
+          ),
+        );
+
+        // Return the newly created record
+        return await (select(processShift)
+              ..where((ps) => ps.processId.equals(processId)))
+            .get();
+      }
+
+      return shifts;
+    } catch (e) {
+      debugPrint('Error getting ProcessShifts: $e');
+      rethrow;
+    }
   }
 
   // Setup management methods
@@ -331,29 +561,7 @@ class AppDatabase extends _$AppDatabase {
         .getSingleOrNull();
   }
 
-  // TaskStudy management methods
-  Future<int> insertTaskStudy(TaskStudyCompanion taskStudy) =>
-      into(this.taskStudy).insert(taskStudy);
-
-  Future<List<TaskStudyData>> getTaskStudiesForStudy(int studyId) {
-    return (select(taskStudy)..where((ts) => ts.studyId.equals(studyId))).get();
-  }
-
-  Future<TaskStudyData?> getTaskStudyById(int taskStudyId) {
-    return (select(taskStudy)..where((ts) => ts.id.equals(taskStudyId)))
-        .getSingleOrNull();
-  }
-
-  Future<void> updateTaskStudy(int taskStudyId, TaskStudyCompanion companion) {
-    return (update(taskStudy)..where((ts) => ts.id.equals(taskStudyId)))
-        .write(companion);
-  }
-
-  Future<void> deleteTaskStudy(int taskStudyId) {
-    return (delete(taskStudy)..where((ts) => ts.id.equals(taskStudyId))).go();
-  }
-
-  // SetupElements management methods
+  // SetupElements management methods (now includes TaskStudy functionality)
   Future<int> insertSetupElement(SetupElementsCompanion setupElement) =>
       into(setupElements).insert(setupElement);
 
@@ -382,6 +590,98 @@ class AppDatabase extends _$AppDatabase {
       int setupElementId, SetupElementsCompanion companion) {
     return (update(setupElements)..where((se) => se.id.equals(setupElementId)))
         .write(companion);
+  }
+
+  // Method to replace TaskStudy functionality - get setup elements for a study
+  Future<List<SetupElement>> getSetupElementsForStudy(int studyId) async {
+    // Get the study to find its setupId
+    final study = await (select(this.study)..where((s) => s.id.equals(studyId)))
+        .getSingleOrNull();
+    if (study == null) return [];
+
+    // Get setup elements for this setup
+    return (select(setupElements)
+          ..where((se) => se.setupId.equals(study.setupId)))
+        .get();
+  }
+
+  // Process Canvas Methods
+  Future<List<ProcessesData>> getProcessesForValueStream(int valueStreamId) {
+    return (select(processes)
+          ..where((p) => p.valueStreamId.equals(valueStreamId)))
+        .get();
+  }
+
+  Future<ProcessPart?> getProcessPartByPartNumberAndProcessId(
+      String partNumber, int processId) async {
+    return await (select(processParts)
+          ..where((pp) =>
+              pp.partNumber.equals(partNumber) &
+              pp.processId.equals(processId)))
+        .getSingleOrNull();
+  }
+
+  Future<String?> getSelectedPartNumber() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('selectedPartNumber');
+  }
+
+  Future<void> updateProcessPosition(int processId, double x, double y) async {
+    await (update(processes)..where((p) => p.id.equals(processId)))
+        .write(ProcessesCompanion(
+      positionX: Value(x),
+      positionY: Value(y),
+    ));
+  }
+
+  Future<void> updateProcess(
+    int processId, {
+    String? name,
+    String? description,
+    String? colorHex,
+    int? staff,
+    int? dailyDemand,
+    int? wip,
+    double? uptime,
+    String? coTime,
+  }) async {
+    final companion = ProcessesCompanion(
+      processName: name != null ? Value(name) : const Value.absent(),
+      processDescription:
+          description != null ? Value(description) : const Value.absent(),
+      color: colorHex != null ? Value(colorHex) : const Value.absent(),
+      staff: staff != null ? Value(staff) : const Value.absent(),
+      dailyDemand:
+          dailyDemand != null ? Value(dailyDemand) : const Value.absent(),
+      wip: wip != null ? Value(wip) : const Value.absent(),
+      uptime: uptime != null ? Value(uptime) : const Value.absent(),
+      coTime: coTime != null ? Value(coTime) : const Value.absent(),
+    );
+
+    await (update(processes)..where((p) => p.id.equals(processId)))
+        .write(companion);
+  }
+
+  Future<void> updateProcessPart(
+    String partNumber,
+    int processId, {
+    String? cycleTime,
+    double? fpy,
+  }) async {
+    final companion = ProcessPartsCompanion(
+      cycleTime: cycleTime != null ? Value(cycleTime) : const Value.absent(),
+      fpy: fpy != null ? Value(fpy) : const Value.absent(),
+    );
+
+    await (update(processParts)
+          ..where((pp) =>
+              pp.partNumber.equals(partNumber) &
+              pp.processId.equals(processId)))
+        .write(companion);
+  }
+
+  Future<void> deleteProcess(int processId) async {
+    await (delete(processes)..where((p) => p.id.equals(processId))).go();
   }
 
   // Add the method here:
@@ -454,6 +754,49 @@ class ProcessParts extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get partNumber => text()();
   IntColumn get processId => integer().references(Processes, #id)();
+
+  // New fields for process parts management
+  IntColumn get dailyDemand => integer().nullable()();
+  TextColumn get cycleTime => text().nullable()(); // Format: HH:MM:SS
+  TextColumn get userOverrideTime => text().nullable()(); // Format: HH:MM:SS
+  RealColumn get fpy =>
+      real().nullable()(); // First Pass Yield as decimal (e.g., 0.95 for 95%)
+}
+
+// ProcessShift table: stores shift schedules for each process
+class ProcessShift extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get processId => integer().references(Processes, #id)();
+  TextColumn get shiftName => text()();
+
+  // Shift times for each day of the week (Format: HH:MM:SS)
+  TextColumn get sun => text().nullable()(); // Sunday shift time
+  TextColumn get mon => text().nullable()(); // Monday shift time
+  TextColumn get tue => text().nullable()(); // Tuesday shift time
+  TextColumn get wed => text().nullable()(); // Wednesday shift time
+  TextColumn get thu => text().nullable()(); // Thursday shift time
+  TextColumn get fri => text().nullable()(); // Friday shift time
+  TextColumn get sat => text().nullable()(); // Saturday shift time
+}
+
+// VSShifts table: stores shift schedules for each value stream
+class VSShifts extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get vsId => integer().references(
+      ValueStreams, #id)(); // Links to ValueStream instead of Process
+  TextColumn get shiftName => text()();
+
+  // Shift times for each day of the week (Format: HH:MM:SS)
+  TextColumn get sun => text().nullable()(); // Sunday shift time
+  TextColumn get mon => text().nullable()(); // Monday shift time
+  TextColumn get tue => text().nullable()(); // Tuesday shift time
+  TextColumn get wed => text().nullable()(); // Wednesday shift time
+  TextColumn get thu => text().nullable()(); // Thursday shift time
+  TextColumn get fri => text().nullable()(); // Friday shift time
+  TextColumn get sat => text().nullable()(); // Saturday shift time
+
+  @override
+  String get tableName => 'vs_shifts';
 }
 
 // Process table: associates a process with a value stream
@@ -464,6 +807,22 @@ class Processes extends Table {
   TextColumn get processName => text().named('process_name')();
   TextColumn get processDescription =>
       text().named('process_description').nullable()();
+
+  // New fields for process management
+  IntColumn get dailyDemand => integer().nullable()();
+  IntColumn get staff => integer().nullable()();
+  IntColumn get wip => integer().nullable()();
+  RealColumn get uptime =>
+      real().nullable()(); // Percentage as decimal (e.g., 0.85 for 85%)
+  TextColumn get coTime => text().nullable()(); // Format: HH:MM:SS
+  TextColumn get taktTime => text().nullable()(); // Format: HH:MM:SS
+  IntColumn get orderIndex =>
+      integer().withDefault(const Constant(0))(); // For custom user ordering
+
+  // Canvas positioning fields
+  RealColumn get positionX => real().nullable()(); // X position on canvas
+  RealColumn get positionY => real().nullable()(); // Y position on canvas
+  TextColumn get color => text().nullable()(); // Color as hex string
 
   @override
   List<String> get customConstraints => [
@@ -479,6 +838,8 @@ class Parts extends Table {
   IntColumn get organizationId => integer().references(Organizations, #id)();
   TextColumn get partNumber => text()();
   TextColumn get partDescription => text().nullable()();
+  IntColumn get monthlyDemand =>
+      integer().nullable()(); // Monthly demand for the part
 
   @override
   List<String> get customConstraints => [

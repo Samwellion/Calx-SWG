@@ -77,7 +77,7 @@ class TimeObservationTableState extends State<TimeObservationTable> {
 
         // Get comments from controller
         String? comments = _commentsControllers[i]?.text;
-        if (comments != null && comments.trim().isEmpty) {
+        if (comments?.trim().isEmpty ?? true) {
           comments = null;
         }
 
@@ -555,15 +555,31 @@ class TimeObservationTableState extends State<TimeObservationTable> {
                                         controller: lowestRepeatableController,
                                         decoration: const InputDecoration(
                                           border: InputBorder.none,
-                                          hintText: 'Enter time',
+                                          hintText: 'HH:MM:SS',
                                           isDense: true,
                                           contentPadding:
                                               EdgeInsets.symmetric(vertical: 8),
                                         ),
-                                        onChanged: (value) {
+                                        textAlign: TextAlign.center,
+                                        onSubmitted: (value) {
+                                          // Only update when user presses Enter
                                           setState(() {
-                                            row['lowestRepeatable'] = value;
+                                            if (value.trim().isNotEmpty) {
+                                              row['lowestRepeatable'] =
+                                                  value.trim();
+                                            }
                                           });
+                                        },
+                                        onEditingComplete: () {
+                                          // Also handle when user taps away or focus is lost
+                                          final value =
+                                              lowestRepeatableController.text
+                                                  .trim();
+                                          if (value.isNotEmpty) {
+                                            setState(() {
+                                              row['lowestRepeatable'] = value;
+                                            });
+                                          }
                                         },
                                       ),
                                     )
@@ -705,15 +721,48 @@ class TimeObservationTableState extends State<TimeObservationTable> {
                                           _totalLapLowestRepeatableController,
                                       decoration: const InputDecoration(
                                         border: InputBorder.none,
-                                        hintText: 'Enter time',
+                                        hintText: 'HH:MM:SS',
                                         isDense: true,
                                         contentPadding:
                                             EdgeInsets.symmetric(vertical: 8),
                                       ),
-                                      onChanged: (value) {
+                                      textAlign: TextAlign.center,
+                                      onSubmitted: (value) {
+                                        // Only update when user presses Enter
                                         setState(() {
-                                          if (value.isNotEmpty) {
+                                          if (value.trim().isNotEmpty) {
                                             // Try to parse the time string
+                                            try {
+                                              final parts =
+                                                  value.trim().split(':');
+                                              if (parts.length >= 2) {
+                                                final minutes =
+                                                    int.parse(parts[0]);
+                                                final seconds =
+                                                    int.parse(parts[1]);
+                                                _totalLapLowestRepeatable =
+                                                    Duration(
+                                                  minutes: minutes,
+                                                  seconds: seconds,
+                                                );
+                                              }
+                                            } catch (e) {
+                                              // If parsing fails, treat as string
+                                              _totalLapLowestRepeatable = null;
+                                            }
+                                          } else {
+                                            _totalLapLowestRepeatable = null;
+                                          }
+                                        });
+                                      },
+                                      onEditingComplete: () {
+                                        // Also handle when user taps away or focus is lost
+                                        final value =
+                                            _totalLapLowestRepeatableController
+                                                .text
+                                                .trim();
+                                        if (value.isNotEmpty) {
+                                          setState(() {
                                             try {
                                               final parts = value.split(':');
                                               if (parts.length >= 2) {
@@ -728,12 +777,11 @@ class TimeObservationTableState extends State<TimeObservationTable> {
                                                 );
                                               }
                                             } catch (e) {
-                                              // If parsing fails, keep the text value
+                                              // If parsing fails, treat as string
+                                              _totalLapLowestRepeatable = null;
                                             }
-                                          } else {
-                                            _totalLapLowestRepeatable = null;
-                                          }
-                                        });
+                                          });
+                                        }
                                       },
                                     ),
                                   )
