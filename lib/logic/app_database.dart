@@ -39,6 +39,7 @@ class ValueStreams extends Table {
   IntColumn get mDemand => integer().nullable()(); // Monthly Demand
   IntColumn get uom => intEnum<UnitOfMeasure>().nullable()(); // Unit of Measure
   IntColumn get mngrEmpId => integer().nullable()(); // Manager Employee ID
+  TextColumn get taktTime => text().nullable()(); // Format: HH:MM:SS
 
   @override
   List<String> get customConstraints => [
@@ -120,7 +121,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 22;
+  int get schemaVersion => 23;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -418,6 +419,11 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(
                 parts, parts.monthlyDemand as GeneratedColumn<Object>);
           }
+          if (from == 22 && to == 23) {
+            // Add taktTime field to ValueStreams table
+            await m.addColumn(
+                valueStreams, valueStreams.taktTime as GeneratedColumn<Object>);
+          }
         },
       );
 
@@ -621,6 +627,62 @@ class AppDatabase extends _$AppDatabase {
         .getSingleOrNull();
   }
 
+  Future<String?> calculateAverageCycleTimeForProcess(int processId) async {
+    try {
+      // Get all cycle times from ProcessParts for this process
+      final query = select(processParts)
+        ..where((pp) => pp.processId.equals(processId));
+
+      final processPartsList = await query.get();
+
+      List<int> cycleTimesInSeconds = [];
+
+      for (final part in processPartsList) {
+        String? cycleTimeString = part.userOverrideTime ?? part.cycleTime;
+
+        if (cycleTimeString != null && cycleTimeString.isNotEmpty) {
+          final timeInSeconds = _parseTimeStringToSeconds(cycleTimeString);
+          if (timeInSeconds > 0) {
+            cycleTimesInSeconds.add(timeInSeconds);
+          }
+        }
+      }
+
+      if (cycleTimesInSeconds.isNotEmpty) {
+        // Calculate average cycle time
+        final averageSeconds = cycleTimesInSeconds.reduce((a, b) => a + b) /
+            cycleTimesInSeconds.length;
+        return _formatSecondsToTimeString(averageSeconds.round());
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  int _parseTimeStringToSeconds(String timeString) {
+    try {
+      final parts = timeString.split(':');
+      if (parts.length >= 3) {
+        final hours = int.parse(parts[0]);
+        final minutes = int.parse(parts[1]);
+        final seconds = int.parse(parts[2]);
+        return (hours * 3600) + (minutes * 60) + seconds;
+      }
+    } catch (e) {
+      // Invalid time format
+    }
+    return 0;
+  }
+
+  String _formatSecondsToTimeString(int totalSeconds) {
+    final hours = totalSeconds ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
+    final seconds = totalSeconds % 60;
+    return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
   Future<String?> getSelectedPartNumber() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('selectedPartNumber');
@@ -644,6 +706,7 @@ class AppDatabase extends _$AppDatabase {
     int? wip,
     double? uptime,
     String? coTime,
+    String? taktTime,
   }) async {
     final companion = ProcessesCompanion(
       processName: name != null ? Value(name) : const Value.absent(),
@@ -656,6 +719,7 @@ class AppDatabase extends _$AppDatabase {
       wip: wip != null ? Value(wip) : const Value.absent(),
       uptime: uptime != null ? Value(uptime) : const Value.absent(),
       coTime: coTime != null ? Value(coTime) : const Value.absent(),
+      taktTime: taktTime != null ? Value(taktTime) : const Value.absent(),
     );
 
     await (update(processes)..where((p) => p.id.equals(processId)))

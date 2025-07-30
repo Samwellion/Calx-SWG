@@ -4,6 +4,7 @@ import 'dart:async';
 import 'part_input_screen.dart';
 import 'process_input_screen.dart';
 import 'detailed_process_input_screen.dart';
+import 'process_capacity.dart';
 import '../screens/organization_setup_screen.dart';
 import '../logic/app_database.dart';
 import 'plant_setup_screen.dart';
@@ -739,6 +740,19 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
+                  onPressed: _openProcessCapacityScreen,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.yellow[600],
+                  ),
+                  child: const Text('Process Capacity Analysis'),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
                   onPressed: (hasPartsInDatabase && hasProcessesInDatabase)
                       ? _openAddElementsScreen
                       : null,
@@ -912,6 +926,22 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                 backgroundColor: Colors.yellow[600],
               ),
               child: const Text('Setups and Elements'),
+            ),
+          ),
+        ),
+      );
+
+      buttons.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _openProcessCapacityScreen,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.yellow[600],
+              ),
+              child: const Text('Process Capacity Analysis'),
             ),
           ),
         ),
@@ -1475,6 +1505,51 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text('Error opening detailed process screen')),
+        );
+      }
+    }
+  }
+
+  Future<void> _openProcessCapacityScreen() async {
+    if (selectedProcess == null ||
+        selectedProcess!.isEmpty ||
+        selectedValueStreamId == null ||
+        selectedValueStream == null ||
+        selectedCompany == null ||
+        selectedPlant == null) {
+      return;
+    }
+
+    try {
+      // Get the process ID for the selected process
+      final result = await db.customSelect(
+        'SELECT id FROM processes WHERE process_name = ? AND value_stream_id = ?',
+        variables: [
+          drift.Variable.withString(selectedProcess!),
+          drift.Variable.withInt(selectedValueStreamId!),
+        ],
+      ).getSingleOrNull();
+
+      if (result != null) {
+        final processId = result.data['id'] as int;
+
+        // ignore: use_build_context_synchronously
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ProcessCapacityScreen(
+              processId: processId,
+              processName: selectedProcess!,
+              valueStreamId: selectedValueStreamId!,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error opening process capacity screen: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Error opening process capacity screen')),
         );
       }
     }

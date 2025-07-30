@@ -4,10 +4,12 @@ import '../logic/app_database.dart';
 class ProcessObjectData {
   final ProcessesData process;
   final ProcessPart? processPart;
+  final String? calculatedCycleTime; // Average cycle time from all ProcessParts
 
   ProcessObjectData({
     required this.process,
     this.processPart,
+    this.calculatedCycleTime,
   });
 }
 
@@ -26,6 +28,7 @@ class ProcessObject {
   final int? wip;
   final double? uptime; // as decimal (0.85 for 85%)
   final String? coTime; // HH:MM:SS format
+  final String? taktTime; // HH:MM:SS format
 
   // ProcessPart data fields
   final String? cycleTime; // HH:MM:SS format
@@ -44,6 +47,7 @@ class ProcessObject {
     this.wip,
     this.uptime,
     this.coTime,
+    this.taktTime,
     this.cycleTime,
     this.fpy,
   });
@@ -81,7 +85,8 @@ class ProcessObject {
       wip: process.wip,
       uptime: process.uptime,
       coTime: process.coTime,
-      cycleTime: processPart?.cycleTime,
+      taktTime: process.taktTime,
+      cycleTime: data.calculatedCycleTime ?? processPart?.cycleTime,
       fpy: processPart?.fpy,
     );
   }
@@ -92,7 +97,7 @@ class ProcessObject {
 
   String get staffingDisplay => staff?.toString() ?? 'N/A';
   String get dailyDemandDisplay => dailyDemand?.toString() ?? 'N/A';
-  String get taktTimeDisplay => 'TBD'; // Will be calculated later
+  String get taktTimeDisplay => taktTime ?? 'N/A';
   String get cycleTimeDisplay => cycleTime ?? 'N/A';
   String get wipDisplay => wip?.toString() ?? 'N/A';
 
@@ -149,6 +154,7 @@ class ProcessObject {
     int? wip,
     double? uptime,
     String? coTime,
+    String? taktTime,
     String? cycleTime,
     double? fpy,
   }) {
@@ -165,6 +171,7 @@ class ProcessObject {
       wip: wip ?? this.wip,
       uptime: uptime ?? this.uptime,
       coTime: coTime ?? this.coTime,
+      taktTime: taktTime ?? this.taktTime,
       cycleTime: cycleTime ?? this.cycleTime,
       fpy: fpy ?? this.fpy,
     );

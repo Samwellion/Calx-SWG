@@ -429,7 +429,11 @@ class _PartInputScreenState extends State<PartInputScreen> {
       resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.only(
+            left: 16.0,
+            right: 16.0,
+            bottom: 16.0,
+          ),
           child: ConstrainedBox(
             constraints: BoxConstraints(
               minHeight: MediaQuery.of(context).size.height -
@@ -455,7 +459,7 @@ class _PartInputScreenState extends State<PartInputScreen> {
                             plantName: widget.plantName,
                             valueStreamName: widget.valueStreamName,
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 8),
                           Card(
                             color: Colors.yellow[50],
                             shape: RoundedRectangleBorder(
@@ -624,7 +628,7 @@ class _PartInputScreenState extends State<PartInputScreen> {
                                                           label: SizedBox(
                                                             width: constraints
                                                                     .maxWidth *
-                                                                0.22, // Increased from 0.2 to 0.22
+                                                                0.13, // Reduced from 0.22 to 0.13 (40% reduction)
                                                             child: const Text(
                                                                 'Part Number'),
                                                           ),
@@ -633,7 +637,7 @@ class _PartInputScreenState extends State<PartInputScreen> {
                                                           label: SizedBox(
                                                             width: constraints
                                                                     .maxWidth *
-                                                                0.38, // Decreased from 0.4 to 0.38
+                                                                0.40, // Increased from 0.38 to 0.40
                                                             child: const Text(
                                                                 'Description'),
                                                           ),
@@ -642,7 +646,7 @@ class _PartInputScreenState extends State<PartInputScreen> {
                                                           label: SizedBox(
                                                             width: constraints
                                                                     .maxWidth *
-                                                                0.18, // Increased from 0.15 to 0.18
+                                                                0.20, // Increased from 0.18 to 0.20
                                                             child: const Text(
                                                                 'Monthly Demand'),
                                                           ),
@@ -802,10 +806,7 @@ class _PartInputScreenState extends State<PartInputScreen> {
           ),
         ),
       ),
-      bottomSheet: Container(
-        color: Colors.transparent,
-        child: const AppFooter(),
-      ),
+      bottomNavigationBar: const AppFooter(),
     ));
   }
 }

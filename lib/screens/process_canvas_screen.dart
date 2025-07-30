@@ -52,14 +52,21 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen> {
 
       for (final processEntry in processEntries) {
         ProcessPart? processPart;
+        String? calculatedCycleTime;
+
         if (partNumber != null) {
           processPart = await db.getProcessPartByPartNumberAndProcessId(
               partNumber, processEntry.id);
         }
 
+        // Calculate average cycle time from all ProcessParts for this process
+        calculatedCycleTime =
+            await db.calculateAverageCycleTimeForProcess(processEntry.id);
+
         final processObjectData = ProcessObjectData(
           process: processEntry,
           processPart: processPart,
+          calculatedCycleTime: calculatedCycleTime,
         );
 
         var processObject = ProcessObject.fromProcessData(processObjectData);

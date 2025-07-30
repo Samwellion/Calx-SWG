@@ -41,6 +41,8 @@ class _DetailedProcessInputScreenState
   final TextEditingController _wipController = TextEditingController();
   final TextEditingController _uptimeController = TextEditingController();
   final TextEditingController _coTimeController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _taktTimeController = TextEditingController();
 
   bool _loading = true;
   String? _error;
@@ -49,6 +51,7 @@ class _DetailedProcessInputScreenState
   // Available parts for this value stream - split into assigned and available
   List<Part> _assignedParts = [];
   List<Part> _availableParts = [];
+  List<Part> _filteredAvailableParts = [];
 
   // Available processes for dropdown selection
   List<ProcessesData> _availableProcesses = [];
@@ -78,6 +81,7 @@ class _DetailedProcessInputScreenState
         _loading = false;
       });
     });
+    _searchController.addListener(_filterAvailableParts);
   }
 
   Future<void> _loadData() async {
@@ -130,6 +134,8 @@ class _DetailedProcessInputScreenState
         _availableParts = allParts;
       }
 
+      _filteredAvailableParts = _availableParts;
+
       // Load ProcessShift records
       await _loadProcessShifts();
 
@@ -150,7 +156,7 @@ class _DetailedProcessInputScreenState
     try {
       // Load process details
       final processResult = await db.customSelectQuery(
-        '''SELECT process_name, process_description, daily_demand, staff, wip, uptime, co_time
+        '''SELECT process_name, process_description, daily_demand, staff, wip, uptime, co_time, takt_time
            FROM processes 
            WHERE id = ?''',
         variables: [drift.Variable.withInt(widget.processId!)],
@@ -168,6 +174,11 @@ class _DetailedProcessInputScreenState
             ? (process['uptime'] * 100).toStringAsFixed(1)
             : '';
         _coTimeController.text = process['co_time'] ?? '';
+
+        // Load the takt time from database or calculate if not stored
+        String? storedTaktTime = process['takt_time'];
+        String taktTimeValue = storedTaktTime ?? _calculateTaktTime();
+        _taktTimeController.text = taktTimeValue;
       }
 
       // Load existing process part assignments
@@ -217,6 +228,8 @@ class _DetailedProcessInputScreenState
     _wipController.dispose();
     _uptimeController.dispose();
     _coTimeController.dispose();
+    _searchController.dispose();
+    _taktTimeController.dispose();
 
     for (var controller in _cycleTimeControllers.values) {
       controller.dispose();
@@ -283,6 +296,9 @@ class _DetailedProcessInputScreenState
       // Load the selected process data
       await _loadSelectedProcessData(newProcess);
 
+      // Calculate and save takt time for the newly selected process
+      await _autoSaveTaktTime();
+
       setState(() {
         _loading = false;
       });
@@ -312,6 +328,8 @@ class _DetailedProcessInputScreenState
             dailyDemand:
                 value.trim().isNotEmpty ? int.tryParse(value.trim()) : null,
           );
+          // Update takt time since daily demand affects the calculation
+          await _autoSaveTaktTime();
           break;
         case 'staff':
           await db.updateProcess(
@@ -339,6 +357,12 @@ class _DetailedProcessInputScreenState
             coTime: value.trim().isNotEmpty ? value.trim() : null,
           );
           break;
+        case 'taktTime':
+          await db.updateProcess(
+            _selectedProcess!.id,
+            taktTime: value.trim().isNotEmpty ? value.trim() : null,
+          );
+          break;
       }
     } catch (e) {
       debugPrint('Auto-save error for $fieldName: $e');
@@ -355,6 +379,20 @@ class _DetailedProcessInputScreenState
     }
   }
 
+  // Auto-save calculated takt time to the database
+  Future<void> _autoSaveTaktTime() async {
+    if (_selectedProcess == null) return;
+
+    try {
+      String calculatedTaktTime = _calculateTaktTime();
+      // Update the controller to refresh the UI
+      _taktTimeController.text = calculatedTaktTime;
+      await _autoSaveProcessField('taktTime', calculatedTaktTime);
+    } catch (e) {
+      debugPrint('Auto-save error for taktTime: $e');
+    }
+  }
+
   Future<void> _loadSelectedProcessData(ProcessesData process) async {
     // Load process details into form
     _processNameController.text = process.processName;
@@ -366,6 +404,10 @@ class _DetailedProcessInputScreenState
         ? (process.uptime! * 100).toStringAsFixed(1)
         : '';
     _coTimeController.text = process.coTime ?? '';
+
+    // Initialize takt time controller with stored value or calculate if not stored
+    String taktTimeValue = process.taktTime ?? _calculateTaktTime();
+    _taktTimeController.text = taktTimeValue;
 
     // Load existing process part assignments
     final assignmentsResult = await db.customSelectQuery(
@@ -411,9 +453,21 @@ class _DetailedProcessInputScreenState
     _availableParts = allParts
         .where((part) => !_selectedParts.contains(part.partNumber))
         .toList();
+    _filteredAvailableParts = _availableParts;
 
     // Load ProcessShift records
     await _loadProcessShifts();
+  }
+
+  void _filterAvailableParts() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      _filteredAvailableParts = _availableParts.where((part) {
+        final partNumber = part.partNumber.toLowerCase();
+        final partDescription = part.partDescription?.toLowerCase() ?? '';
+        return partNumber.contains(query) || partDescription.contains(query);
+      }).toList();
+    });
   }
 
   void _assignPartToProcess(Part part) async {
@@ -441,7 +495,12 @@ class _DetailedProcessInputScreenState
 
         await db.into(db.processParts).insert(processPartCompanion);
 
+        // Update daily demand field and recalculate takt time
+        await _updateDailyDemandField();
+        await _autoSaveTaktTime();
+
         if (mounted) {
+          setState(() {}); // Force UI refresh to show updated TT value
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Part ${part.partNumber} assigned to process'),
@@ -492,7 +551,12 @@ class _DetailedProcessInputScreenState
           [_selectedProcess!.id, part.partNumber],
         );
 
+        // Update daily demand field and recalculate takt time
+        await _updateDailyDemandField();
+        await _autoSaveTaktTime();
+
         if (mounted) {
+          setState(() {}); // Force UI refresh to show updated TT value
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Part ${part.partNumber} removed from process'),
@@ -700,7 +764,7 @@ class _DetailedProcessInputScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.yellow[50],
+      backgroundColor: Colors.yellow[100],
       appBar: AppBar(
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
@@ -753,39 +817,38 @@ class _DetailedProcessInputScreenState
     }
 
     return HomeButtonWrapper(
-      child: SingleChildScrollView(
-        scrollDirection: Axis.vertical,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Left Column: Process Details (58%)
-            Expanded(
-              flex: 58,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Left Column: Process Details (58%)
+          Expanded(
+            flex: 58,
+            child: SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: _buildProcessDetailsSection(),
               ),
             ),
+          ),
 
-            // Middle Column: Assigned Parts (21%)
-            Expanded(
-              flex: 21,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: _buildAssignedPartsSection(),
-              ),
+          // Middle Column: Assigned Parts (21%)
+          Expanded(
+            flex: 21,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(0, 16, 16, 16),
+              child: _buildAssignedPartsSection(),
             ),
+          ),
 
-            // Right Column: Available Parts (21%)
-            Expanded(
-              flex: 21,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: _buildAvailablePartsSection(),
-              ),
+          // Right Column: Available Parts (21%)
+          Expanded(
+            flex: 21,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(0, 16, 16, 16),
+              child: _buildAvailablePartsSection(),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -795,7 +858,7 @@ class _DetailedProcessInputScreenState
       children: [
         // Edit Process Details Card
         Card(
-          color: Colors.yellow[100],
+          color: Colors.yellow[50],
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           elevation: 8,
@@ -803,239 +866,232 @@ class _DetailedProcessInputScreenState
             padding: const EdgeInsets.all(16.0),
             child: Form(
               key: _formKey,
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Edit Process Details',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Edit Process Details',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                     ),
-                    const SizedBox(height: 16),
+                  ),
+                  const SizedBox(height: 16),
 
-                    // Process Name Dropdown (Required)
-                    DropdownButtonFormField<ProcessesData>(
-                      value: _selectedProcess,
-                      decoration: const InputDecoration(
-                        labelText: 'Process Name *',
-                        border: OutlineInputBorder(),
-                        filled: true,
-                        fillColor: Colors.white,
-                        isDense: true,
-                      ),
-                      items: _availableProcesses.map((process) {
-                        return DropdownMenuItem<ProcessesData>(
-                          value: process,
-                          child: Text(process.processName),
-                        );
-                      }).toList(),
-                      onChanged: _onProcessSelectionChanged,
-                      validator: (value) {
-                        if (value == null) {
-                          return 'Please select a process';
-                        }
-                        return null;
-                      },
+                  // Process Name Dropdown (Required)
+                  DropdownButtonFormField<ProcessesData>(
+                    value: _selectedProcess,
+                    decoration: const InputDecoration(
+                      labelText: 'Process Name *',
+                      border: OutlineInputBorder(),
+                      filled: true,
+                      fillColor: Colors.white,
+                      isDense: true,
                     ),
-                    const SizedBox(height: 12),
+                    items: _availableProcesses.map((process) {
+                      return DropdownMenuItem<ProcessesData>(
+                        value: process,
+                        child: Text(process.processName),
+                      );
+                    }).toList(),
+                    onChanged: _onProcessSelectionChanged,
+                    validator: (value) {
+                      if (value == null) {
+                        return 'Please select a process';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
 
-                    // Process Description
-                    TextFormField(
-                      controller: _processDescriptionController,
-                      maxLines: 2,
-                      decoration: const InputDecoration(
-                        labelText: 'Process Description',
-                        border: OutlineInputBorder(),
-                        filled: true,
-                        fillColor: Colors.white,
-                        isDense: true,
-                      ),
-                      onChanged: (value) =>
-                          _autoSaveProcessField('description', value),
+                  // Process Description
+                  TextFormField(
+                    controller: _processDescriptionController,
+                    maxLines: 2,
+                    decoration: const InputDecoration(
+                      labelText: 'Process Description',
+                      border: OutlineInputBorder(),
+                      filled: true,
+                      fillColor: Colors.white,
+                      isDense: true,
                     ),
-                    const SizedBox(height: 12),
+                    onChanged: (value) =>
+                        _autoSaveProcessField('description', value),
+                  ),
+                  const SizedBox(height: 12),
 
-                    // Working Days Per Week Label
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.blue[50],
-                        border: Border.all(color: Colors.blue[200]!),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              'Days/Week: ${_calculateWorkingDaysPerWeek()}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w500,
-                                fontSize: 16,
-                              ),
-                            ),
+                  // Staff Count, Daily Demand, WIP, Uptime, and Changeover Time on one line
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _staffController,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly
+                          ],
+                          decoration: const InputDecoration(
+                            labelText: 'Staff Count',
+                            border: OutlineInputBorder(),
+                            filled: true,
+                            fillColor: Colors.white,
+                            isDense: true,
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Text(
-                              'Avg Hours/Day: ${_formatHoursToHHMMSS(_calculateAverageHoursPerWorkingDay())}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w500,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Text(
-                              'Daily Demand: ${_calculateTotalDailyDemand().toStringAsFixed(1)}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w500,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Text(
-                            'Takt Time: ${_calculateTaktTime()}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w500,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Staff Count, Daily Demand, WIP, Uptime, and Changeover Time on one line
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _staffController,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly
-                            ],
-                            decoration: const InputDecoration(
-                              labelText: 'Staff Count',
-                              border: OutlineInputBorder(),
-                              filled: true,
-                              fillColor: Colors.white,
-                              isDense: true,
-                            ),
-                            validator: (value) {
-                              if (value != null && value.isNotEmpty) {
-                                if (int.tryParse(value) == null) {
-                                  return 'Must be a valid number';
-                                }
+                          validator: (value) {
+                            if (value != null && value.isNotEmpty) {
+                              if (int.tryParse(value) == null) {
+                                return 'Must be a valid number';
                               }
-                              return null;
-                            },
-                            onChanged: (value) =>
-                                _autoSaveProcessField('staff', value),
-                          ),
+                            }
+                            return null;
+                          },
+                          onChanged: (value) =>
+                              _autoSaveProcessField('staff', value),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _dailyDemandController,
-                            enabled: false, // Make read-only
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              labelText: 'Daily Demand',
-                              border: OutlineInputBorder(),
-                              filled: true,
-                              fillColor: Color(
-                                  0xFFF5F5F5), // Light grey to show it's disabled
-                              isDense: true,
-                            ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _wipController,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly
+                          ],
+                          decoration: const InputDecoration(
+                            labelText: 'WIP (Work in Progress)',
+                            border: OutlineInputBorder(),
+                            filled: true,
+                            fillColor: Colors.white,
+                            isDense: true,
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _wipController,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly
-                            ],
-                            decoration: const InputDecoration(
-                              labelText: 'WIP (Work in Progress)',
-                              border: OutlineInputBorder(),
-                              filled: true,
-                              fillColor: Colors.white,
-                              isDense: true,
-                            ),
-                            validator: (value) {
-                              if (value != null && value.isNotEmpty) {
-                                if (int.tryParse(value) == null) {
-                                  return 'Must be a valid number';
-                                }
+                          validator: (value) {
+                            if (value != null && value.isNotEmpty) {
+                              if (int.tryParse(value) == null) {
+                                return 'Must be a valid number';
                               }
-                              return null;
-                            },
-                            onChanged: (value) =>
-                                _autoSaveProcessField('wip', value),
-                          ),
+                            }
+                            return null;
+                          },
+                          onChanged: (value) =>
+                              _autoSaveProcessField('wip', value),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _uptimeController,
-                            keyboardType: const TextInputType.numberWithOptions(
-                                decimal: true),
-                            inputFormatters: [
-                              FilteringTextInputFormatter.allow(
-                                  RegExp(r'^\d*\.?\d*')),
-                            ],
-                            decoration: const InputDecoration(
-                              labelText: 'Uptime (%)',
-                              border: OutlineInputBorder(),
-                              filled: true,
-                              fillColor: Colors.white,
-                              isDense: true,
-                              suffixText: '%',
-                            ),
-                            validator: (value) {
-                              if (value != null && value.isNotEmpty) {
-                                final uptime = double.tryParse(value);
-                                if (uptime == null ||
-                                    uptime < 0 ||
-                                    uptime > 100) {
-                                  return 'Must be between 0 and 100';
-                                }
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _uptimeController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                                RegExp(r'^\d*\.?\d*')),
+                          ],
+                          decoration: const InputDecoration(
+                            labelText: 'Uptime (%)',
+                            border: OutlineInputBorder(),
+                            filled: true,
+                            fillColor: Colors.white,
+                            isDense: true,
+                            suffixText: '%',
+                          ),
+                          validator: (value) {
+                            if (value != null && value.isNotEmpty) {
+                              final uptime = double.tryParse(value);
+                              if (uptime == null ||
+                                  uptime < 0 ||
+                                  uptime > 100) {
+                                return 'Must be between 0 and 100';
                               }
-                              return null;
-                            },
-                            onChanged: (value) =>
-                                _autoSaveProcessField('uptime', value),
+                            }
+                            return null;
+                          },
+                          onChanged: (value) =>
+                              _autoSaveProcessField('uptime', value),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _coTimeController,
+                          decoration: const InputDecoration(
+                            labelText: 'Changeover Time (HH:MM:SS)',
+                            border: OutlineInputBorder(),
+                            filled: true,
+                            fillColor: Colors.white,
+                            isDense: true,
+                            hintText: '01:30:00',
+                          ),
+                          validator: _validateTimeFormat,
+                          onChanged: (value) =>
+                              _autoSaveProcessField('coTime', value),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Daily Demand, Days/Week, Hours/Day, and Takt Time as form fields
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _dailyDemandController,
+                          enabled: false,
+                          decoration: const InputDecoration(
+                            labelText: 'Daily Demand',
+                            border: OutlineInputBorder(),
+                            filled: true,
+                            fillColor: Color(0xFFF5F5F5),
+                            isDense: true,
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _coTimeController,
-                            decoration: const InputDecoration(
-                              labelText: 'Changeover Time (HH:MM:SS)',
-                              border: OutlineInputBorder(),
-                              filled: true,
-                              fillColor: Colors.white,
-                              isDense: true,
-                              hintText: '01:30:00',
-                            ),
-                            validator: _validateTimeFormat,
-                            onChanged: (value) =>
-                                _autoSaveProcessField('coTime', value),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          initialValue: '${_calculateWorkingDaysPerWeek()}',
+                          enabled: false,
+                          decoration: const InputDecoration(
+                            labelText: 'Days/Wk',
+                            border: OutlineInputBorder(),
+                            filled: true,
+                            fillColor: Color(0xFFF5F5F5),
+                            isDense: true,
                           ),
                         ),
-                      ],
-                    ),
-                  ],
-                ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          initialValue: _formatHoursToHHMMSS(
+                              _calculateAverageHoursPerWorkingDay()),
+                          enabled: false,
+                          decoration: const InputDecoration(
+                            labelText: 'Hrs/Day',
+                            border: OutlineInputBorder(),
+                            filled: true,
+                            fillColor: Color(0xFFF5F5F5),
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _taktTimeController,
+                          enabled: false,
+                          decoration: const InputDecoration(
+                            labelText: 'Takt Time',
+                            border: OutlineInputBorder(),
+                            filled: true,
+                            fillColor: Color(0xFFF5F5F5),
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ),
@@ -1049,7 +1105,7 @@ class _DetailedProcessInputScreenState
 
   Widget _buildProcessShiftsCard() {
     return Card(
-      color: Colors.yellow[100],
+      color: Colors.yellow[50],
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 8,
       child: Padding(
@@ -1197,6 +1253,8 @@ class _DetailedProcessInputScreenState
           onShiftsChanged: () async {
             // Reload the shifts after changes
             await _loadProcessShifts();
+            // Update takt time since shifts affect the calculation
+            await _autoSaveTaktTime();
           },
         );
       },
@@ -1205,7 +1263,7 @@ class _DetailedProcessInputScreenState
 
   Widget _buildAssignedPartsSection() {
     return Card(
-      color: Colors.yellow[100],
+      color: Colors.yellow[50],
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 8,
       child: Padding(
@@ -1213,63 +1271,39 @@ class _DetailedProcessInputScreenState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              _selectedProcess != null
-                  ? '${_selectedProcess!.processName}: Assigned Parts'
-                  : 'Assigned Parts',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+            const Text(
+              'Assigned Parts',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: _assignedParts.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'No parts assigned',
-                        style: TextStyle(color: Colors.grey, fontSize: 14),
-                      ),
-                    )
-                  : ListView.builder(
+            const SizedBox(height: 8),
+            _assignedParts.isEmpty
+                ? const Expanded(
+                    child: Center(
+                      child: Text('No parts assigned to this process.'),
+                    ),
+                  )
+                : Expanded(
+                    child: ListView.builder(
                       itemCount: _assignedParts.length,
                       itemBuilder: (context, index) {
                         final part = _assignedParts[index];
                         return Card(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          color: Colors.white,
+                          color: Colors.yellow[100],
+                          margin: const EdgeInsets.symmetric(vertical: 4),
                           child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 4,
-                            ),
-                            title: Text(
-                              part.partNumber,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            subtitle: part.partDescription?.isNotEmpty == true
-                                ? Text(
-                                    part.partDescription!,
-                                    style: const TextStyle(fontSize: 12),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  )
-                                : null,
+                            title: Text(part.partNumber),
+                            subtitle:
+                                Text(part.partDescription ?? 'No description'),
                             trailing: IconButton(
                               icon: const Icon(Icons.remove_circle,
                                   color: Colors.red),
-                              iconSize: 20,
                               onPressed: () => _unassignPartFromProcess(part),
-                              tooltip: 'Remove from process',
                             ),
                           ),
                         );
                       },
                     ),
-            ),
+                  ),
           ],
         ),
       ),
@@ -1278,7 +1312,7 @@ class _DetailedProcessInputScreenState
 
   Widget _buildAvailablePartsSection() {
     return Card(
-      color: Colors.yellow[100],
+      color: Colors.yellow[50],
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 8,
       child: Padding(
@@ -1286,66 +1320,50 @@ class _DetailedProcessInputScreenState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '${widget.valueStreamName}: Available Parts',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+            const Text(
+              'Available Parts',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: _availableParts.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'No parts available',
-                        style: TextStyle(color: Colors.grey, fontSize: 14),
-                      ),
-                    )
-                  : ListView.builder(
-                      itemCount: _availableParts.length,
+            const SizedBox(height: 8),
+            _filteredAvailableParts.isEmpty
+                ? const Expanded(
+                    child: Center(
+                      child: Text('No parts available to assign.'),
+                    ),
+                  )
+                : Expanded(
+                    child: ListView.builder(
+                      itemCount: _filteredAvailableParts.length,
                       itemBuilder: (context, index) {
-                        final part = _availableParts[index];
+                        final part = _filteredAvailableParts[index];
                         return Card(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          color: Colors.white,
+                          color: Colors.yellow[100],
+                          margin: const EdgeInsets.symmetric(vertical: 4),
                           child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 4,
-                            ),
-                            title: Text(
-                              part.partNumber,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            subtitle: part.partDescription?.isNotEmpty == true
-                                ? Text(
-                                    part.partDescription!,
-                                    style: const TextStyle(fontSize: 12),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  )
-                                : null,
+                            title: Text(part.partNumber),
+                            subtitle:
+                                Text(part.partDescription ?? 'No description'),
                             trailing: IconButton(
                               icon: const Icon(Icons.add_circle,
                                   color: Colors.green),
-                              iconSize: 20,
                               onPressed: () => _assignPartToProcess(part),
-                              tooltip: 'Add to process',
                             ),
                           ),
                         );
                       },
                     ),
-            ),
+                  ),
           ],
         ),
       ),
     );
   }
+
+  //endregion
+
+  //region Database Operations
+
+  //endregion
 }
 
 // Process Shifts Dialog for modifying process shifts
@@ -1593,6 +1611,8 @@ class _ProcessShiftsDialogState extends State<ProcessShiftsDialog> {
                 border: OutlineInputBorder(),
                 isDense: true,
                 contentPadding: EdgeInsets.all(8),
+                filled: true,
+                fillColor: Colors.white,
               ),
               style: TextStyle(
                 fontWeight: shift?.shiftName == 'TBD'
@@ -1612,6 +1632,8 @@ class _ProcessShiftsDialogState extends State<ProcessShiftsDialog> {
                 isDense: true,
                 contentPadding: EdgeInsets.all(8),
                 hintText: '08:00:00',
+                filled: true,
+                fillColor: Colors.white,
               ),
               validator: _validateTimeFormat,
             ),
@@ -1625,6 +1647,8 @@ class _ProcessShiftsDialogState extends State<ProcessShiftsDialog> {
                 isDense: true,
                 contentPadding: EdgeInsets.all(8),
                 hintText: '08:00:00',
+                filled: true,
+                fillColor: Colors.white,
               ),
               validator: _validateTimeFormat,
             ),
@@ -1638,6 +1662,8 @@ class _ProcessShiftsDialogState extends State<ProcessShiftsDialog> {
                 isDense: true,
                 contentPadding: EdgeInsets.all(8),
                 hintText: '08:00:00',
+                filled: true,
+                fillColor: Colors.white,
               ),
               validator: _validateTimeFormat,
             ),
@@ -1651,6 +1677,8 @@ class _ProcessShiftsDialogState extends State<ProcessShiftsDialog> {
                 isDense: true,
                 contentPadding: EdgeInsets.all(8),
                 hintText: '08:00:00',
+                filled: true,
+                fillColor: Colors.white,
               ),
               validator: _validateTimeFormat,
             ),
@@ -1664,6 +1692,8 @@ class _ProcessShiftsDialogState extends State<ProcessShiftsDialog> {
                 isDense: true,
                 contentPadding: EdgeInsets.all(8),
                 hintText: '08:00:00',
+                filled: true,
+                fillColor: Colors.white,
               ),
               validator: _validateTimeFormat,
             ),
@@ -1677,6 +1707,8 @@ class _ProcessShiftsDialogState extends State<ProcessShiftsDialog> {
                 isDense: true,
                 contentPadding: EdgeInsets.all(8),
                 hintText: '08:00:00',
+                filled: true,
+                fillColor: Colors.white,
               ),
               validator: _validateTimeFormat,
             ),
@@ -1690,6 +1722,8 @@ class _ProcessShiftsDialogState extends State<ProcessShiftsDialog> {
                 isDense: true,
                 contentPadding: EdgeInsets.all(8),
                 hintText: '08:00:00',
+                filled: true,
+                fillColor: Colors.white,
               ),
               validator: _validateTimeFormat,
             ),
@@ -1888,12 +1922,12 @@ class _ProcessShiftsDialogState extends State<ProcessShiftsDialog> {
     return Dialog(
       child: Container(
         width: MediaQuery.of(context).size.width * 0.8,
-        height: MediaQuery.of(context).size.height * 0.8,
+        height: MediaQuery.of(context).size.height * 0.4,
         decoration: BoxDecoration(
-          color: Colors.yellow[100],
+          color: Colors.yellow[50],
           borderRadius: BorderRadius.circular(8),
         ),
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

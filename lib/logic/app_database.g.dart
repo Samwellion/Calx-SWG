@@ -46,9 +46,15 @@ class $ValueStreamsTable extends ValueStreams
   late final GeneratedColumn<int> mngrEmpId = GeneratedColumn<int>(
       'mngr_emp_id', aliasedName, true,
       type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _taktTimeMeta =
+      const VerificationMeta('taktTime');
+  @override
+  late final GeneratedColumn<String> taktTime = GeneratedColumn<String>(
+      'takt_time', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns =>
-      [id, plantId, name, mDemand, uom, mngrEmpId];
+      [id, plantId, name, mDemand, uom, mngrEmpId, taktTime];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -84,6 +90,10 @@ class $ValueStreamsTable extends ValueStreams
           mngrEmpId.isAcceptableOrUnknown(
               data['mngr_emp_id']!, _mngrEmpIdMeta));
     }
+    if (data.containsKey('takt_time')) {
+      context.handle(_taktTimeMeta,
+          taktTime.isAcceptableOrUnknown(data['takt_time']!, _taktTimeMeta));
+    }
     return context;
   }
 
@@ -106,6 +116,8 @@ class $ValueStreamsTable extends ValueStreams
           .read(DriftSqlType.int, data['${effectivePrefix}uom'])),
       mngrEmpId: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}mngr_emp_id']),
+      taktTime: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}takt_time']),
     );
   }
 
@@ -127,13 +139,15 @@ class ValueStream extends DataClass implements Insertable<ValueStream> {
   final int? mDemand;
   final UnitOfMeasure? uom;
   final int? mngrEmpId;
+  final String? taktTime;
   const ValueStream(
       {required this.id,
       required this.plantId,
       required this.name,
       this.mDemand,
       this.uom,
-      this.mngrEmpId});
+      this.mngrEmpId,
+      this.taktTime});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -148,6 +162,9 @@ class ValueStream extends DataClass implements Insertable<ValueStream> {
     }
     if (!nullToAbsent || mngrEmpId != null) {
       map['mngr_emp_id'] = Variable<int>(mngrEmpId);
+    }
+    if (!nullToAbsent || taktTime != null) {
+      map['takt_time'] = Variable<String>(taktTime);
     }
     return map;
   }
@@ -164,6 +181,9 @@ class ValueStream extends DataClass implements Insertable<ValueStream> {
       mngrEmpId: mngrEmpId == null && nullToAbsent
           ? const Value.absent()
           : Value(mngrEmpId),
+      taktTime: taktTime == null && nullToAbsent
+          ? const Value.absent()
+          : Value(taktTime),
     );
   }
 
@@ -178,6 +198,7 @@ class ValueStream extends DataClass implements Insertable<ValueStream> {
       uom: $ValueStreamsTable.$converteruomn
           .fromJson(serializer.fromJson<int?>(json['uom'])),
       mngrEmpId: serializer.fromJson<int?>(json['mngrEmpId']),
+      taktTime: serializer.fromJson<String?>(json['taktTime']),
     );
   }
   @override
@@ -191,6 +212,7 @@ class ValueStream extends DataClass implements Insertable<ValueStream> {
       'uom': serializer
           .toJson<int?>($ValueStreamsTable.$converteruomn.toJson(uom)),
       'mngrEmpId': serializer.toJson<int?>(mngrEmpId),
+      'taktTime': serializer.toJson<String?>(taktTime),
     };
   }
 
@@ -200,7 +222,8 @@ class ValueStream extends DataClass implements Insertable<ValueStream> {
           String? name,
           Value<int?> mDemand = const Value.absent(),
           Value<UnitOfMeasure?> uom = const Value.absent(),
-          Value<int?> mngrEmpId = const Value.absent()}) =>
+          Value<int?> mngrEmpId = const Value.absent(),
+          Value<String?> taktTime = const Value.absent()}) =>
       ValueStream(
         id: id ?? this.id,
         plantId: plantId ?? this.plantId,
@@ -208,6 +231,7 @@ class ValueStream extends DataClass implements Insertable<ValueStream> {
         mDemand: mDemand.present ? mDemand.value : this.mDemand,
         uom: uom.present ? uom.value : this.uom,
         mngrEmpId: mngrEmpId.present ? mngrEmpId.value : this.mngrEmpId,
+        taktTime: taktTime.present ? taktTime.value : this.taktTime,
       );
   ValueStream copyWithCompanion(ValueStreamsCompanion data) {
     return ValueStream(
@@ -217,6 +241,7 @@ class ValueStream extends DataClass implements Insertable<ValueStream> {
       mDemand: data.mDemand.present ? data.mDemand.value : this.mDemand,
       uom: data.uom.present ? data.uom.value : this.uom,
       mngrEmpId: data.mngrEmpId.present ? data.mngrEmpId.value : this.mngrEmpId,
+      taktTime: data.taktTime.present ? data.taktTime.value : this.taktTime,
     );
   }
 
@@ -228,13 +253,15 @@ class ValueStream extends DataClass implements Insertable<ValueStream> {
           ..write('name: $name, ')
           ..write('mDemand: $mDemand, ')
           ..write('uom: $uom, ')
-          ..write('mngrEmpId: $mngrEmpId')
+          ..write('mngrEmpId: $mngrEmpId, ')
+          ..write('taktTime: $taktTime')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, plantId, name, mDemand, uom, mngrEmpId);
+  int get hashCode =>
+      Object.hash(id, plantId, name, mDemand, uom, mngrEmpId, taktTime);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -244,7 +271,8 @@ class ValueStream extends DataClass implements Insertable<ValueStream> {
           other.name == this.name &&
           other.mDemand == this.mDemand &&
           other.uom == this.uom &&
-          other.mngrEmpId == this.mngrEmpId);
+          other.mngrEmpId == this.mngrEmpId &&
+          other.taktTime == this.taktTime);
 }
 
 class ValueStreamsCompanion extends UpdateCompanion<ValueStream> {
@@ -254,6 +282,7 @@ class ValueStreamsCompanion extends UpdateCompanion<ValueStream> {
   final Value<int?> mDemand;
   final Value<UnitOfMeasure?> uom;
   final Value<int?> mngrEmpId;
+  final Value<String?> taktTime;
   const ValueStreamsCompanion({
     this.id = const Value.absent(),
     this.plantId = const Value.absent(),
@@ -261,6 +290,7 @@ class ValueStreamsCompanion extends UpdateCompanion<ValueStream> {
     this.mDemand = const Value.absent(),
     this.uom = const Value.absent(),
     this.mngrEmpId = const Value.absent(),
+    this.taktTime = const Value.absent(),
   });
   ValueStreamsCompanion.insert({
     this.id = const Value.absent(),
@@ -269,6 +299,7 @@ class ValueStreamsCompanion extends UpdateCompanion<ValueStream> {
     this.mDemand = const Value.absent(),
     this.uom = const Value.absent(),
     this.mngrEmpId = const Value.absent(),
+    this.taktTime = const Value.absent(),
   })  : plantId = Value(plantId),
         name = Value(name);
   static Insertable<ValueStream> custom({
@@ -278,6 +309,7 @@ class ValueStreamsCompanion extends UpdateCompanion<ValueStream> {
     Expression<int>? mDemand,
     Expression<int>? uom,
     Expression<int>? mngrEmpId,
+    Expression<String>? taktTime,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -286,6 +318,7 @@ class ValueStreamsCompanion extends UpdateCompanion<ValueStream> {
       if (mDemand != null) 'm_demand': mDemand,
       if (uom != null) 'uom': uom,
       if (mngrEmpId != null) 'mngr_emp_id': mngrEmpId,
+      if (taktTime != null) 'takt_time': taktTime,
     });
   }
 
@@ -295,7 +328,8 @@ class ValueStreamsCompanion extends UpdateCompanion<ValueStream> {
       Value<String>? name,
       Value<int?>? mDemand,
       Value<UnitOfMeasure?>? uom,
-      Value<int?>? mngrEmpId}) {
+      Value<int?>? mngrEmpId,
+      Value<String?>? taktTime}) {
     return ValueStreamsCompanion(
       id: id ?? this.id,
       plantId: plantId ?? this.plantId,
@@ -303,6 +337,7 @@ class ValueStreamsCompanion extends UpdateCompanion<ValueStream> {
       mDemand: mDemand ?? this.mDemand,
       uom: uom ?? this.uom,
       mngrEmpId: mngrEmpId ?? this.mngrEmpId,
+      taktTime: taktTime ?? this.taktTime,
     );
   }
 
@@ -328,6 +363,9 @@ class ValueStreamsCompanion extends UpdateCompanion<ValueStream> {
     if (mngrEmpId.present) {
       map['mngr_emp_id'] = Variable<int>(mngrEmpId.value);
     }
+    if (taktTime.present) {
+      map['takt_time'] = Variable<String>(taktTime.value);
+    }
     return map;
   }
 
@@ -339,7 +377,8 @@ class ValueStreamsCompanion extends UpdateCompanion<ValueStream> {
           ..write('name: $name, ')
           ..write('mDemand: $mDemand, ')
           ..write('uom: $uom, ')
-          ..write('mngrEmpId: $mngrEmpId')
+          ..write('mngrEmpId: $mngrEmpId, ')
+          ..write('taktTime: $taktTime')
           ..write(')'))
         .toString();
   }
@@ -407,6 +446,12 @@ class $ProcessesTable extends Processes
   late final GeneratedColumn<String> coTime = GeneratedColumn<String>(
       'co_time', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _taktTimeMeta =
+      const VerificationMeta('taktTime');
+  @override
+  late final GeneratedColumn<String> taktTime = GeneratedColumn<String>(
+      'takt_time', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _orderIndexMeta =
       const VerificationMeta('orderIndex');
   @override
@@ -443,6 +488,7 @@ class $ProcessesTable extends Processes
         wip,
         uptime,
         coTime,
+        taktTime,
         orderIndex,
         positionX,
         positionY,
@@ -505,6 +551,10 @@ class $ProcessesTable extends Processes
       context.handle(_coTimeMeta,
           coTime.isAcceptableOrUnknown(data['co_time']!, _coTimeMeta));
     }
+    if (data.containsKey('takt_time')) {
+      context.handle(_taktTimeMeta,
+          taktTime.isAcceptableOrUnknown(data['takt_time']!, _taktTimeMeta));
+    }
     if (data.containsKey('order_index')) {
       context.handle(
           _orderIndexMeta,
@@ -550,6 +600,8 @@ class $ProcessesTable extends Processes
           .read(DriftSqlType.double, data['${effectivePrefix}uptime']),
       coTime: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}co_time']),
+      taktTime: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}takt_time']),
       orderIndex: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}order_index'])!,
       positionX: attachedDatabase.typeMapping
@@ -577,6 +629,7 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
   final int? wip;
   final double? uptime;
   final String? coTime;
+  final String? taktTime;
   final int orderIndex;
   final double? positionX;
   final double? positionY;
@@ -591,6 +644,7 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
       this.wip,
       this.uptime,
       this.coTime,
+      this.taktTime,
       required this.orderIndex,
       this.positionX,
       this.positionY,
@@ -618,6 +672,9 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
     }
     if (!nullToAbsent || coTime != null) {
       map['co_time'] = Variable<String>(coTime);
+    }
+    if (!nullToAbsent || taktTime != null) {
+      map['takt_time'] = Variable<String>(taktTime);
     }
     map['order_index'] = Variable<int>(orderIndex);
     if (!nullToAbsent || positionX != null) {
@@ -650,6 +707,9 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
           uptime == null && nullToAbsent ? const Value.absent() : Value(uptime),
       coTime:
           coTime == null && nullToAbsent ? const Value.absent() : Value(coTime),
+      taktTime: taktTime == null && nullToAbsent
+          ? const Value.absent()
+          : Value(taktTime),
       orderIndex: Value(orderIndex),
       positionX: positionX == null && nullToAbsent
           ? const Value.absent()
@@ -676,6 +736,7 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
       wip: serializer.fromJson<int?>(json['wip']),
       uptime: serializer.fromJson<double?>(json['uptime']),
       coTime: serializer.fromJson<String?>(json['coTime']),
+      taktTime: serializer.fromJson<String?>(json['taktTime']),
       orderIndex: serializer.fromJson<int>(json['orderIndex']),
       positionX: serializer.fromJson<double?>(json['positionX']),
       positionY: serializer.fromJson<double?>(json['positionY']),
@@ -695,6 +756,7 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
       'wip': serializer.toJson<int?>(wip),
       'uptime': serializer.toJson<double?>(uptime),
       'coTime': serializer.toJson<String?>(coTime),
+      'taktTime': serializer.toJson<String?>(taktTime),
       'orderIndex': serializer.toJson<int>(orderIndex),
       'positionX': serializer.toJson<double?>(positionX),
       'positionY': serializer.toJson<double?>(positionY),
@@ -712,6 +774,7 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
           Value<int?> wip = const Value.absent(),
           Value<double?> uptime = const Value.absent(),
           Value<String?> coTime = const Value.absent(),
+          Value<String?> taktTime = const Value.absent(),
           int? orderIndex,
           Value<double?> positionX = const Value.absent(),
           Value<double?> positionY = const Value.absent(),
@@ -728,6 +791,7 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
         wip: wip.present ? wip.value : this.wip,
         uptime: uptime.present ? uptime.value : this.uptime,
         coTime: coTime.present ? coTime.value : this.coTime,
+        taktTime: taktTime.present ? taktTime.value : this.taktTime,
         orderIndex: orderIndex ?? this.orderIndex,
         positionX: positionX.present ? positionX.value : this.positionX,
         positionY: positionY.present ? positionY.value : this.positionY,
@@ -750,6 +814,7 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
       wip: data.wip.present ? data.wip.value : this.wip,
       uptime: data.uptime.present ? data.uptime.value : this.uptime,
       coTime: data.coTime.present ? data.coTime.value : this.coTime,
+      taktTime: data.taktTime.present ? data.taktTime.value : this.taktTime,
       orderIndex:
           data.orderIndex.present ? data.orderIndex.value : this.orderIndex,
       positionX: data.positionX.present ? data.positionX.value : this.positionX,
@@ -770,6 +835,7 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
           ..write('wip: $wip, ')
           ..write('uptime: $uptime, ')
           ..write('coTime: $coTime, ')
+          ..write('taktTime: $taktTime, ')
           ..write('orderIndex: $orderIndex, ')
           ..write('positionX: $positionX, ')
           ..write('positionY: $positionY, ')
@@ -789,6 +855,7 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
       wip,
       uptime,
       coTime,
+      taktTime,
       orderIndex,
       positionX,
       positionY,
@@ -806,6 +873,7 @@ class ProcessesData extends DataClass implements Insertable<ProcessesData> {
           other.wip == this.wip &&
           other.uptime == this.uptime &&
           other.coTime == this.coTime &&
+          other.taktTime == this.taktTime &&
           other.orderIndex == this.orderIndex &&
           other.positionX == this.positionX &&
           other.positionY == this.positionY &&
@@ -822,6 +890,7 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
   final Value<int?> wip;
   final Value<double?> uptime;
   final Value<String?> coTime;
+  final Value<String?> taktTime;
   final Value<int> orderIndex;
   final Value<double?> positionX;
   final Value<double?> positionY;
@@ -836,6 +905,7 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
     this.wip = const Value.absent(),
     this.uptime = const Value.absent(),
     this.coTime = const Value.absent(),
+    this.taktTime = const Value.absent(),
     this.orderIndex = const Value.absent(),
     this.positionX = const Value.absent(),
     this.positionY = const Value.absent(),
@@ -851,6 +921,7 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
     this.wip = const Value.absent(),
     this.uptime = const Value.absent(),
     this.coTime = const Value.absent(),
+    this.taktTime = const Value.absent(),
     this.orderIndex = const Value.absent(),
     this.positionX = const Value.absent(),
     this.positionY = const Value.absent(),
@@ -867,6 +938,7 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
     Expression<int>? wip,
     Expression<double>? uptime,
     Expression<String>? coTime,
+    Expression<String>? taktTime,
     Expression<int>? orderIndex,
     Expression<double>? positionX,
     Expression<double>? positionY,
@@ -882,6 +954,7 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
       if (wip != null) 'wip': wip,
       if (uptime != null) 'uptime': uptime,
       if (coTime != null) 'co_time': coTime,
+      if (taktTime != null) 'takt_time': taktTime,
       if (orderIndex != null) 'order_index': orderIndex,
       if (positionX != null) 'position_x': positionX,
       if (positionY != null) 'position_y': positionY,
@@ -899,6 +972,7 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
       Value<int?>? wip,
       Value<double?>? uptime,
       Value<String?>? coTime,
+      Value<String?>? taktTime,
       Value<int>? orderIndex,
       Value<double?>? positionX,
       Value<double?>? positionY,
@@ -913,6 +987,7 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
       wip: wip ?? this.wip,
       uptime: uptime ?? this.uptime,
       coTime: coTime ?? this.coTime,
+      taktTime: taktTime ?? this.taktTime,
       orderIndex: orderIndex ?? this.orderIndex,
       positionX: positionX ?? this.positionX,
       positionY: positionY ?? this.positionY,
@@ -950,6 +1025,9 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
     if (coTime.present) {
       map['co_time'] = Variable<String>(coTime.value);
     }
+    if (taktTime.present) {
+      map['takt_time'] = Variable<String>(taktTime.value);
+    }
     if (orderIndex.present) {
       map['order_index'] = Variable<int>(orderIndex.value);
     }
@@ -977,6 +1055,7 @@ class ProcessesCompanion extends UpdateCompanion<ProcessesData> {
           ..write('wip: $wip, ')
           ..write('uptime: $uptime, ')
           ..write('coTime: $coTime, ')
+          ..write('taktTime: $taktTime, ')
           ..write('orderIndex: $orderIndex, ')
           ..write('positionX: $positionX, ')
           ..write('positionY: $positionY, ')
@@ -1028,14 +1107,27 @@ class $ProcessPartsTable extends ProcessParts
   late final GeneratedColumn<String> cycleTime = GeneratedColumn<String>(
       'cycle_time', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _userOverrideTimeMeta =
+      const VerificationMeta('userOverrideTime');
+  @override
+  late final GeneratedColumn<String> userOverrideTime = GeneratedColumn<String>(
+      'user_override_time', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _fpyMeta = const VerificationMeta('fpy');
   @override
   late final GeneratedColumn<double> fpy = GeneratedColumn<double>(
       'fpy', aliasedName, true,
       type: DriftSqlType.double, requiredDuringInsert: false);
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, partNumber, processId, dailyDemand, cycleTime, fpy];
+  List<GeneratedColumn> get $columns => [
+        id,
+        partNumber,
+        processId,
+        dailyDemand,
+        cycleTime,
+        userOverrideTime,
+        fpy
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1073,6 +1165,12 @@ class $ProcessPartsTable extends ProcessParts
       context.handle(_cycleTimeMeta,
           cycleTime.isAcceptableOrUnknown(data['cycle_time']!, _cycleTimeMeta));
     }
+    if (data.containsKey('user_override_time')) {
+      context.handle(
+          _userOverrideTimeMeta,
+          userOverrideTime.isAcceptableOrUnknown(
+              data['user_override_time']!, _userOverrideTimeMeta));
+    }
     if (data.containsKey('fpy')) {
       context.handle(
           _fpyMeta, fpy.isAcceptableOrUnknown(data['fpy']!, _fpyMeta));
@@ -1096,6 +1194,8 @@ class $ProcessPartsTable extends ProcessParts
           .read(DriftSqlType.int, data['${effectivePrefix}daily_demand']),
       cycleTime: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}cycle_time']),
+      userOverrideTime: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}user_override_time']),
       fpy: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}fpy']),
     );
@@ -1113,6 +1213,7 @@ class ProcessPart extends DataClass implements Insertable<ProcessPart> {
   final int processId;
   final int? dailyDemand;
   final String? cycleTime;
+  final String? userOverrideTime;
   final double? fpy;
   const ProcessPart(
       {required this.id,
@@ -1120,6 +1221,7 @@ class ProcessPart extends DataClass implements Insertable<ProcessPart> {
       required this.processId,
       this.dailyDemand,
       this.cycleTime,
+      this.userOverrideTime,
       this.fpy});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1132,6 +1234,9 @@ class ProcessPart extends DataClass implements Insertable<ProcessPart> {
     }
     if (!nullToAbsent || cycleTime != null) {
       map['cycle_time'] = Variable<String>(cycleTime);
+    }
+    if (!nullToAbsent || userOverrideTime != null) {
+      map['user_override_time'] = Variable<String>(userOverrideTime);
     }
     if (!nullToAbsent || fpy != null) {
       map['fpy'] = Variable<double>(fpy);
@@ -1150,6 +1255,9 @@ class ProcessPart extends DataClass implements Insertable<ProcessPart> {
       cycleTime: cycleTime == null && nullToAbsent
           ? const Value.absent()
           : Value(cycleTime),
+      userOverrideTime: userOverrideTime == null && nullToAbsent
+          ? const Value.absent()
+          : Value(userOverrideTime),
       fpy: fpy == null && nullToAbsent ? const Value.absent() : Value(fpy),
     );
   }
@@ -1163,6 +1271,7 @@ class ProcessPart extends DataClass implements Insertable<ProcessPart> {
       processId: serializer.fromJson<int>(json['processId']),
       dailyDemand: serializer.fromJson<int?>(json['dailyDemand']),
       cycleTime: serializer.fromJson<String?>(json['cycleTime']),
+      userOverrideTime: serializer.fromJson<String?>(json['userOverrideTime']),
       fpy: serializer.fromJson<double?>(json['fpy']),
     );
   }
@@ -1175,6 +1284,7 @@ class ProcessPart extends DataClass implements Insertable<ProcessPart> {
       'processId': serializer.toJson<int>(processId),
       'dailyDemand': serializer.toJson<int?>(dailyDemand),
       'cycleTime': serializer.toJson<String?>(cycleTime),
+      'userOverrideTime': serializer.toJson<String?>(userOverrideTime),
       'fpy': serializer.toJson<double?>(fpy),
     };
   }
@@ -1185,6 +1295,7 @@ class ProcessPart extends DataClass implements Insertable<ProcessPart> {
           int? processId,
           Value<int?> dailyDemand = const Value.absent(),
           Value<String?> cycleTime = const Value.absent(),
+          Value<String?> userOverrideTime = const Value.absent(),
           Value<double?> fpy = const Value.absent()}) =>
       ProcessPart(
         id: id ?? this.id,
@@ -1192,6 +1303,9 @@ class ProcessPart extends DataClass implements Insertable<ProcessPart> {
         processId: processId ?? this.processId,
         dailyDemand: dailyDemand.present ? dailyDemand.value : this.dailyDemand,
         cycleTime: cycleTime.present ? cycleTime.value : this.cycleTime,
+        userOverrideTime: userOverrideTime.present
+            ? userOverrideTime.value
+            : this.userOverrideTime,
         fpy: fpy.present ? fpy.value : this.fpy,
       );
   ProcessPart copyWithCompanion(ProcessPartsCompanion data) {
@@ -1203,6 +1317,9 @@ class ProcessPart extends DataClass implements Insertable<ProcessPart> {
       dailyDemand:
           data.dailyDemand.present ? data.dailyDemand.value : this.dailyDemand,
       cycleTime: data.cycleTime.present ? data.cycleTime.value : this.cycleTime,
+      userOverrideTime: data.userOverrideTime.present
+          ? data.userOverrideTime.value
+          : this.userOverrideTime,
       fpy: data.fpy.present ? data.fpy.value : this.fpy,
     );
   }
@@ -1215,14 +1332,15 @@ class ProcessPart extends DataClass implements Insertable<ProcessPart> {
           ..write('processId: $processId, ')
           ..write('dailyDemand: $dailyDemand, ')
           ..write('cycleTime: $cycleTime, ')
+          ..write('userOverrideTime: $userOverrideTime, ')
           ..write('fpy: $fpy')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, partNumber, processId, dailyDemand, cycleTime, fpy);
+  int get hashCode => Object.hash(
+      id, partNumber, processId, dailyDemand, cycleTime, userOverrideTime, fpy);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1232,6 +1350,7 @@ class ProcessPart extends DataClass implements Insertable<ProcessPart> {
           other.processId == this.processId &&
           other.dailyDemand == this.dailyDemand &&
           other.cycleTime == this.cycleTime &&
+          other.userOverrideTime == this.userOverrideTime &&
           other.fpy == this.fpy);
 }
 
@@ -1241,6 +1360,7 @@ class ProcessPartsCompanion extends UpdateCompanion<ProcessPart> {
   final Value<int> processId;
   final Value<int?> dailyDemand;
   final Value<String?> cycleTime;
+  final Value<String?> userOverrideTime;
   final Value<double?> fpy;
   const ProcessPartsCompanion({
     this.id = const Value.absent(),
@@ -1248,6 +1368,7 @@ class ProcessPartsCompanion extends UpdateCompanion<ProcessPart> {
     this.processId = const Value.absent(),
     this.dailyDemand = const Value.absent(),
     this.cycleTime = const Value.absent(),
+    this.userOverrideTime = const Value.absent(),
     this.fpy = const Value.absent(),
   });
   ProcessPartsCompanion.insert({
@@ -1256,6 +1377,7 @@ class ProcessPartsCompanion extends UpdateCompanion<ProcessPart> {
     required int processId,
     this.dailyDemand = const Value.absent(),
     this.cycleTime = const Value.absent(),
+    this.userOverrideTime = const Value.absent(),
     this.fpy = const Value.absent(),
   })  : partNumber = Value(partNumber),
         processId = Value(processId);
@@ -1265,6 +1387,7 @@ class ProcessPartsCompanion extends UpdateCompanion<ProcessPart> {
     Expression<int>? processId,
     Expression<int>? dailyDemand,
     Expression<String>? cycleTime,
+    Expression<String>? userOverrideTime,
     Expression<double>? fpy,
   }) {
     return RawValuesInsertable({
@@ -1273,6 +1396,7 @@ class ProcessPartsCompanion extends UpdateCompanion<ProcessPart> {
       if (processId != null) 'process_id': processId,
       if (dailyDemand != null) 'daily_demand': dailyDemand,
       if (cycleTime != null) 'cycle_time': cycleTime,
+      if (userOverrideTime != null) 'user_override_time': userOverrideTime,
       if (fpy != null) 'fpy': fpy,
     });
   }
@@ -1283,6 +1407,7 @@ class ProcessPartsCompanion extends UpdateCompanion<ProcessPart> {
       Value<int>? processId,
       Value<int?>? dailyDemand,
       Value<String?>? cycleTime,
+      Value<String?>? userOverrideTime,
       Value<double?>? fpy}) {
     return ProcessPartsCompanion(
       id: id ?? this.id,
@@ -1290,6 +1415,7 @@ class ProcessPartsCompanion extends UpdateCompanion<ProcessPart> {
       processId: processId ?? this.processId,
       dailyDemand: dailyDemand ?? this.dailyDemand,
       cycleTime: cycleTime ?? this.cycleTime,
+      userOverrideTime: userOverrideTime ?? this.userOverrideTime,
       fpy: fpy ?? this.fpy,
     );
   }
@@ -1312,6 +1438,9 @@ class ProcessPartsCompanion extends UpdateCompanion<ProcessPart> {
     if (cycleTime.present) {
       map['cycle_time'] = Variable<String>(cycleTime.value);
     }
+    if (userOverrideTime.present) {
+      map['user_override_time'] = Variable<String>(userOverrideTime.value);
+    }
     if (fpy.present) {
       map['fpy'] = Variable<double>(fpy.value);
     }
@@ -1326,6 +1455,7 @@ class ProcessPartsCompanion extends UpdateCompanion<ProcessPart> {
           ..write('processId: $processId, ')
           ..write('dailyDemand: $dailyDemand, ')
           ..write('cycleTime: $cycleTime, ')
+          ..write('userOverrideTime: $userOverrideTime, ')
           ..write('fpy: $fpy')
           ..write(')'))
         .toString();
@@ -4552,6 +4682,7 @@ typedef $$ValueStreamsTableCreateCompanionBuilder = ValueStreamsCompanion
   Value<int?> mDemand,
   Value<UnitOfMeasure?> uom,
   Value<int?> mngrEmpId,
+  Value<String?> taktTime,
 });
 typedef $$ValueStreamsTableUpdateCompanionBuilder = ValueStreamsCompanion
     Function({
@@ -4561,6 +4692,7 @@ typedef $$ValueStreamsTableUpdateCompanionBuilder = ValueStreamsCompanion
   Value<int?> mDemand,
   Value<UnitOfMeasure?> uom,
   Value<int?> mngrEmpId,
+  Value<String?> taktTime,
 });
 
 final class $$ValueStreamsTableReferences
@@ -4641,6 +4773,9 @@ class $$ValueStreamsTableFilterComposer
 
   ColumnFilters<int> get mngrEmpId => $composableBuilder(
       column: $table.mngrEmpId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get taktTime => $composableBuilder(
+      column: $table.taktTime, builder: (column) => ColumnFilters(column));
 
   Expression<bool> processesRefs(
       Expression<bool> Function($$ProcessesTableFilterComposer f) f) {
@@ -4732,6 +4867,9 @@ class $$ValueStreamsTableOrderingComposer
 
   ColumnOrderings<int> get mngrEmpId => $composableBuilder(
       column: $table.mngrEmpId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get taktTime => $composableBuilder(
+      column: $table.taktTime, builder: (column) => ColumnOrderings(column));
 }
 
 class $$ValueStreamsTableAnnotationComposer
@@ -4760,6 +4898,9 @@ class $$ValueStreamsTableAnnotationComposer
 
   GeneratedColumn<int> get mngrEmpId =>
       $composableBuilder(column: $table.mngrEmpId, builder: (column) => column);
+
+  GeneratedColumn<String> get taktTime =>
+      $composableBuilder(column: $table.taktTime, builder: (column) => column);
 
   Expression<T> processesRefs<T extends Object>(
       Expression<T> Function($$ProcessesTableAnnotationComposer a) f) {
@@ -4855,6 +4996,7 @@ class $$ValueStreamsTableTableManager extends RootTableManager<
             Value<int?> mDemand = const Value.absent(),
             Value<UnitOfMeasure?> uom = const Value.absent(),
             Value<int?> mngrEmpId = const Value.absent(),
+            Value<String?> taktTime = const Value.absent(),
           }) =>
               ValueStreamsCompanion(
             id: id,
@@ -4863,6 +5005,7 @@ class $$ValueStreamsTableTableManager extends RootTableManager<
             mDemand: mDemand,
             uom: uom,
             mngrEmpId: mngrEmpId,
+            taktTime: taktTime,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -4871,6 +5014,7 @@ class $$ValueStreamsTableTableManager extends RootTableManager<
             Value<int?> mDemand = const Value.absent(),
             Value<UnitOfMeasure?> uom = const Value.absent(),
             Value<int?> mngrEmpId = const Value.absent(),
+            Value<String?> taktTime = const Value.absent(),
           }) =>
               ValueStreamsCompanion.insert(
             id: id,
@@ -4879,6 +5023,7 @@ class $$ValueStreamsTableTableManager extends RootTableManager<
             mDemand: mDemand,
             uom: uom,
             mngrEmpId: mngrEmpId,
+            taktTime: taktTime,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (
@@ -4969,6 +5114,7 @@ typedef $$ProcessesTableCreateCompanionBuilder = ProcessesCompanion Function({
   Value<int?> wip,
   Value<double?> uptime,
   Value<String?> coTime,
+  Value<String?> taktTime,
   Value<int> orderIndex,
   Value<double?> positionX,
   Value<double?> positionY,
@@ -4984,6 +5130,7 @@ typedef $$ProcessesTableUpdateCompanionBuilder = ProcessesCompanion Function({
   Value<int?> wip,
   Value<double?> uptime,
   Value<String?> coTime,
+  Value<String?> taktTime,
   Value<int> orderIndex,
   Value<double?> positionX,
   Value<double?> positionY,
@@ -5073,6 +5220,9 @@ class $$ProcessesTableFilterComposer
 
   ColumnFilters<String> get coTime => $composableBuilder(
       column: $table.coTime, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get taktTime => $composableBuilder(
+      column: $table.taktTime, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<int> get orderIndex => $composableBuilder(
       column: $table.orderIndex, builder: (column) => ColumnFilters(column));
@@ -5183,6 +5333,9 @@ class $$ProcessesTableOrderingComposer
   ColumnOrderings<String> get coTime => $composableBuilder(
       column: $table.coTime, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get taktTime => $composableBuilder(
+      column: $table.taktTime, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<int> get orderIndex => $composableBuilder(
       column: $table.orderIndex, builder: (column) => ColumnOrderings(column));
 
@@ -5248,6 +5401,9 @@ class $$ProcessesTableAnnotationComposer
 
   GeneratedColumn<String> get coTime =>
       $composableBuilder(column: $table.coTime, builder: (column) => column);
+
+  GeneratedColumn<String> get taktTime =>
+      $composableBuilder(column: $table.taktTime, builder: (column) => column);
 
   GeneratedColumn<int> get orderIndex => $composableBuilder(
       column: $table.orderIndex, builder: (column) => column);
@@ -5357,6 +5513,7 @@ class $$ProcessesTableTableManager extends RootTableManager<
             Value<int?> wip = const Value.absent(),
             Value<double?> uptime = const Value.absent(),
             Value<String?> coTime = const Value.absent(),
+            Value<String?> taktTime = const Value.absent(),
             Value<int> orderIndex = const Value.absent(),
             Value<double?> positionX = const Value.absent(),
             Value<double?> positionY = const Value.absent(),
@@ -5372,6 +5529,7 @@ class $$ProcessesTableTableManager extends RootTableManager<
             wip: wip,
             uptime: uptime,
             coTime: coTime,
+            taktTime: taktTime,
             orderIndex: orderIndex,
             positionX: positionX,
             positionY: positionY,
@@ -5387,6 +5545,7 @@ class $$ProcessesTableTableManager extends RootTableManager<
             Value<int?> wip = const Value.absent(),
             Value<double?> uptime = const Value.absent(),
             Value<String?> coTime = const Value.absent(),
+            Value<String?> taktTime = const Value.absent(),
             Value<int> orderIndex = const Value.absent(),
             Value<double?> positionX = const Value.absent(),
             Value<double?> positionY = const Value.absent(),
@@ -5402,6 +5561,7 @@ class $$ProcessesTableTableManager extends RootTableManager<
             wip: wip,
             uptime: uptime,
             coTime: coTime,
+            taktTime: taktTime,
             orderIndex: orderIndex,
             positionX: positionX,
             positionY: positionY,
@@ -5504,6 +5664,7 @@ typedef $$ProcessPartsTableCreateCompanionBuilder = ProcessPartsCompanion
   required int processId,
   Value<int?> dailyDemand,
   Value<String?> cycleTime,
+  Value<String?> userOverrideTime,
   Value<double?> fpy,
 });
 typedef $$ProcessPartsTableUpdateCompanionBuilder = ProcessPartsCompanion
@@ -5513,6 +5674,7 @@ typedef $$ProcessPartsTableUpdateCompanionBuilder = ProcessPartsCompanion
   Value<int> processId,
   Value<int?> dailyDemand,
   Value<String?> cycleTime,
+  Value<String?> userOverrideTime,
   Value<double?> fpy,
 });
 
@@ -5586,6 +5748,10 @@ class $$ProcessPartsTableFilterComposer
 
   ColumnFilters<String> get cycleTime => $composableBuilder(
       column: $table.cycleTime, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get userOverrideTime => $composableBuilder(
+      column: $table.userOverrideTime,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<double> get fpy => $composableBuilder(
       column: $table.fpy, builder: (column) => ColumnFilters(column));
@@ -5674,6 +5840,10 @@ class $$ProcessPartsTableOrderingComposer
   ColumnOrderings<String> get cycleTime => $composableBuilder(
       column: $table.cycleTime, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get userOverrideTime => $composableBuilder(
+      column: $table.userOverrideTime,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<double> get fpy => $composableBuilder(
       column: $table.fpy, builder: (column) => ColumnOrderings(column));
 
@@ -5718,6 +5888,9 @@ class $$ProcessPartsTableAnnotationComposer
 
   GeneratedColumn<String> get cycleTime =>
       $composableBuilder(column: $table.cycleTime, builder: (column) => column);
+
+  GeneratedColumn<String> get userOverrideTime => $composableBuilder(
+      column: $table.userOverrideTime, builder: (column) => column);
 
   GeneratedColumn<double> get fpy =>
       $composableBuilder(column: $table.fpy, builder: (column) => column);
@@ -5814,6 +5987,7 @@ class $$ProcessPartsTableTableManager extends RootTableManager<
             Value<int> processId = const Value.absent(),
             Value<int?> dailyDemand = const Value.absent(),
             Value<String?> cycleTime = const Value.absent(),
+            Value<String?> userOverrideTime = const Value.absent(),
             Value<double?> fpy = const Value.absent(),
           }) =>
               ProcessPartsCompanion(
@@ -5822,6 +5996,7 @@ class $$ProcessPartsTableTableManager extends RootTableManager<
             processId: processId,
             dailyDemand: dailyDemand,
             cycleTime: cycleTime,
+            userOverrideTime: userOverrideTime,
             fpy: fpy,
           ),
           createCompanionCallback: ({
@@ -5830,6 +6005,7 @@ class $$ProcessPartsTableTableManager extends RootTableManager<
             required int processId,
             Value<int?> dailyDemand = const Value.absent(),
             Value<String?> cycleTime = const Value.absent(),
+            Value<String?> userOverrideTime = const Value.absent(),
             Value<double?> fpy = const Value.absent(),
           }) =>
               ProcessPartsCompanion.insert(
@@ -5838,6 +6014,7 @@ class $$ProcessPartsTableTableManager extends RootTableManager<
             processId: processId,
             dailyDemand: dailyDemand,
             cycleTime: cycleTime,
+            userOverrideTime: userOverrideTime,
             fpy: fpy,
           ),
           withReferenceMapper: (p0) => p0
