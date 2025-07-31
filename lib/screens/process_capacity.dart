@@ -266,7 +266,7 @@ class _ProcessCapacityScreenState extends State<ProcessCapacityScreen> {
         }
       }
 
-      return workingDays.length > 0
+      return workingDays.isNotEmpty
           ? workingDays.length
           : 5; // Default to 5 if no working days found
     } catch (e) {
