@@ -65,7 +65,7 @@ class _DetailedProcessInputScreenState
   List<ProcessShiftData> _processShifts = [];
 
   // Process part details controllers
-  final Map<String, TextEditingController> _cycleTimeControllers = {};
+  final Map<String, TextEditingController> _processTimeControllers = {};
   final Map<String, TextEditingController> _fpyControllers = {};
   final Map<String, TextEditingController> _dailyDemandPartControllers = {};
 
@@ -203,7 +203,7 @@ class _DetailedProcessInputScreenState
       // Initialize controllers for existing assignments
       for (final assignment in _processPartAssignments) {
         final partNumber = assignment['part_number'] as String;
-        _cycleTimeControllers[partNumber] =
+        _processTimeControllers[partNumber] =
             TextEditingController(text: assignment['cycle_time'] ?? '');
         _fpyControllers[partNumber] = TextEditingController(
             text: assignment['fpy'] != null
@@ -231,7 +231,7 @@ class _DetailedProcessInputScreenState
     _searchController.dispose();
     _taktTimeController.dispose();
 
-    for (var controller in _cycleTimeControllers.values) {
+    for (var controller in _processTimeControllers.values) {
       controller.dispose();
     }
     for (var controller in _fpyControllers.values) {
@@ -430,7 +430,7 @@ class _DetailedProcessInputScreenState
     // Initialize controllers for existing assignments
     for (final assignment in _processPartAssignments) {
       final partNumber = assignment['part_number'] as String;
-      _cycleTimeControllers[partNumber] =
+      _processTimeControllers[partNumber] =
           TextEditingController(text: assignment['cycle_time'] ?? '');
       _fpyControllers[partNumber] = TextEditingController(
           text: assignment['fpy'] != null
@@ -477,7 +477,7 @@ class _DetailedProcessInputScreenState
       _availableParts.remove(part);
 
       // Initialize controllers for new part
-      _cycleTimeControllers[part.partNumber] = TextEditingController();
+      _processTimeControllers[part.partNumber] = TextEditingController();
       _fpyControllers[part.partNumber] = TextEditingController();
       _dailyDemandPartControllers[part.partNumber] = TextEditingController();
     });
@@ -489,7 +489,7 @@ class _DetailedProcessInputScreenState
           partNumber: drift.Value(part.partNumber),
           processId: drift.Value(_selectedProcess!.id),
           dailyDemand: const drift.Value(null),
-          cycleTime: const drift.Value(null),
+          processTime: const drift.Value(null),
           fpy: const drift.Value(null),
         );
 
@@ -535,10 +535,10 @@ class _DetailedProcessInputScreenState
       _availableParts.sort((a, b) => a.partNumber.compareTo(b.partNumber));
 
       // Dispose controllers for removed part
-      _cycleTimeControllers[part.partNumber]?.dispose();
+      _processTimeControllers[part.partNumber]?.dispose();
       _fpyControllers[part.partNumber]?.dispose();
       _dailyDemandPartControllers[part.partNumber]?.dispose();
-      _cycleTimeControllers.remove(part.partNumber);
+      _processTimeControllers.remove(part.partNumber);
       _fpyControllers.remove(part.partNumber);
       _dailyDemandPartControllers.remove(part.partNumber);
     });

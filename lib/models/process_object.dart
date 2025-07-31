@@ -31,7 +31,7 @@ class ProcessObject {
   final String? taktTime; // HH:MM:SS format
 
   // ProcessPart data fields
-  final String? cycleTime; // HH:MM:SS format
+  final String? processTime; // HH:MM:SS format
   final double? fpy; // as decimal (0.95 for 95%)
 
   ProcessObject({
@@ -48,7 +48,7 @@ class ProcessObject {
     this.uptime,
     this.coTime,
     this.taktTime,
-    this.cycleTime,
+    this.processTime,
     this.fpy,
   });
 
@@ -86,7 +86,7 @@ class ProcessObject {
       uptime: process.uptime,
       coTime: process.coTime,
       taktTime: process.taktTime,
-      cycleTime: data.calculatedCycleTime ?? processPart?.cycleTime,
+      processTime: data.calculatedCycleTime ?? processPart?.processTime,
       fpy: processPart?.fpy,
     );
   }
@@ -98,14 +98,14 @@ class ProcessObject {
   String get staffingDisplay => staff?.toString() ?? 'N/A';
   String get dailyDemandDisplay => dailyDemand?.toString() ?? 'N/A';
   String get taktTimeDisplay => taktTime ?? 'N/A';
-  String get cycleTimeDisplay => cycleTime ?? 'N/A';
+  String get cycleTimeDisplay => processTime ?? 'N/A';
   String get wipDisplay => wip?.toString() ?? 'N/A';
 
   String get leadTimeDisplay {
-    if (cycleTime != null && wip != null && wip! > 0) {
+    if (processTime != null && wip != null && wip! > 0) {
       // Parse cycle time (HH:MM:SS) and multiply by WIP
       try {
-        final parts = cycleTime!.split(':');
+        final parts = processTime!.split(':');
         if (parts.length == 3) {
           final hours = int.parse(parts[0]);
           final minutes = int.parse(parts[1]);
@@ -155,7 +155,7 @@ class ProcessObject {
     double? uptime,
     String? coTime,
     String? taktTime,
-    String? cycleTime,
+    String? processTime,
     double? fpy,
   }) {
     return ProcessObject(
@@ -172,7 +172,7 @@ class ProcessObject {
       uptime: uptime ?? this.uptime,
       coTime: coTime ?? this.coTime,
       taktTime: taktTime ?? this.taktTime,
-      cycleTime: cycleTime ?? this.cycleTime,
+      processTime: processTime ?? this.processTime,
       fpy: fpy ?? this.fpy,
     );
   }

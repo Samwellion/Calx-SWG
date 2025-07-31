@@ -292,8 +292,8 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen> {
             ? (process.uptime! * 100).toStringAsFixed(1)
             : '');
     final coTimeController = TextEditingController(text: process.coTime ?? '');
-    final cycleTimeController =
-        TextEditingController(text: process.cycleTime ?? '');
+    final processTimeController =
+        TextEditingController(text: process.processTime ?? '');
     final fpyController = TextEditingController(
         text:
             process.fpy != null ? (process.fpy! * 100).toStringAsFixed(1) : '');
@@ -392,7 +392,7 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: TextField(
-                          controller: cycleTimeController,
+                          controller: processTimeController,
                           decoration: const InputDecoration(
                             labelText: 'Cycle Time (HH:MM:SS)',
                             border: OutlineInputBorder(),
@@ -440,9 +440,9 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen> {
         coTime: coTimeController.text.trim().isEmpty
             ? null
             : coTimeController.text.trim(),
-        cycleTime: cycleTimeController.text.trim().isEmpty
+        processTime: processTimeController.text.trim().isEmpty
             ? null
-            : cycleTimeController.text.trim(),
+            : processTimeController.text.trim(),
         fpy: double.tryParse(fpyController.text.trim()),
       );
     }
@@ -538,7 +538,7 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen> {
     int? wip,
     double? uptime,
     String? coTime,
-    String? cycleTime,
+    String? processTime,
     double? fpy,
   }) async {
     try {
@@ -573,13 +573,13 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen> {
       );
 
       // Update process part table if we have process part data and part number
-      if (cycleTime != null || fpy != null) {
+      if (processTime != null || fpy != null) {
         final partNumber = await db.getSelectedPartNumber();
         if (partNumber != null) {
           await db.updateProcessPart(
             partNumber,
             process.id,
-            cycleTime: cycleTime,
+            processTime: processTime,
             fpy: fpyDecimal,
           );
         }

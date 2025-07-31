@@ -121,7 +121,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 23;
+  int get schemaVersion => 24;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -424,6 +424,12 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(
                 valueStreams, valueStreams.taktTime as GeneratedColumn<Object>);
           }
+          if (from == 23 && to == 24) {
+            // Rename cycleTime to processTime in ProcessParts table
+            // This requires recreating the table due to column rename
+            await m.deleteTable('process_parts');
+            await m.createTable(processParts);
+          }
         },
       );
 
@@ -638,10 +644,10 @@ class AppDatabase extends _$AppDatabase {
       List<int> cycleTimesInSeconds = [];
 
       for (final part in processPartsList) {
-        String? cycleTimeString = part.userOverrideTime ?? part.cycleTime;
+        String? processTimeString = part.userOverrideTime ?? part.processTime;
 
-        if (cycleTimeString != null && cycleTimeString.isNotEmpty) {
-          final timeInSeconds = _parseTimeStringToSeconds(cycleTimeString);
+        if (processTimeString != null && processTimeString.isNotEmpty) {
+          final timeInSeconds = _parseTimeStringToSeconds(processTimeString);
           if (timeInSeconds > 0) {
             cycleTimesInSeconds.add(timeInSeconds);
           }
@@ -729,11 +735,11 @@ class AppDatabase extends _$AppDatabase {
   Future<void> updateProcessPart(
     String partNumber,
     int processId, {
-    String? cycleTime,
+    String? processTime,
     double? fpy,
   }) async {
     final companion = ProcessPartsCompanion(
-      cycleTime: cycleTime != null ? Value(cycleTime) : const Value.absent(),
+      processTime: processTime != null ? Value(processTime) : const Value.absent(),
       fpy: fpy != null ? Value(fpy) : const Value.absent(),
     );
 
@@ -821,7 +827,7 @@ class ProcessParts extends Table {
 
   // New fields for process parts management
   IntColumn get dailyDemand => integer().nullable()();
-  TextColumn get cycleTime => text().nullable()(); // Format: HH:MM:SS
+  TextColumn get processTime => text().nullable()(); // Format: HH:MM:SS
   TextColumn get userOverrideTime => text().nullable()(); // Format: HH:MM:SS
   RealColumn get fpy =>
       real().nullable()(); // First Pass Yield as decimal (e.g., 0.95 for 95%)

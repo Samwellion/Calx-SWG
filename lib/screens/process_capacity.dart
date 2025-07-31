@@ -219,7 +219,7 @@ class _ProcessCapacityScreenState extends State<ProcessCapacityScreen> {
           'partNumber': processPart.partNumber,
           'partDescription': part?.partDescription ?? 'N/A',
           'dailyDemand': processPart.dailyDemand?.toString() ?? 'N/A',
-          'cycleTime': processPart.cycleTime ?? 'N/A',
+          'processTime': processPart.processTime ?? 'N/A',
           'userOverrideTime': processPart.userOverrideTime ?? '',
           'fpy': processPart.fpy != null
               ? (processPart.fpy! * 100).toStringAsFixed(1)
@@ -609,7 +609,7 @@ class _ProcessCapacityScreenState extends State<ProcessCapacityScreen> {
             flex: 1,
             child: Container(
               padding: const EdgeInsets.all(8),
-              child: Text(part['cycleTime'] ?? ''),
+              child: Text(part['processTime'] ?? ''),
             ),
           ),
           // User Override Time (editable)
@@ -825,8 +825,8 @@ class _ProcessCapacityScreenState extends State<ProcessCapacityScreen> {
       await (db.update(db.processParts)
             ..where((pp) => pp.id.equals(processPartId)))
           .write(companion);
+    // ignore: empty_catches
     } catch (e) {
-      print('Error saving process part field: $e');
     }
   }
 
@@ -886,10 +886,10 @@ class _ProcessCapacityScreenState extends State<ProcessCapacityScreen> {
 
   String _calculateTimePerPiece(Map<String, dynamic> part) {
     try {
-      // Get cycle time (from userOverrideTime field, or cycleTime if override is empty)
+      // Get cycle time (from userOverrideTime field, or processTime if override is empty)
       String? timeString = part['userOverrideTime'];
       if (timeString == null || timeString.isEmpty) {
-        timeString = part['cycleTime'];
+        timeString = part['processTime'];
       }
 
       // Get FPY as decimal

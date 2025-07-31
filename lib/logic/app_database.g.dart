@@ -1101,11 +1101,11 @@ class $ProcessPartsTable extends ProcessParts
   late final GeneratedColumn<int> dailyDemand = GeneratedColumn<int>(
       'daily_demand', aliasedName, true,
       type: DriftSqlType.int, requiredDuringInsert: false);
-  static const VerificationMeta _cycleTimeMeta =
-      const VerificationMeta('cycleTime');
+  static const VerificationMeta _processTimeMeta =
+      const VerificationMeta('processTime');
   @override
-  late final GeneratedColumn<String> cycleTime = GeneratedColumn<String>(
-      'cycle_time', aliasedName, true,
+  late final GeneratedColumn<String> processTime = GeneratedColumn<String>(
+      'process_time', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _userOverrideTimeMeta =
       const VerificationMeta('userOverrideTime');
@@ -1124,7 +1124,7 @@ class $ProcessPartsTable extends ProcessParts
         partNumber,
         processId,
         dailyDemand,
-        cycleTime,
+        processTime,
         userOverrideTime,
         fpy
       ];
@@ -1161,9 +1161,11 @@ class $ProcessPartsTable extends ProcessParts
           dailyDemand.isAcceptableOrUnknown(
               data['daily_demand']!, _dailyDemandMeta));
     }
-    if (data.containsKey('cycle_time')) {
-      context.handle(_cycleTimeMeta,
-          cycleTime.isAcceptableOrUnknown(data['cycle_time']!, _cycleTimeMeta));
+    if (data.containsKey('process_time')) {
+      context.handle(
+          _processTimeMeta,
+          processTime.isAcceptableOrUnknown(
+              data['process_time']!, _processTimeMeta));
     }
     if (data.containsKey('user_override_time')) {
       context.handle(
@@ -1192,8 +1194,8 @@ class $ProcessPartsTable extends ProcessParts
           .read(DriftSqlType.int, data['${effectivePrefix}process_id'])!,
       dailyDemand: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}daily_demand']),
-      cycleTime: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}cycle_time']),
+      processTime: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}process_time']),
       userOverrideTime: attachedDatabase.typeMapping.read(
           DriftSqlType.string, data['${effectivePrefix}user_override_time']),
       fpy: attachedDatabase.typeMapping
@@ -1212,7 +1214,7 @@ class ProcessPart extends DataClass implements Insertable<ProcessPart> {
   final String partNumber;
   final int processId;
   final int? dailyDemand;
-  final String? cycleTime;
+  final String? processTime;
   final String? userOverrideTime;
   final double? fpy;
   const ProcessPart(
@@ -1220,7 +1222,7 @@ class ProcessPart extends DataClass implements Insertable<ProcessPart> {
       required this.partNumber,
       required this.processId,
       this.dailyDemand,
-      this.cycleTime,
+      this.processTime,
       this.userOverrideTime,
       this.fpy});
   @override
@@ -1232,8 +1234,8 @@ class ProcessPart extends DataClass implements Insertable<ProcessPart> {
     if (!nullToAbsent || dailyDemand != null) {
       map['daily_demand'] = Variable<int>(dailyDemand);
     }
-    if (!nullToAbsent || cycleTime != null) {
-      map['cycle_time'] = Variable<String>(cycleTime);
+    if (!nullToAbsent || processTime != null) {
+      map['process_time'] = Variable<String>(processTime);
     }
     if (!nullToAbsent || userOverrideTime != null) {
       map['user_override_time'] = Variable<String>(userOverrideTime);
@@ -1252,9 +1254,9 @@ class ProcessPart extends DataClass implements Insertable<ProcessPart> {
       dailyDemand: dailyDemand == null && nullToAbsent
           ? const Value.absent()
           : Value(dailyDemand),
-      cycleTime: cycleTime == null && nullToAbsent
+      processTime: processTime == null && nullToAbsent
           ? const Value.absent()
-          : Value(cycleTime),
+          : Value(processTime),
       userOverrideTime: userOverrideTime == null && nullToAbsent
           ? const Value.absent()
           : Value(userOverrideTime),
@@ -1270,7 +1272,7 @@ class ProcessPart extends DataClass implements Insertable<ProcessPart> {
       partNumber: serializer.fromJson<String>(json['partNumber']),
       processId: serializer.fromJson<int>(json['processId']),
       dailyDemand: serializer.fromJson<int?>(json['dailyDemand']),
-      cycleTime: serializer.fromJson<String?>(json['cycleTime']),
+      processTime: serializer.fromJson<String?>(json['processTime']),
       userOverrideTime: serializer.fromJson<String?>(json['userOverrideTime']),
       fpy: serializer.fromJson<double?>(json['fpy']),
     );
@@ -1283,7 +1285,7 @@ class ProcessPart extends DataClass implements Insertable<ProcessPart> {
       'partNumber': serializer.toJson<String>(partNumber),
       'processId': serializer.toJson<int>(processId),
       'dailyDemand': serializer.toJson<int?>(dailyDemand),
-      'cycleTime': serializer.toJson<String?>(cycleTime),
+      'processTime': serializer.toJson<String?>(processTime),
       'userOverrideTime': serializer.toJson<String?>(userOverrideTime),
       'fpy': serializer.toJson<double?>(fpy),
     };
@@ -1294,7 +1296,7 @@ class ProcessPart extends DataClass implements Insertable<ProcessPart> {
           String? partNumber,
           int? processId,
           Value<int?> dailyDemand = const Value.absent(),
-          Value<String?> cycleTime = const Value.absent(),
+          Value<String?> processTime = const Value.absent(),
           Value<String?> userOverrideTime = const Value.absent(),
           Value<double?> fpy = const Value.absent()}) =>
       ProcessPart(
@@ -1302,7 +1304,7 @@ class ProcessPart extends DataClass implements Insertable<ProcessPart> {
         partNumber: partNumber ?? this.partNumber,
         processId: processId ?? this.processId,
         dailyDemand: dailyDemand.present ? dailyDemand.value : this.dailyDemand,
-        cycleTime: cycleTime.present ? cycleTime.value : this.cycleTime,
+        processTime: processTime.present ? processTime.value : this.processTime,
         userOverrideTime: userOverrideTime.present
             ? userOverrideTime.value
             : this.userOverrideTime,
@@ -1316,7 +1318,8 @@ class ProcessPart extends DataClass implements Insertable<ProcessPart> {
       processId: data.processId.present ? data.processId.value : this.processId,
       dailyDemand:
           data.dailyDemand.present ? data.dailyDemand.value : this.dailyDemand,
-      cycleTime: data.cycleTime.present ? data.cycleTime.value : this.cycleTime,
+      processTime:
+          data.processTime.present ? data.processTime.value : this.processTime,
       userOverrideTime: data.userOverrideTime.present
           ? data.userOverrideTime.value
           : this.userOverrideTime,
@@ -1331,7 +1334,7 @@ class ProcessPart extends DataClass implements Insertable<ProcessPart> {
           ..write('partNumber: $partNumber, ')
           ..write('processId: $processId, ')
           ..write('dailyDemand: $dailyDemand, ')
-          ..write('cycleTime: $cycleTime, ')
+          ..write('processTime: $processTime, ')
           ..write('userOverrideTime: $userOverrideTime, ')
           ..write('fpy: $fpy')
           ..write(')'))
@@ -1339,8 +1342,8 @@ class ProcessPart extends DataClass implements Insertable<ProcessPart> {
   }
 
   @override
-  int get hashCode => Object.hash(
-      id, partNumber, processId, dailyDemand, cycleTime, userOverrideTime, fpy);
+  int get hashCode => Object.hash(id, partNumber, processId, dailyDemand,
+      processTime, userOverrideTime, fpy);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1349,7 +1352,7 @@ class ProcessPart extends DataClass implements Insertable<ProcessPart> {
           other.partNumber == this.partNumber &&
           other.processId == this.processId &&
           other.dailyDemand == this.dailyDemand &&
-          other.cycleTime == this.cycleTime &&
+          other.processTime == this.processTime &&
           other.userOverrideTime == this.userOverrideTime &&
           other.fpy == this.fpy);
 }
@@ -1359,7 +1362,7 @@ class ProcessPartsCompanion extends UpdateCompanion<ProcessPart> {
   final Value<String> partNumber;
   final Value<int> processId;
   final Value<int?> dailyDemand;
-  final Value<String?> cycleTime;
+  final Value<String?> processTime;
   final Value<String?> userOverrideTime;
   final Value<double?> fpy;
   const ProcessPartsCompanion({
@@ -1367,7 +1370,7 @@ class ProcessPartsCompanion extends UpdateCompanion<ProcessPart> {
     this.partNumber = const Value.absent(),
     this.processId = const Value.absent(),
     this.dailyDemand = const Value.absent(),
-    this.cycleTime = const Value.absent(),
+    this.processTime = const Value.absent(),
     this.userOverrideTime = const Value.absent(),
     this.fpy = const Value.absent(),
   });
@@ -1376,7 +1379,7 @@ class ProcessPartsCompanion extends UpdateCompanion<ProcessPart> {
     required String partNumber,
     required int processId,
     this.dailyDemand = const Value.absent(),
-    this.cycleTime = const Value.absent(),
+    this.processTime = const Value.absent(),
     this.userOverrideTime = const Value.absent(),
     this.fpy = const Value.absent(),
   })  : partNumber = Value(partNumber),
@@ -1386,7 +1389,7 @@ class ProcessPartsCompanion extends UpdateCompanion<ProcessPart> {
     Expression<String>? partNumber,
     Expression<int>? processId,
     Expression<int>? dailyDemand,
-    Expression<String>? cycleTime,
+    Expression<String>? processTime,
     Expression<String>? userOverrideTime,
     Expression<double>? fpy,
   }) {
@@ -1395,7 +1398,7 @@ class ProcessPartsCompanion extends UpdateCompanion<ProcessPart> {
       if (partNumber != null) 'part_number': partNumber,
       if (processId != null) 'process_id': processId,
       if (dailyDemand != null) 'daily_demand': dailyDemand,
-      if (cycleTime != null) 'cycle_time': cycleTime,
+      if (processTime != null) 'process_time': processTime,
       if (userOverrideTime != null) 'user_override_time': userOverrideTime,
       if (fpy != null) 'fpy': fpy,
     });
@@ -1406,7 +1409,7 @@ class ProcessPartsCompanion extends UpdateCompanion<ProcessPart> {
       Value<String>? partNumber,
       Value<int>? processId,
       Value<int?>? dailyDemand,
-      Value<String?>? cycleTime,
+      Value<String?>? processTime,
       Value<String?>? userOverrideTime,
       Value<double?>? fpy}) {
     return ProcessPartsCompanion(
@@ -1414,7 +1417,7 @@ class ProcessPartsCompanion extends UpdateCompanion<ProcessPart> {
       partNumber: partNumber ?? this.partNumber,
       processId: processId ?? this.processId,
       dailyDemand: dailyDemand ?? this.dailyDemand,
-      cycleTime: cycleTime ?? this.cycleTime,
+      processTime: processTime ?? this.processTime,
       userOverrideTime: userOverrideTime ?? this.userOverrideTime,
       fpy: fpy ?? this.fpy,
     );
@@ -1435,8 +1438,8 @@ class ProcessPartsCompanion extends UpdateCompanion<ProcessPart> {
     if (dailyDemand.present) {
       map['daily_demand'] = Variable<int>(dailyDemand.value);
     }
-    if (cycleTime.present) {
-      map['cycle_time'] = Variable<String>(cycleTime.value);
+    if (processTime.present) {
+      map['process_time'] = Variable<String>(processTime.value);
     }
     if (userOverrideTime.present) {
       map['user_override_time'] = Variable<String>(userOverrideTime.value);
@@ -1454,7 +1457,7 @@ class ProcessPartsCompanion extends UpdateCompanion<ProcessPart> {
           ..write('partNumber: $partNumber, ')
           ..write('processId: $processId, ')
           ..write('dailyDemand: $dailyDemand, ')
-          ..write('cycleTime: $cycleTime, ')
+          ..write('processTime: $processTime, ')
           ..write('userOverrideTime: $userOverrideTime, ')
           ..write('fpy: $fpy')
           ..write(')'))
@@ -5663,7 +5666,7 @@ typedef $$ProcessPartsTableCreateCompanionBuilder = ProcessPartsCompanion
   required String partNumber,
   required int processId,
   Value<int?> dailyDemand,
-  Value<String?> cycleTime,
+  Value<String?> processTime,
   Value<String?> userOverrideTime,
   Value<double?> fpy,
 });
@@ -5673,7 +5676,7 @@ typedef $$ProcessPartsTableUpdateCompanionBuilder = ProcessPartsCompanion
   Value<String> partNumber,
   Value<int> processId,
   Value<int?> dailyDemand,
-  Value<String?> cycleTime,
+  Value<String?> processTime,
   Value<String?> userOverrideTime,
   Value<double?> fpy,
 });
@@ -5746,8 +5749,8 @@ class $$ProcessPartsTableFilterComposer
   ColumnFilters<int> get dailyDemand => $composableBuilder(
       column: $table.dailyDemand, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get cycleTime => $composableBuilder(
-      column: $table.cycleTime, builder: (column) => ColumnFilters(column));
+  ColumnFilters<String> get processTime => $composableBuilder(
+      column: $table.processTime, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get userOverrideTime => $composableBuilder(
       column: $table.userOverrideTime,
@@ -5837,8 +5840,8 @@ class $$ProcessPartsTableOrderingComposer
   ColumnOrderings<int> get dailyDemand => $composableBuilder(
       column: $table.dailyDemand, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get cycleTime => $composableBuilder(
-      column: $table.cycleTime, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<String> get processTime => $composableBuilder(
+      column: $table.processTime, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get userOverrideTime => $composableBuilder(
       column: $table.userOverrideTime,
@@ -5886,8 +5889,8 @@ class $$ProcessPartsTableAnnotationComposer
   GeneratedColumn<int> get dailyDemand => $composableBuilder(
       column: $table.dailyDemand, builder: (column) => column);
 
-  GeneratedColumn<String> get cycleTime =>
-      $composableBuilder(column: $table.cycleTime, builder: (column) => column);
+  GeneratedColumn<String> get processTime => $composableBuilder(
+      column: $table.processTime, builder: (column) => column);
 
   GeneratedColumn<String> get userOverrideTime => $composableBuilder(
       column: $table.userOverrideTime, builder: (column) => column);
@@ -5986,7 +5989,7 @@ class $$ProcessPartsTableTableManager extends RootTableManager<
             Value<String> partNumber = const Value.absent(),
             Value<int> processId = const Value.absent(),
             Value<int?> dailyDemand = const Value.absent(),
-            Value<String?> cycleTime = const Value.absent(),
+            Value<String?> processTime = const Value.absent(),
             Value<String?> userOverrideTime = const Value.absent(),
             Value<double?> fpy = const Value.absent(),
           }) =>
@@ -5995,7 +5998,7 @@ class $$ProcessPartsTableTableManager extends RootTableManager<
             partNumber: partNumber,
             processId: processId,
             dailyDemand: dailyDemand,
-            cycleTime: cycleTime,
+            processTime: processTime,
             userOverrideTime: userOverrideTime,
             fpy: fpy,
           ),
@@ -6004,7 +6007,7 @@ class $$ProcessPartsTableTableManager extends RootTableManager<
             required String partNumber,
             required int processId,
             Value<int?> dailyDemand = const Value.absent(),
-            Value<String?> cycleTime = const Value.absent(),
+            Value<String?> processTime = const Value.absent(),
             Value<String?> userOverrideTime = const Value.absent(),
             Value<double?> fpy = const Value.absent(),
           }) =>
@@ -6013,7 +6016,7 @@ class $$ProcessPartsTableTableManager extends RootTableManager<
             partNumber: partNumber,
             processId: processId,
             dailyDemand: dailyDemand,
-            cycleTime: cycleTime,
+            processTime: processTime,
             userOverrideTime: userOverrideTime,
             fpy: fpy,
           ),
