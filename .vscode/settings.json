@@ -1,10 +1,15 @@
 {
     "cSpell.words": [
+        "jvmargs",
+        "Metaspace",
         "mngr",
+        "newtimeobs",
         "ovrd",
         "PFEP",
         "Prefs",
         "Repeatables",
+        "takt",
         "vsid"
-    ]
+    ],
+    "java.configuration.updateBuildConfiguration": "interactive"
 }
