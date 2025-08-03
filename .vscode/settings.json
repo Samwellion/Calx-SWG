@@ -1,10 +1,18 @@
 {
     "cSpell.words": [
+        "backgrounded",
+        "jvmargs",
+        "leadtime",
+        "LTWH",
+        "Metaspace",
         "mngr",
+        "newtimeobs",
         "ovrd",
         "PFEP",
         "Prefs",
+        "processpart",
         "Repeatables",
+        "takt",
         "vsid"
     ],
     "java.configuration.updateBuildConfiguration": "interactive"

@@ -217,6 +217,8 @@ class _VSDetailScreenState extends State<VSDetailScreen> {
         mngrEmpId: managerEmpId != null
             ? drift.Value(managerEmpId)
             : const drift.Value.absent(),
+        taktTime:
+            drift.Value(_timePerUnit), // Save the calculated takt time (time per unit)
       ));
 
       // Recalculate takt time and time per unit after saving monthly demand

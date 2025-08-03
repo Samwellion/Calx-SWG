@@ -39,6 +39,7 @@ class ValueStreams extends Table {
   IntColumn get mDemand => integer().nullable()(); // Monthly Demand
   IntColumn get uom => intEnum<UnitOfMeasure>().nullable()(); // Unit of Measure
   IntColumn get mngrEmpId => integer().nullable()(); // Manager Employee ID
+  TextColumn get taktTime => text().nullable()(); // Format: HH:MM:SS
 
   @override
   List<String> get customConstraints => [
@@ -82,6 +83,25 @@ class TimeStudy extends Table {
   TextColumn get iterationTime => text()(); // IterationTime in HH:MM:SS format
 }
 
+// Canvas State table: stores the state of canvas icons for each value stream and part
+@DataClassName('CanvasState')
+class CanvasStates extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get valueStreamId => integer()();
+  TextColumn get partNumber => text()();
+  TextColumn get iconType => text()(); // Type of icon (customer, supplier, truck, etc.)
+  TextColumn get iconId => text()(); // Unique ID for the icon instance
+  RealColumn get positionX => real()(); // X position on canvas
+  RealColumn get positionY => real()(); // Y position on canvas
+  TextColumn get userData => text().nullable()(); // JSON string for user input data
+  DateTimeColumn get lastModified => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  List<String> get customConstraints => [
+        'UNIQUE(value_stream_id, part_number, icon_id)' // Prevent duplicate icon IDs per value stream/part
+      ];
+}
+
 @DriftDatabase(tables: [
   ProcessParts,
   ProcessShift,
@@ -91,6 +111,7 @@ class TimeStudy extends Table {
   Organizations,
   Plants,
   ValueStreams,
+  CanvasStates,
   SetupElements,
   Setups,
   Study,
@@ -120,7 +141,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 22;
+  int get schemaVersion => 25;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -128,6 +149,13 @@ class AppDatabase extends _$AppDatabase {
           return m.createAll();
         },
         onUpgrade: (Migrator m, int from, int to) async {
+          // Add CanvasStates table for version 25
+          if (to >= 25) {
+            // Just create the new table if it doesn't exist
+            await m.createTable(canvasStates);
+            return;
+          }
+
           // Force complete recreation for version 17 - Added ProcessShift table and new fields to ProcessParts
           if (to >= 17) {
             await m.deleteTable('parts');
@@ -418,6 +446,17 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(
                 parts, parts.monthlyDemand as GeneratedColumn<Object>);
           }
+          if (from == 22 && to == 23) {
+            // Add taktTime field to ValueStreams table
+            await m.addColumn(
+                valueStreams, valueStreams.taktTime as GeneratedColumn<Object>);
+          }
+          if (from == 23 && to == 24) {
+            // Rename cycleTime to processTime in ProcessParts table
+            // This requires recreating the table due to column rename
+            await m.deleteTable('process_parts');
+            await m.createTable(processParts);
+          }
         },
       );
 
@@ -621,6 +660,62 @@ class AppDatabase extends _$AppDatabase {
         .getSingleOrNull();
   }
 
+  Future<String?> calculateAverageCycleTimeForProcess(int processId) async {
+    try {
+      // Get all cycle times from ProcessParts for this process
+      final query = select(processParts)
+        ..where((pp) => pp.processId.equals(processId));
+
+      final processPartsList = await query.get();
+
+      List<int> cycleTimesInSeconds = [];
+
+      for (final part in processPartsList) {
+        String? processTimeString = part.userOverrideTime ?? part.processTime;
+
+        if (processTimeString!.isNotEmpty) {
+          final timeInSeconds = _parseTimeStringToSeconds(processTimeString);
+          if (timeInSeconds > 0) {
+            cycleTimesInSeconds.add(timeInSeconds);
+          }
+        }
+      }
+
+      if (cycleTimesInSeconds.isNotEmpty) {
+        // Calculate average cycle time
+        final averageSeconds = cycleTimesInSeconds.reduce((a, b) => a + b) /
+            cycleTimesInSeconds.length;
+        return _formatSecondsToTimeString(averageSeconds.round());
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  int _parseTimeStringToSeconds(String timeString) {
+    try {
+      final parts = timeString.split(':');
+      if (parts.length >= 3) {
+        final hours = int.parse(parts[0]);
+        final minutes = int.parse(parts[1]);
+        final seconds = int.parse(parts[2]);
+        return (hours * 3600) + (minutes * 60) + seconds;
+      }
+    } catch (e) {
+      // Invalid time format
+    }
+    return 0;
+  }
+
+  String _formatSecondsToTimeString(int totalSeconds) {
+    final hours = totalSeconds ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
+    final seconds = totalSeconds % 60;
+    return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
   Future<String?> getSelectedPartNumber() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('selectedPartNumber');
@@ -644,6 +739,7 @@ class AppDatabase extends _$AppDatabase {
     int? wip,
     double? uptime,
     String? coTime,
+    String? taktTime,
   }) async {
     final companion = ProcessesCompanion(
       processName: name != null ? Value(name) : const Value.absent(),
@@ -656,6 +752,7 @@ class AppDatabase extends _$AppDatabase {
       wip: wip != null ? Value(wip) : const Value.absent(),
       uptime: uptime != null ? Value(uptime) : const Value.absent(),
       coTime: coTime != null ? Value(coTime) : const Value.absent(),
+      taktTime: taktTime != null ? Value(taktTime) : const Value.absent(),
     );
 
     await (update(processes)..where((p) => p.id.equals(processId)))
@@ -665,11 +762,11 @@ class AppDatabase extends _$AppDatabase {
   Future<void> updateProcessPart(
     String partNumber,
     int processId, {
-    String? cycleTime,
+    String? processTime,
     double? fpy,
   }) async {
     final companion = ProcessPartsCompanion(
-      cycleTime: cycleTime != null ? Value(cycleTime) : const Value.absent(),
+      processTime: processTime != null ? Value(processTime) : const Value.absent(),
       fpy: fpy != null ? Value(fpy) : const Value.absent(),
     );
 
@@ -747,6 +844,65 @@ class AppDatabase extends _$AppDatabase {
       }
     }
   }
+
+  // Canvas State Management Methods
+  Future<void> saveCanvasState({
+    required int valueStreamId,
+    required String partNumber,
+    required String iconType,
+    required String iconId,
+    required double positionX,
+    required double positionY,
+    String? userData,
+  }) async {
+    await into(canvasStates).insertOnConflictUpdate(
+      CanvasStatesCompanion.insert(
+        valueStreamId: valueStreamId,
+        partNumber: partNumber,
+        iconType: iconType,
+        iconId: iconId,
+        positionX: positionX,
+        positionY: positionY,
+        userData: Value(userData),
+        lastModified: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  Future<List<CanvasState>> loadCanvasState({
+    required int valueStreamId,
+    required String partNumber,
+  }) async {
+    return await (select(canvasStates)
+          ..where((cs) =>
+              cs.valueStreamId.equals(valueStreamId) &
+              cs.partNumber.equals(partNumber)))
+        .get();
+  }
+
+  Future<void> deleteCanvasIcon({
+    required int valueStreamId,
+    required String partNumber,
+    required String iconId,
+  }) async {
+    await (delete(canvasStates)
+          ..where((cs) =>
+              cs.valueStreamId.equals(valueStreamId) &
+              cs.partNumber.equals(partNumber) &
+              cs.iconId.equals(iconId)))
+        .go();
+  }
+
+  Future<void> clearCanvasState({
+    required int valueStreamId,
+    required String partNumber,
+  }) async {
+    await (delete(canvasStates)
+          ..where((cs) =>
+              cs.valueStreamId.equals(valueStreamId) &
+              cs.partNumber.equals(partNumber)))
+        .go();
+  }
 }
 
 // ProcessPart table: associates a part number with a process
@@ -757,7 +913,7 @@ class ProcessParts extends Table {
 
   // New fields for process parts management
   IntColumn get dailyDemand => integer().nullable()();
-  TextColumn get cycleTime => text().nullable()(); // Format: HH:MM:SS
+  TextColumn get processTime => text().nullable()(); // Format: HH:MM:SS
   TextColumn get userOverrideTime => text().nullable()(); // Format: HH:MM:SS
   RealColumn get fpy =>
       real().nullable()(); // First Pass Yield as decimal (e.g., 0.95 for 95%)

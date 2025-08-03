@@ -1,0 +1,21 @@
+Test the input field behavior:
+
+1. Create a FIFO connector between "Picking and Kitting" and "Sole Assembly"
+2. Click on the input field that shows "0"
+3. Type "1" - should show "1"
+4. Type "0" - should show "10"  
+5. Type "0" - should show "100"
+6. Type "0" - should show "1000"
+
+Expected result: All digits should appear in sequence without any disappearing.
+
+Current fixes applied:
+- Removed custom NumberWithCommasFormatter completely
+- Using Flutter's built-in FilteringTextInputFormatter.digitsOnly
+- No cursor manipulation
+- Simple onChanged handler that just parses the text
+
+Position fix applied:
+- Connector positioned at midpoint between processes 
+- Y offset of +100px below process centers
+- Should appear BETWEEN processes, not on top of them

@@ -4,10 +4,12 @@ import '../logic/app_database.dart';
 class ProcessObjectData {
   final ProcessesData process;
   final ProcessPart? processPart;
+  final String? calculatedCycleTime; // Average cycle time from all ProcessParts
 
   ProcessObjectData({
     required this.process,
     this.processPart,
+    this.calculatedCycleTime,
   });
 }
 
@@ -26,9 +28,10 @@ class ProcessObject {
   final int? wip;
   final double? uptime; // as decimal (0.85 for 85%)
   final String? coTime; // HH:MM:SS format
+  final String? taktTime; // HH:MM:SS format
 
   // ProcessPart data fields
-  final String? cycleTime; // HH:MM:SS format
+  final String? processTime; // HH:MM:SS format
   final double? fpy; // as decimal (0.95 for 95%)
 
   ProcessObject({
@@ -44,7 +47,8 @@ class ProcessObject {
     this.wip,
     this.uptime,
     this.coTime,
-    this.cycleTime,
+    this.taktTime,
+    this.processTime,
     this.fpy,
   });
 
@@ -81,7 +85,8 @@ class ProcessObject {
       wip: process.wip,
       uptime: process.uptime,
       coTime: process.coTime,
-      cycleTime: processPart?.cycleTime,
+      taktTime: process.taktTime,
+      processTime: processPart?.userOverrideTime ?? processPart?.processTime ?? data.calculatedCycleTime,
       fpy: processPart?.fpy,
     );
   }
@@ -92,32 +97,36 @@ class ProcessObject {
 
   String get staffingDisplay => staff?.toString() ?? 'N/A';
   String get dailyDemandDisplay => dailyDemand?.toString() ?? 'N/A';
-  String get taktTimeDisplay => 'TBD'; // Will be calculated later
-  String get cycleTimeDisplay => cycleTime ?? 'N/A';
+  String get taktTimeDisplay => taktTime ?? 'N/A';
   String get wipDisplay => wip?.toString() ?? 'N/A';
 
-  String get leadTimeDisplay {
-    if (cycleTime != null && wip != null && wip! > 0) {
-      // Parse cycle time (HH:MM:SS) and multiply by WIP
+  // LT (Lead Time) should be the processpart processTime 
+  String get leadTimeDisplay => processTime ?? 'N/A';
+
+  // CT (Cycle Time) should be the processTime divided by the WIP
+  String get cycleTimeDisplay {
+    if (processTime != null && wip != null && wip! > 0) {
       try {
-        final parts = cycleTime!.split(':');
+        final parts = processTime!.split(':');
         if (parts.length == 3) {
           final hours = int.parse(parts[0]);
           final minutes = int.parse(parts[1]);
           final seconds = int.parse(parts[2]);
 
-          final totalSeconds = (hours * 3600 + minutes * 60 + seconds) * wip!;
-          final leadHours = totalSeconds ~/ 3600;
-          final leadMinutes = (totalSeconds % 3600) ~/ 60;
-          final leadSecs = totalSeconds % 60;
+          final totalSeconds = hours * 3600 + minutes * 60 + seconds;
+          final cycleTimeSeconds = totalSeconds / wip!;
 
-          return '${leadHours.toString().padLeft(2, '0')}:${leadMinutes.toString().padLeft(2, '0')}:${leadSecs.toString().padLeft(2, '0')}';
+          final cycleHours = (cycleTimeSeconds / 3600).floor();
+          final cycleMinutes = ((cycleTimeSeconds % 3600) / 60).floor();
+          final cycleSecs = (cycleTimeSeconds % 60).floor();
+
+          return '${cycleHours.toString().padLeft(2, '0')}:${cycleMinutes.toString().padLeft(2, '0')}:${cycleSecs.toString().padLeft(2, '0')}';
         }
       } catch (e) {
         // Fall through to default
       }
     }
-    return 'N/A';
+    return processTime ?? 'N/A';
   }
 
   String get uptimeDisplay {
@@ -149,7 +158,8 @@ class ProcessObject {
     int? wip,
     double? uptime,
     String? coTime,
-    String? cycleTime,
+    String? taktTime,
+    String? processTime,
     double? fpy,
   }) {
     return ProcessObject(
@@ -165,7 +175,8 @@ class ProcessObject {
       wip: wip ?? this.wip,
       uptime: uptime ?? this.uptime,
       coTime: coTime ?? this.coTime,
-      cycleTime: cycleTime ?? this.cycleTime,
+      taktTime: taktTime ?? this.taktTime,
+      processTime: processTime ?? this.processTime,
       fpy: fpy ?? this.fpy,
     );
   }
