@@ -183,7 +183,7 @@ class _DetailedProcessInputScreenState
 
       // Load existing process part assignments
       final assignmentsResult = await db.customSelectQuery(
-        '''SELECT pp.part_number, pp.daily_demand, pp.cycle_time, pp.fpy,
+        '''SELECT pp.part_number, pp.daily_demand, pp.process_time, pp.fpy,
                   p.part_description, p.monthly_demand
            FROM process_parts pp
            JOIN parts p ON pp.part_number = p.part_number AND p.value_stream_id = ?
@@ -204,7 +204,7 @@ class _DetailedProcessInputScreenState
       for (final assignment in _processPartAssignments) {
         final partNumber = assignment['part_number'] as String;
         _processTimeControllers[partNumber] =
-            TextEditingController(text: assignment['cycle_time'] ?? '');
+            TextEditingController(text: assignment['process_time'] ?? '');
         _fpyControllers[partNumber] = TextEditingController(
             text: assignment['fpy'] != null
                 ? (assignment['fpy'] * 100).toStringAsFixed(1)
@@ -411,7 +411,7 @@ class _DetailedProcessInputScreenState
 
     // Load existing process part assignments
     final assignmentsResult = await db.customSelectQuery(
-      '''SELECT pp.part_number, pp.daily_demand, pp.cycle_time, pp.fpy,
+      '''SELECT pp.part_number, pp.daily_demand, pp.process_time, pp.fpy,
                 p.part_description, p.monthly_demand
          FROM process_parts pp
          JOIN parts p ON pp.part_number = p.part_number AND p.value_stream_id = ?
@@ -431,7 +431,7 @@ class _DetailedProcessInputScreenState
     for (final assignment in _processPartAssignments) {
       final partNumber = assignment['part_number'] as String;
       _processTimeControllers[partNumber] =
-          TextEditingController(text: assignment['cycle_time'] ?? '');
+          TextEditingController(text: assignment['process_time'] ?? '');
       _fpyControllers[partNumber] = TextEditingController(
           text: assignment['fpy'] != null
               ? (assignment['fpy'] * 100).toStringAsFixed(1)

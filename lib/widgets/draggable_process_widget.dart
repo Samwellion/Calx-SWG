@@ -143,7 +143,7 @@ class DraggableProcessWidget extends StatelessWidget {
             child: Text(
               label,
               style: TextStyle(
-                fontSize: 7, // Reduced from 8 to 7
+                fontSize: 9, // Increased from 7 to 9
                 fontWeight: FontWeight.w500,
                 color: _getTextColor(process.color),
               ),
@@ -154,7 +154,7 @@ class DraggableProcessWidget extends StatelessWidget {
             child: Text(
               value,
               style: TextStyle(
-                fontSize: 7, // Reduced from 8 to 7
+                fontSize: 9, // Increased from 7 to 9
                 color: _getTextColor(process.color).withOpacity(0.9),
               ),
               textAlign: TextAlign.right,

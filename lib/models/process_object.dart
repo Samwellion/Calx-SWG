@@ -86,7 +86,7 @@ class ProcessObject {
       uptime: process.uptime,
       coTime: process.coTime,
       taktTime: process.taktTime,
-      processTime: data.calculatedCycleTime ?? processPart?.processTime,
+      processTime: processPart?.userOverrideTime ?? processPart?.processTime ?? data.calculatedCycleTime,
       fpy: processPart?.fpy,
     );
   }
@@ -98,12 +98,14 @@ class ProcessObject {
   String get staffingDisplay => staff?.toString() ?? 'N/A';
   String get dailyDemandDisplay => dailyDemand?.toString() ?? 'N/A';
   String get taktTimeDisplay => taktTime ?? 'N/A';
-  String get cycleTimeDisplay => processTime ?? 'N/A';
   String get wipDisplay => wip?.toString() ?? 'N/A';
 
-  String get leadTimeDisplay {
+  // LT (Lead Time) should be the processpart processTime 
+  String get leadTimeDisplay => processTime ?? 'N/A';
+
+  // CT (Cycle Time) should be the processTime divided by the WIP
+  String get cycleTimeDisplay {
     if (processTime != null && wip != null && wip! > 0) {
-      // Parse cycle time (HH:MM:SS) and multiply by WIP
       try {
         final parts = processTime!.split(':');
         if (parts.length == 3) {
@@ -111,18 +113,20 @@ class ProcessObject {
           final minutes = int.parse(parts[1]);
           final seconds = int.parse(parts[2]);
 
-          final totalSeconds = (hours * 3600 + minutes * 60 + seconds) * wip!;
-          final leadHours = totalSeconds ~/ 3600;
-          final leadMinutes = (totalSeconds % 3600) ~/ 60;
-          final leadSecs = totalSeconds % 60;
+          final totalSeconds = hours * 3600 + minutes * 60 + seconds;
+          final cycleTimeSeconds = totalSeconds / wip!;
 
-          return '${leadHours.toString().padLeft(2, '0')}:${leadMinutes.toString().padLeft(2, '0')}:${leadSecs.toString().padLeft(2, '0')}';
+          final cycleHours = (cycleTimeSeconds / 3600).floor();
+          final cycleMinutes = ((cycleTimeSeconds % 3600) / 60).floor();
+          final cycleSecs = (cycleTimeSeconds % 60).floor();
+
+          return '${cycleHours.toString().padLeft(2, '0')}:${cycleMinutes.toString().padLeft(2, '0')}:${cycleSecs.toString().padLeft(2, '0')}';
         }
       } catch (e) {
         // Fall through to default
       }
     }
-    return 'N/A';
+    return processTime ?? 'N/A';
   }
 
   String get uptimeDisplay {

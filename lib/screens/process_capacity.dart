@@ -948,7 +948,7 @@ class _ProcessCapacityScreenState extends State<ProcessCapacityScreen> {
 
       // Get cycle time per PC
       String cycleTimePerPC = _calculateCycleTimePerPC(part);
-      if (cycleTimePerPC == '00:00:00' || cycleTimePerPC == 'N/A') {
+      if (cycleTimePerPC == 'N/A' || cycleTimePerPC == 'Error') {
         return 'N/A';
       }
 

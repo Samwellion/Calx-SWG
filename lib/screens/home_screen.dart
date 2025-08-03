@@ -5,6 +5,7 @@ import 'part_input_screen.dart';
 import 'process_input_screen.dart';
 import 'detailed_process_input_screen.dart';
 import 'process_capacity.dart';
+import 'process_canvas_screen.dart';
 import '../screens/organization_setup_screen.dart';
 import '../logic/app_database.dart';
 import 'plant_setup_screen.dart';
@@ -696,6 +697,19 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                 ),
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _openValueStreamMapping,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.yellow[600],
+                  ),
+                  child: const Text('Value Stream Mapping'),
+                ),
+              ),
+            ),
           ],
         ),
       );
@@ -1224,6 +1238,122 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         }
       }
     }
+  }
+
+  Future<void> _openValueStreamMapping() async {
+    if (selectedValueStreamId == null ||
+        selectedValueStream == null) {
+      return;
+    }
+
+    try {
+      // Get parts linked to this value stream
+      final partsQuery = db.select(db.parts)
+        ..where((p) => p.valueStreamId.equals(selectedValueStreamId!))
+        ..orderBy([(p) => drift.OrderingTerm.asc(p.partNumber)]);
+
+      final parts = await partsQuery.get();
+
+      if (parts.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No parts found for this value stream. Please add parts first.'),
+            ),
+          );
+        }
+        return;
+      }
+
+      // Show part selection dialog
+      final selectedPart = await _showPartSelectionDialog(parts);
+
+      if (selectedPart != null) {
+        // Save selected part number to shared preferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('selectedPartNumber', selectedPart.partNumber);
+
+        // Navigate to process canvas
+        if (mounted) {
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ProcessCanvasScreen(
+                valueStreamId: selectedValueStreamId!,
+                valueStreamName: selectedValueStream!,
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error opening value stream mapping: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error opening value stream mapping')),
+        );
+      }
+    }
+  }
+
+  Future<Part?> _showPartSelectionDialog(List<Part> parts) async {
+    return showDialog<Part>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Select Part Number'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Choose a part number for the value stream mapping:',
+                  style: TextStyle(fontSize: 14),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 300,
+                  width: double.maxFinite,
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: parts.length,
+                    itemBuilder: (context, index) {
+                      final part = parts[index];
+                      return Card(
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        child: ListTile(
+                          title: Text(
+                            part.partNumber,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: part.partDescription != null
+                              ? Text(part.partDescription!)
+                              : const Text('No description'),
+                          trailing: part.monthlyDemand != null
+                              ? Chip(
+                                  label: Text('${part.monthlyDemand} /mo'),
+                                  backgroundColor: Colors.blue[100],
+                                )
+                              : null,
+                          onTap: () => Navigator.of(context).pop(part),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(null),
+              child: const Text('Cancel'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   String? selectedCompany;

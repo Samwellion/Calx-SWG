@@ -3335,6 +3335,473 @@ class PlantsCompanion extends UpdateCompanion<PlantData> {
   }
 }
 
+class $CanvasStatesTable extends CanvasStates
+    with TableInfo<$CanvasStatesTable, CanvasState> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CanvasStatesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _valueStreamIdMeta =
+      const VerificationMeta('valueStreamId');
+  @override
+  late final GeneratedColumn<int> valueStreamId = GeneratedColumn<int>(
+      'value_stream_id', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _partNumberMeta =
+      const VerificationMeta('partNumber');
+  @override
+  late final GeneratedColumn<String> partNumber = GeneratedColumn<String>(
+      'part_number', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _iconTypeMeta =
+      const VerificationMeta('iconType');
+  @override
+  late final GeneratedColumn<String> iconType = GeneratedColumn<String>(
+      'icon_type', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _iconIdMeta = const VerificationMeta('iconId');
+  @override
+  late final GeneratedColumn<String> iconId = GeneratedColumn<String>(
+      'icon_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _positionXMeta =
+      const VerificationMeta('positionX');
+  @override
+  late final GeneratedColumn<double> positionX = GeneratedColumn<double>(
+      'position_x', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _positionYMeta =
+      const VerificationMeta('positionY');
+  @override
+  late final GeneratedColumn<double> positionY = GeneratedColumn<double>(
+      'position_y', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _userDataMeta =
+      const VerificationMeta('userData');
+  @override
+  late final GeneratedColumn<String> userData = GeneratedColumn<String>(
+      'user_data', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _lastModifiedMeta =
+      const VerificationMeta('lastModified');
+  @override
+  late final GeneratedColumn<DateTime> lastModified = GeneratedColumn<DateTime>(
+      'last_modified', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        valueStreamId,
+        partNumber,
+        iconType,
+        iconId,
+        positionX,
+        positionY,
+        userData,
+        lastModified
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'canvas_states';
+  @override
+  VerificationContext validateIntegrity(Insertable<CanvasState> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('value_stream_id')) {
+      context.handle(
+          _valueStreamIdMeta,
+          valueStreamId.isAcceptableOrUnknown(
+              data['value_stream_id']!, _valueStreamIdMeta));
+    } else if (isInserting) {
+      context.missing(_valueStreamIdMeta);
+    }
+    if (data.containsKey('part_number')) {
+      context.handle(
+          _partNumberMeta,
+          partNumber.isAcceptableOrUnknown(
+              data['part_number']!, _partNumberMeta));
+    } else if (isInserting) {
+      context.missing(_partNumberMeta);
+    }
+    if (data.containsKey('icon_type')) {
+      context.handle(_iconTypeMeta,
+          iconType.isAcceptableOrUnknown(data['icon_type']!, _iconTypeMeta));
+    } else if (isInserting) {
+      context.missing(_iconTypeMeta);
+    }
+    if (data.containsKey('icon_id')) {
+      context.handle(_iconIdMeta,
+          iconId.isAcceptableOrUnknown(data['icon_id']!, _iconIdMeta));
+    } else if (isInserting) {
+      context.missing(_iconIdMeta);
+    }
+    if (data.containsKey('position_x')) {
+      context.handle(_positionXMeta,
+          positionX.isAcceptableOrUnknown(data['position_x']!, _positionXMeta));
+    } else if (isInserting) {
+      context.missing(_positionXMeta);
+    }
+    if (data.containsKey('position_y')) {
+      context.handle(_positionYMeta,
+          positionY.isAcceptableOrUnknown(data['position_y']!, _positionYMeta));
+    } else if (isInserting) {
+      context.missing(_positionYMeta);
+    }
+    if (data.containsKey('user_data')) {
+      context.handle(_userDataMeta,
+          userData.isAcceptableOrUnknown(data['user_data']!, _userDataMeta));
+    }
+    if (data.containsKey('last_modified')) {
+      context.handle(
+          _lastModifiedMeta,
+          lastModified.isAcceptableOrUnknown(
+              data['last_modified']!, _lastModifiedMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CanvasState map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CanvasState(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      valueStreamId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}value_stream_id'])!,
+      partNumber: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}part_number'])!,
+      iconType: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}icon_type'])!,
+      iconId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}icon_id'])!,
+      positionX: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}position_x'])!,
+      positionY: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}position_y'])!,
+      userData: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}user_data']),
+      lastModified: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}last_modified'])!,
+    );
+  }
+
+  @override
+  $CanvasStatesTable createAlias(String alias) {
+    return $CanvasStatesTable(attachedDatabase, alias);
+  }
+}
+
+class CanvasState extends DataClass implements Insertable<CanvasState> {
+  final int id;
+  final int valueStreamId;
+  final String partNumber;
+  final String iconType;
+  final String iconId;
+  final double positionX;
+  final double positionY;
+  final String? userData;
+  final DateTime lastModified;
+  const CanvasState(
+      {required this.id,
+      required this.valueStreamId,
+      required this.partNumber,
+      required this.iconType,
+      required this.iconId,
+      required this.positionX,
+      required this.positionY,
+      this.userData,
+      required this.lastModified});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['value_stream_id'] = Variable<int>(valueStreamId);
+    map['part_number'] = Variable<String>(partNumber);
+    map['icon_type'] = Variable<String>(iconType);
+    map['icon_id'] = Variable<String>(iconId);
+    map['position_x'] = Variable<double>(positionX);
+    map['position_y'] = Variable<double>(positionY);
+    if (!nullToAbsent || userData != null) {
+      map['user_data'] = Variable<String>(userData);
+    }
+    map['last_modified'] = Variable<DateTime>(lastModified);
+    return map;
+  }
+
+  CanvasStatesCompanion toCompanion(bool nullToAbsent) {
+    return CanvasStatesCompanion(
+      id: Value(id),
+      valueStreamId: Value(valueStreamId),
+      partNumber: Value(partNumber),
+      iconType: Value(iconType),
+      iconId: Value(iconId),
+      positionX: Value(positionX),
+      positionY: Value(positionY),
+      userData: userData == null && nullToAbsent
+          ? const Value.absent()
+          : Value(userData),
+      lastModified: Value(lastModified),
+    );
+  }
+
+  factory CanvasState.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CanvasState(
+      id: serializer.fromJson<int>(json['id']),
+      valueStreamId: serializer.fromJson<int>(json['valueStreamId']),
+      partNumber: serializer.fromJson<String>(json['partNumber']),
+      iconType: serializer.fromJson<String>(json['iconType']),
+      iconId: serializer.fromJson<String>(json['iconId']),
+      positionX: serializer.fromJson<double>(json['positionX']),
+      positionY: serializer.fromJson<double>(json['positionY']),
+      userData: serializer.fromJson<String?>(json['userData']),
+      lastModified: serializer.fromJson<DateTime>(json['lastModified']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'valueStreamId': serializer.toJson<int>(valueStreamId),
+      'partNumber': serializer.toJson<String>(partNumber),
+      'iconType': serializer.toJson<String>(iconType),
+      'iconId': serializer.toJson<String>(iconId),
+      'positionX': serializer.toJson<double>(positionX),
+      'positionY': serializer.toJson<double>(positionY),
+      'userData': serializer.toJson<String?>(userData),
+      'lastModified': serializer.toJson<DateTime>(lastModified),
+    };
+  }
+
+  CanvasState copyWith(
+          {int? id,
+          int? valueStreamId,
+          String? partNumber,
+          String? iconType,
+          String? iconId,
+          double? positionX,
+          double? positionY,
+          Value<String?> userData = const Value.absent(),
+          DateTime? lastModified}) =>
+      CanvasState(
+        id: id ?? this.id,
+        valueStreamId: valueStreamId ?? this.valueStreamId,
+        partNumber: partNumber ?? this.partNumber,
+        iconType: iconType ?? this.iconType,
+        iconId: iconId ?? this.iconId,
+        positionX: positionX ?? this.positionX,
+        positionY: positionY ?? this.positionY,
+        userData: userData.present ? userData.value : this.userData,
+        lastModified: lastModified ?? this.lastModified,
+      );
+  CanvasState copyWithCompanion(CanvasStatesCompanion data) {
+    return CanvasState(
+      id: data.id.present ? data.id.value : this.id,
+      valueStreamId: data.valueStreamId.present
+          ? data.valueStreamId.value
+          : this.valueStreamId,
+      partNumber:
+          data.partNumber.present ? data.partNumber.value : this.partNumber,
+      iconType: data.iconType.present ? data.iconType.value : this.iconType,
+      iconId: data.iconId.present ? data.iconId.value : this.iconId,
+      positionX: data.positionX.present ? data.positionX.value : this.positionX,
+      positionY: data.positionY.present ? data.positionY.value : this.positionY,
+      userData: data.userData.present ? data.userData.value : this.userData,
+      lastModified: data.lastModified.present
+          ? data.lastModified.value
+          : this.lastModified,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CanvasState(')
+          ..write('id: $id, ')
+          ..write('valueStreamId: $valueStreamId, ')
+          ..write('partNumber: $partNumber, ')
+          ..write('iconType: $iconType, ')
+          ..write('iconId: $iconId, ')
+          ..write('positionX: $positionX, ')
+          ..write('positionY: $positionY, ')
+          ..write('userData: $userData, ')
+          ..write('lastModified: $lastModified')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, valueStreamId, partNumber, iconType,
+      iconId, positionX, positionY, userData, lastModified);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CanvasState &&
+          other.id == this.id &&
+          other.valueStreamId == this.valueStreamId &&
+          other.partNumber == this.partNumber &&
+          other.iconType == this.iconType &&
+          other.iconId == this.iconId &&
+          other.positionX == this.positionX &&
+          other.positionY == this.positionY &&
+          other.userData == this.userData &&
+          other.lastModified == this.lastModified);
+}
+
+class CanvasStatesCompanion extends UpdateCompanion<CanvasState> {
+  final Value<int> id;
+  final Value<int> valueStreamId;
+  final Value<String> partNumber;
+  final Value<String> iconType;
+  final Value<String> iconId;
+  final Value<double> positionX;
+  final Value<double> positionY;
+  final Value<String?> userData;
+  final Value<DateTime> lastModified;
+  const CanvasStatesCompanion({
+    this.id = const Value.absent(),
+    this.valueStreamId = const Value.absent(),
+    this.partNumber = const Value.absent(),
+    this.iconType = const Value.absent(),
+    this.iconId = const Value.absent(),
+    this.positionX = const Value.absent(),
+    this.positionY = const Value.absent(),
+    this.userData = const Value.absent(),
+    this.lastModified = const Value.absent(),
+  });
+  CanvasStatesCompanion.insert({
+    this.id = const Value.absent(),
+    required int valueStreamId,
+    required String partNumber,
+    required String iconType,
+    required String iconId,
+    required double positionX,
+    required double positionY,
+    this.userData = const Value.absent(),
+    this.lastModified = const Value.absent(),
+  })  : valueStreamId = Value(valueStreamId),
+        partNumber = Value(partNumber),
+        iconType = Value(iconType),
+        iconId = Value(iconId),
+        positionX = Value(positionX),
+        positionY = Value(positionY);
+  static Insertable<CanvasState> custom({
+    Expression<int>? id,
+    Expression<int>? valueStreamId,
+    Expression<String>? partNumber,
+    Expression<String>? iconType,
+    Expression<String>? iconId,
+    Expression<double>? positionX,
+    Expression<double>? positionY,
+    Expression<String>? userData,
+    Expression<DateTime>? lastModified,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (valueStreamId != null) 'value_stream_id': valueStreamId,
+      if (partNumber != null) 'part_number': partNumber,
+      if (iconType != null) 'icon_type': iconType,
+      if (iconId != null) 'icon_id': iconId,
+      if (positionX != null) 'position_x': positionX,
+      if (positionY != null) 'position_y': positionY,
+      if (userData != null) 'user_data': userData,
+      if (lastModified != null) 'last_modified': lastModified,
+    });
+  }
+
+  CanvasStatesCompanion copyWith(
+      {Value<int>? id,
+      Value<int>? valueStreamId,
+      Value<String>? partNumber,
+      Value<String>? iconType,
+      Value<String>? iconId,
+      Value<double>? positionX,
+      Value<double>? positionY,
+      Value<String?>? userData,
+      Value<DateTime>? lastModified}) {
+    return CanvasStatesCompanion(
+      id: id ?? this.id,
+      valueStreamId: valueStreamId ?? this.valueStreamId,
+      partNumber: partNumber ?? this.partNumber,
+      iconType: iconType ?? this.iconType,
+      iconId: iconId ?? this.iconId,
+      positionX: positionX ?? this.positionX,
+      positionY: positionY ?? this.positionY,
+      userData: userData ?? this.userData,
+      lastModified: lastModified ?? this.lastModified,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (valueStreamId.present) {
+      map['value_stream_id'] = Variable<int>(valueStreamId.value);
+    }
+    if (partNumber.present) {
+      map['part_number'] = Variable<String>(partNumber.value);
+    }
+    if (iconType.present) {
+      map['icon_type'] = Variable<String>(iconType.value);
+    }
+    if (iconId.present) {
+      map['icon_id'] = Variable<String>(iconId.value);
+    }
+    if (positionX.present) {
+      map['position_x'] = Variable<double>(positionX.value);
+    }
+    if (positionY.present) {
+      map['position_y'] = Variable<double>(positionY.value);
+    }
+    if (userData.present) {
+      map['user_data'] = Variable<String>(userData.value);
+    }
+    if (lastModified.present) {
+      map['last_modified'] = Variable<DateTime>(lastModified.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CanvasStatesCompanion(')
+          ..write('id: $id, ')
+          ..write('valueStreamId: $valueStreamId, ')
+          ..write('partNumber: $partNumber, ')
+          ..write('iconType: $iconType, ')
+          ..write('iconId: $iconId, ')
+          ..write('positionX: $positionX, ')
+          ..write('positionY: $positionY, ')
+          ..write('userData: $userData, ')
+          ..write('lastModified: $lastModified')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $SetupsTable extends Setups with TableInfo<$SetupsTable, Setup> {
   @override
   final GeneratedDatabase attachedDatabase;
@@ -4653,6 +5120,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $OrganizationsTable organizations = $OrganizationsTable(this);
   late final $PartsTable parts = $PartsTable(this);
   late final $PlantsTable plants = $PlantsTable(this);
+  late final $CanvasStatesTable canvasStates = $CanvasStatesTable(this);
   late final $SetupsTable setups = $SetupsTable(this);
   late final $SetupElementsTable setupElements = $SetupElementsTable(this);
   late final $StudyTable study = $StudyTable(this);
@@ -4670,6 +5138,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         organizations,
         parts,
         plants,
+        canvasStates,
         setups,
         setupElements,
         study,
@@ -7547,6 +8016,235 @@ typedef $$PlantsTableProcessedTableManager = ProcessedTableManager<
     (PlantData, BaseReferences<_$AppDatabase, $PlantsTable, PlantData>),
     PlantData,
     PrefetchHooks Function()>;
+typedef $$CanvasStatesTableCreateCompanionBuilder = CanvasStatesCompanion
+    Function({
+  Value<int> id,
+  required int valueStreamId,
+  required String partNumber,
+  required String iconType,
+  required String iconId,
+  required double positionX,
+  required double positionY,
+  Value<String?> userData,
+  Value<DateTime> lastModified,
+});
+typedef $$CanvasStatesTableUpdateCompanionBuilder = CanvasStatesCompanion
+    Function({
+  Value<int> id,
+  Value<int> valueStreamId,
+  Value<String> partNumber,
+  Value<String> iconType,
+  Value<String> iconId,
+  Value<double> positionX,
+  Value<double> positionY,
+  Value<String?> userData,
+  Value<DateTime> lastModified,
+});
+
+class $$CanvasStatesTableFilterComposer
+    extends Composer<_$AppDatabase, $CanvasStatesTable> {
+  $$CanvasStatesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get valueStreamId => $composableBuilder(
+      column: $table.valueStreamId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get partNumber => $composableBuilder(
+      column: $table.partNumber, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get iconType => $composableBuilder(
+      column: $table.iconType, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get iconId => $composableBuilder(
+      column: $table.iconId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get positionX => $composableBuilder(
+      column: $table.positionX, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get positionY => $composableBuilder(
+      column: $table.positionY, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get userData => $composableBuilder(
+      column: $table.userData, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get lastModified => $composableBuilder(
+      column: $table.lastModified, builder: (column) => ColumnFilters(column));
+}
+
+class $$CanvasStatesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CanvasStatesTable> {
+  $$CanvasStatesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get valueStreamId => $composableBuilder(
+      column: $table.valueStreamId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get partNumber => $composableBuilder(
+      column: $table.partNumber, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get iconType => $composableBuilder(
+      column: $table.iconType, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get iconId => $composableBuilder(
+      column: $table.iconId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get positionX => $composableBuilder(
+      column: $table.positionX, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get positionY => $composableBuilder(
+      column: $table.positionY, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get userData => $composableBuilder(
+      column: $table.userData, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get lastModified => $composableBuilder(
+      column: $table.lastModified,
+      builder: (column) => ColumnOrderings(column));
+}
+
+class $$CanvasStatesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CanvasStatesTable> {
+  $$CanvasStatesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get valueStreamId => $composableBuilder(
+      column: $table.valueStreamId, builder: (column) => column);
+
+  GeneratedColumn<String> get partNumber => $composableBuilder(
+      column: $table.partNumber, builder: (column) => column);
+
+  GeneratedColumn<String> get iconType =>
+      $composableBuilder(column: $table.iconType, builder: (column) => column);
+
+  GeneratedColumn<String> get iconId =>
+      $composableBuilder(column: $table.iconId, builder: (column) => column);
+
+  GeneratedColumn<double> get positionX =>
+      $composableBuilder(column: $table.positionX, builder: (column) => column);
+
+  GeneratedColumn<double> get positionY =>
+      $composableBuilder(column: $table.positionY, builder: (column) => column);
+
+  GeneratedColumn<String> get userData =>
+      $composableBuilder(column: $table.userData, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastModified => $composableBuilder(
+      column: $table.lastModified, builder: (column) => column);
+}
+
+class $$CanvasStatesTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $CanvasStatesTable,
+    CanvasState,
+    $$CanvasStatesTableFilterComposer,
+    $$CanvasStatesTableOrderingComposer,
+    $$CanvasStatesTableAnnotationComposer,
+    $$CanvasStatesTableCreateCompanionBuilder,
+    $$CanvasStatesTableUpdateCompanionBuilder,
+    (
+      CanvasState,
+      BaseReferences<_$AppDatabase, $CanvasStatesTable, CanvasState>
+    ),
+    CanvasState,
+    PrefetchHooks Function()> {
+  $$CanvasStatesTableTableManager(_$AppDatabase db, $CanvasStatesTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CanvasStatesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CanvasStatesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CanvasStatesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<int> valueStreamId = const Value.absent(),
+            Value<String> partNumber = const Value.absent(),
+            Value<String> iconType = const Value.absent(),
+            Value<String> iconId = const Value.absent(),
+            Value<double> positionX = const Value.absent(),
+            Value<double> positionY = const Value.absent(),
+            Value<String?> userData = const Value.absent(),
+            Value<DateTime> lastModified = const Value.absent(),
+          }) =>
+              CanvasStatesCompanion(
+            id: id,
+            valueStreamId: valueStreamId,
+            partNumber: partNumber,
+            iconType: iconType,
+            iconId: iconId,
+            positionX: positionX,
+            positionY: positionY,
+            userData: userData,
+            lastModified: lastModified,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required int valueStreamId,
+            required String partNumber,
+            required String iconType,
+            required String iconId,
+            required double positionX,
+            required double positionY,
+            Value<String?> userData = const Value.absent(),
+            Value<DateTime> lastModified = const Value.absent(),
+          }) =>
+              CanvasStatesCompanion.insert(
+            id: id,
+            valueStreamId: valueStreamId,
+            partNumber: partNumber,
+            iconType: iconType,
+            iconId: iconId,
+            positionX: positionX,
+            positionY: positionY,
+            userData: userData,
+            lastModified: lastModified,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$CanvasStatesTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $CanvasStatesTable,
+    CanvasState,
+    $$CanvasStatesTableFilterComposer,
+    $$CanvasStatesTableOrderingComposer,
+    $$CanvasStatesTableAnnotationComposer,
+    $$CanvasStatesTableCreateCompanionBuilder,
+    $$CanvasStatesTableUpdateCompanionBuilder,
+    (
+      CanvasState,
+      BaseReferences<_$AppDatabase, $CanvasStatesTable, CanvasState>
+    ),
+    CanvasState,
+    PrefetchHooks Function()>;
 typedef $$SetupsTableCreateCompanionBuilder = SetupsCompanion Function({
   Value<int> id,
   required int processPartId,
@@ -8955,6 +9653,8 @@ class $AppDatabaseManager {
       $$PartsTableTableManager(_db, _db.parts);
   $$PlantsTableTableManager get plants =>
       $$PlantsTableTableManager(_db, _db.plants);
+  $$CanvasStatesTableTableManager get canvasStates =>
+      $$CanvasStatesTableTableManager(_db, _db.canvasStates);
   $$SetupsTableTableManager get setups =>
       $$SetupsTableTableManager(_db, _db.setups);
   $$SetupElementsTableTableManager get setupElements =>

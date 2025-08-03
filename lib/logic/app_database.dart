@@ -83,6 +83,25 @@ class TimeStudy extends Table {
   TextColumn get iterationTime => text()(); // IterationTime in HH:MM:SS format
 }
 
+// Canvas State table: stores the state of canvas icons for each value stream and part
+@DataClassName('CanvasState')
+class CanvasStates extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get valueStreamId => integer()();
+  TextColumn get partNumber => text()();
+  TextColumn get iconType => text()(); // Type of icon (customer, supplier, truck, etc.)
+  TextColumn get iconId => text()(); // Unique ID for the icon instance
+  RealColumn get positionX => real()(); // X position on canvas
+  RealColumn get positionY => real()(); // Y position on canvas
+  TextColumn get userData => text().nullable()(); // JSON string for user input data
+  DateTimeColumn get lastModified => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  List<String> get customConstraints => [
+        'UNIQUE(value_stream_id, part_number, icon_id)' // Prevent duplicate icon IDs per value stream/part
+      ];
+}
+
 @DriftDatabase(tables: [
   ProcessParts,
   ProcessShift,
@@ -92,6 +111,7 @@ class TimeStudy extends Table {
   Organizations,
   Plants,
   ValueStreams,
+  CanvasStates,
   SetupElements,
   Setups,
   Study,
@@ -121,7 +141,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 24;
+  int get schemaVersion => 25;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -129,6 +149,13 @@ class AppDatabase extends _$AppDatabase {
           return m.createAll();
         },
         onUpgrade: (Migrator m, int from, int to) async {
+          // Add CanvasStates table for version 25
+          if (to >= 25) {
+            // Just create the new table if it doesn't exist
+            await m.createTable(canvasStates);
+            return;
+          }
+
           // Force complete recreation for version 17 - Added ProcessShift table and new fields to ProcessParts
           if (to >= 17) {
             await m.deleteTable('parts');
@@ -816,6 +843,65 @@ class AppDatabase extends _$AppDatabase {
         }
       }
     }
+  }
+
+  // Canvas State Management Methods
+  Future<void> saveCanvasState({
+    required int valueStreamId,
+    required String partNumber,
+    required String iconType,
+    required String iconId,
+    required double positionX,
+    required double positionY,
+    String? userData,
+  }) async {
+    await into(canvasStates).insertOnConflictUpdate(
+      CanvasStatesCompanion.insert(
+        valueStreamId: valueStreamId,
+        partNumber: partNumber,
+        iconType: iconType,
+        iconId: iconId,
+        positionX: positionX,
+        positionY: positionY,
+        userData: Value(userData),
+        lastModified: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  Future<List<CanvasState>> loadCanvasState({
+    required int valueStreamId,
+    required String partNumber,
+  }) async {
+    return await (select(canvasStates)
+          ..where((cs) =>
+              cs.valueStreamId.equals(valueStreamId) &
+              cs.partNumber.equals(partNumber)))
+        .get();
+  }
+
+  Future<void> deleteCanvasIcon({
+    required int valueStreamId,
+    required String partNumber,
+    required String iconId,
+  }) async {
+    await (delete(canvasStates)
+          ..where((cs) =>
+              cs.valueStreamId.equals(valueStreamId) &
+              cs.partNumber.equals(partNumber) &
+              cs.iconId.equals(iconId)))
+        .go();
+  }
+
+  Future<void> clearCanvasState({
+    required int valueStreamId,
+    required String partNumber,
+  }) async {
+    await (delete(canvasStates)
+          ..where((cs) =>
+              cs.valueStreamId.equals(valueStreamId) &
+              cs.partNumber.equals(partNumber)))
+        .go();
   }
 }
 
