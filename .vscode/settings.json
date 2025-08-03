@@ -6,5 +6,6 @@
         "Prefs",
         "Repeatables",
         "vsid"
-    ]
+    ],
+    "java.configuration.updateBuildConfiguration": "interactive"
 }
