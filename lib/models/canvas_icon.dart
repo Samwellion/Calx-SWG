@@ -23,8 +23,8 @@ enum CanvasIconType {
   // Material Types
   buffer, // TODO: Implement buffer icon
   fifo, // FIFO material connector with piece count and lead time calculation
-  kanbanMarket, // TODO: Implement kanban market icon
-  uncontrolled, // TODO: Implement uncontrolled icon
+  kanbanMarket, // Kanban market icon
+  uncontrolled, // Uncontrolled icon
   
   // Other
   kaizenBurst, // TODO: Implement kaizen burst
@@ -180,15 +180,15 @@ class CanvasIconTemplate {
     ),
     CanvasIconTemplate(
       type: CanvasIconType.kanbanMarket,
-      label: 'Kanban Market', // TODO: Implement kanban market icon
-      iconData: Icons.store,
+      label: 'Supermarket',
+      iconData: Icons.view_module, // Shelving/grid icon for supermarket
       color: Colors.amber,
     ),
     CanvasIconTemplate(
       type: CanvasIconType.uncontrolled,
-      label: 'Uncontrolled', // TODO: Implement uncontrolled icon
-      iconData: Icons.help_outline,
-      color: Colors.red,
+      label: 'Uncontrolled',
+      iconData: Icons.change_history, // Triangle icon
+      color: Colors.orange,
     ),
     
     // === OTHER ===

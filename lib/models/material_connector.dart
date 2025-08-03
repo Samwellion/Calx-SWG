@@ -49,19 +49,19 @@ class MaterialConnector {
     );
   }
 
-  /// Calculate the estimated lead time based on number of pieces and supplier TT
-  String calculateEstimatedLeadTime(String? supplierTaktTime) {
+  /// Calculate the estimated lead time based on number of pieces and customer TT
+  String calculateEstimatedLeadTime(String? customerTaktTime) {
     if (numberOfPieces == null || 
         numberOfPieces! <= 0 || 
-        supplierTaktTime == null || 
-        supplierTaktTime.isEmpty ||
-        supplierTaktTime == 'N/A') {
+        customerTaktTime == null || 
+        customerTaktTime.isEmpty ||
+        customerTaktTime == 'N/A') {
       return 'N/A';
     }
 
     try {
       // Parse takt time in HH:MM:SS format
-      final parts = supplierTaktTime.split(':');
+      final parts = customerTaktTime.split(':');
       if (parts.length == 3) {
         final hours = int.parse(parts[0]);
         final minutes = int.parse(parts[1]);
@@ -153,9 +153,9 @@ class MaterialConnectorHelper {
       case CanvasIconType.buffer:
         return Icons.storage;
       case CanvasIconType.kanbanMarket:
-        return Icons.store;
+        return Icons.view_module; // Shelving/grid icon for supermarket
       case CanvasIconType.uncontrolled:
-        return Icons.help_outline;
+        return Icons.change_history; // Triangle icon
       default:
         return Icons.error;
     }
@@ -170,7 +170,7 @@ class MaterialConnectorHelper {
       case CanvasIconType.kanbanMarket:
         return Colors.amber;
       case CanvasIconType.uncontrolled:
-        return Colors.red;
+        return Colors.black;
       default:
         return Colors.blue;
     }

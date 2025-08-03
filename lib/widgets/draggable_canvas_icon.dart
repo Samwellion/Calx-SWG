@@ -32,7 +32,9 @@ class _DraggableCanvasIconState extends State<DraggableCanvasIcon> {
       left: widget.canvasIcon.position.dx,
       top: widget.canvasIcon.position.dy,
       child: GestureDetector(
-        onTap: () => widget.onTap?.call(widget.canvasIcon),
+        onTap: () {
+          widget.onTap?.call(widget.canvasIcon);
+        },
         onPanStart: (details) {
           setState(() {
             _isDragging = true;

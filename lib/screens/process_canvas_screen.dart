@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:drift/drift.dart' hide Column;
 import 'dart:convert';
 import '../database_provider.dart';
@@ -7,6 +8,7 @@ import '../models/process_object.dart';
 import '../models/canvas_icon.dart';
 import '../models/canvas_connector.dart';
 import '../models/material_connector.dart';
+import '../models/kanban_loop.dart';
 import '../models/connection_handle.dart';
 import '../widgets/draggable_process_widget.dart';
 import '../widgets/draggable_canvas_icon.dart';
@@ -16,6 +18,7 @@ import '../widgets/production_control_data_box.dart';
 import '../widgets/truck_data_box.dart';
 import '../widgets/connector_widget.dart';
 import '../widgets/material_connector_widget.dart';
+import '../widgets/kanban_loop_widget.dart';
 import '../widgets/connection_handle_widget.dart';
 import '../widgets/floating_icon_toolbar.dart';
 import '../widgets/home_button_wrapper.dart';
@@ -40,6 +43,7 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
   List<CanvasIcon> canvasIcons = [];
   List<CanvasConnector> connectors = []; // Track connectors between items
   List<MaterialConnector> materialConnectors = []; // Track material connectors between processes
+  List<KanbanLoop> kanbanLoops = []; // Track kanban loops from supermarkets to suppliers
   Map<String, Offset> customerDataBoxPositions = {}; // Track positions of customer data boxes
   Map<String, Offset> supplierDataBoxPositions = {}; // Track positions of supplier data boxes
   Map<String, Offset> productionControlDataBoxPositions = {}; // Track positions of production control data boxes
@@ -54,6 +58,7 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
   String? selectedTruckDataBox;
   String? selectedConnector; // Track selected connector
   String? selectedMaterialConnector; // Track selected material connector
+  String? selectedKanbanLoop; // Track selected kanban loop
   ConnectionMode connectionMode = ConnectionMode.none; // Track connection mode
   ConnectorEndpoint? pendingConnection; // Track first item when connecting
   ConnectorType currentConnectorType = ConnectorType.information; // Track current connector type being created
@@ -66,8 +71,13 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
   
   String? currentPartNumber; // Track current part number for canvas state
   bool isLoading = true;
-  bool showMaterialConnectorSelection = false; // Show material connector selection dialog
   CanvasIconType? pendingMaterialConnectorType; // Type of material connector being created
+  ProcessObject? pendingSupplierProcess; // Track supplier process for material connector
+  ProcessObject? pendingCustomerProcess; // Track customer process for material connector
+  
+  // Kanban loop creation state
+  String? pendingSupermarketId; // Track selected supermarket for kanban loop
+  ProcessObject? pendingKanbanSupplierProcess; // Track supplier process for kanban loop
   late AppDatabase db;
 
   @override
@@ -378,6 +388,60 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
         process.position,
         process.size,
       );
+    } else if (process != null && connectionMode == ConnectionMode.materialConnectorSelecting) {
+      // Handle material connector supplier selection
+      
+      // First show immediate feedback
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Supplier "${process.name}" selected. Now selecting customer...'),
+          duration: const Duration(milliseconds: 1500),
+        ),
+      );
+      
+      setState(() {
+        pendingSupplierProcess = process;
+        connectionMode = ConnectionMode.materialConnectorConnecting;
+      });
+      
+      // Show customer selection instruction after a brief delay
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted && connectionMode == ConnectionMode.materialConnectorConnecting) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Now tap the customer process to create the material connector.'),
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      });
+    } else if (process != null && connectionMode == ConnectionMode.materialConnectorConnecting) {
+      // Handle material connector customer selection
+      
+      if (pendingSupplierProcess != null && process.id != pendingSupplierProcess!.id) {
+        _createMaterialConnector(pendingSupplierProcess!, process);
+      } else if (process.id == pendingSupplierProcess!.id) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select a different process for the customer.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } else if (process != null && connectionMode == ConnectionMode.kanbanLoopConnecting) {
+      // Handle kanban loop supplier selection - show connection handles for precise connection
+      if (pendingSupermarketId != null) {
+        _showConnectionHandles(process.id.toString(), 'process');
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Select a connection handle on the supplier process.'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
     } else {
       // Normal selection mode
       setState(() {
@@ -846,8 +910,8 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
       // Handle material push selection for connector mode
       _startConnectorMode(ConnectorType.materialPush);
     } else if (template.type == CanvasIconType.kanbanLoop) {
-      // Handle kanban loop selection for connector mode
-      _startConnectorMode(ConnectorType.kanbanLoop);
+      // Handle kanban loop selection - special workflow for supermarket to supplier
+      _startKanbanLoopMode();
     } else if (template.type == CanvasIconType.withdrawalLoop) {
       // Handle withdrawal loop selection for connector mode
       _startConnectorMode(ConnectorType.withdrawalLoop);
@@ -1044,6 +1108,24 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
           const Size(120, 90), // Truck data box size
         );
       }
+    } else if (connectionMode == ConnectionMode.materialConnectorSelecting || connectionMode == ConnectionMode.materialConnectorConnecting) {
+      // Handle material connector mode - create a virtual canvas icon from truck data box
+      
+      final position = truckDataBoxPositions[truckId];
+      if (position != null) {
+        // Create a virtual canvas icon to represent this truck data box for material connector purposes
+        final virtualTruckIcon = CanvasIcon(
+          id: truckId,
+          type: CanvasIconType.truck,
+          label: 'Shipment $truckId',
+          iconData: Icons.local_shipping,
+          position: position,
+          color: Colors.brown,
+        );
+        
+        // Call the canvas icon selection logic
+        _selectCanvasIcon(virtualTruckIcon);
+      }
     } else {
       // Normal selection mode
       setState(() {
@@ -1095,10 +1177,37 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
     );
   }
 
+  void _startKanbanLoopMode() {
+    setState(() {
+      connectionMode = ConnectionMode.kanbanLoopSelecting;
+      pendingSupermarketId = null;
+      pendingKanbanSupplierProcess = null;
+      // Clear all selections
+      selectedProcess = null;
+      selectedCanvasIcon = null;
+      selectedCustomerDataBox = null;
+      selectedSupplierDataBox = null;
+      selectedProductionControlDataBox = null;
+      selectedTruckDataBox = null;
+      selectedConnector = null;
+      selectedMaterialConnector = null;
+      selectedKanbanLoop = null;
+    });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Kanban Loop mode active. First tap a supermarket material connector.'),
+        duration: Duration(seconds: 4),
+      ),
+    );
+  }
+
   void _startMaterialConnectorMode(CanvasIconType materialConnectorType) {
     setState(() {
       pendingMaterialConnectorType = materialConnectorType;
-      showMaterialConnectorSelection = true;
+      connectionMode = ConnectionMode.materialConnectorSelecting;
+      pendingSupplierProcess = null;
+      pendingCustomerProcess = null;
       // Clear all selections
       selectedProcess = null;
       selectedCanvasIcon = null;
@@ -1109,10 +1218,32 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
       selectedConnector = null;
       selectedMaterialConnector = null;
     });
+    
+    // Show instructions to user
+    final typeName = materialConnectorType.toString().split('.').last.toUpperCase();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$typeName material connector mode active. Tap the supplier process first.'),
+        duration: const Duration(seconds: 4),
+      ),
+    );
   }
 
-  void _onMaterialConnectorProcessesSelected(ProcessObject supplier, ProcessObject customer) {
-    if (pendingMaterialConnectorType == null) return;
+  String _getConnectionModeText() {
+    final text = switch (connectionMode) {
+      ConnectionMode.selecting => 'Select first item',
+      ConnectionMode.connecting => 'Select second item', 
+      ConnectionMode.materialConnectorSelecting => 'Select supplier process',
+      ConnectionMode.materialConnectorConnecting => 'Select customer process',
+      _ => 'Connection mode',
+    };
+    return text;
+  }
+
+  void _createMaterialConnector(ProcessObject supplier, ProcessObject customer) {
+    if (pendingMaterialConnectorType == null) {
+      return;
+    }
 
     // Check if there are already 2 material connectors between these processes
     final existingConnectors = materialConnectors.where((connector) =>
@@ -1130,29 +1261,88 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
         ),
       );
       setState(() {
-        showMaterialConnectorSelection = false;
+        connectionMode = ConnectionMode.none;
         pendingMaterialConnectorType = null;
+        pendingSupplierProcess = null;
+        pendingCustomerProcess = null;
       });
       return;
     }
 
-    // Calculate position BETWEEN the two processes with proper spacing
-    // Process position is TOP-LEFT corner, so we need to add half width/height to get center
-    final supplierCenterX = supplier.position.dx + supplier.size.width / 2;
-    final supplierCenterY = supplier.position.dy + supplier.size.height / 2;
-    final customerCenterX = customer.position.dx + customer.size.width / 2;
-    final customerCenterY = customer.position.dy + customer.size.height / 2;
+    // Calculate position considering if either end is a shipment icon
+    double connectorX, connectorY;
     
-    final centerX = (supplierCenterX + customerCenterX) / 2;
-    final centerY = (supplierCenterY + customerCenterY) / 2;
+    // Check if supplier is a shipment icon (check both canvas icons and truck data boxes)
+    final supplierCanvasIcon = canvasIcons.firstWhere(
+      (icon) => icon.id == supplier.id.toString() && icon.type == CanvasIconType.truck,
+      orElse: () => CanvasIcon(id: '', type: CanvasIconType.customer, label: '', iconData: Icons.error, position: Offset.zero),
+    );
+    final supplierTruckDataBox = truckDataBoxPositions[supplier.id.toString()];
     
-    // Position connector BELOW the processes to avoid overlap with data boxes
-    // Process height is 160px, so we place connector 120px below the center
-    final connectorX = centerX;
-    final connectorY = centerY + 120; // Well below the processes
+    // Check if customer is a shipment icon (check both canvas icons and truck data boxes)
+    final customerCanvasIcon = canvasIcons.firstWhere(
+      (icon) => icon.id == customer.id.toString() && icon.type == CanvasIconType.truck,
+      orElse: () => CanvasIcon(id: '', type: CanvasIconType.customer, label: '', iconData: Icons.error, position: Offset.zero),
+    );
+    final customerTruckDataBox = truckDataBoxPositions[customer.id.toString()];
+    
+    bool supplierIsShipment = supplierCanvasIcon.id.isNotEmpty || supplierTruckDataBox != null;
+    bool customerIsShipment = customerCanvasIcon.id.isNotEmpty || customerTruckDataBox != null;
+    
+    if (supplierIsShipment) {
+      // Supplier is shipment icon: center horizontally with shipment, vertically with customer data box
+      Offset shipmentPosition;
+      Size shipmentSize;
+      
+      if (supplierCanvasIcon.id.isNotEmpty) {
+        // Use canvas icon position and size
+        shipmentPosition = supplierCanvasIcon.position;
+        shipmentSize = supplierCanvasIcon.size;
+      } else {
+        // Use truck data box position and size
+        shipmentPosition = supplierTruckDataBox!;
+        shipmentSize = const Size(120, 90); // Truck data box size
+      }
+      
+      final shipmentCenterX = shipmentPosition.dx + shipmentSize.width / 2;
+      final customerCenterY = customer.position.dy + customer.size.height / 2;
+      
+      connectorX = shipmentCenterX;
+      connectorY = customerCenterY;
+    } else if (customerIsShipment) {
+      // Customer is shipment icon: center vertically with supplier data box, horizontally with shipment
+      final supplierCenterY = supplier.position.dy + supplier.size.height / 2;
+      
+      Offset shipmentPosition;
+      Size shipmentSize;
+      
+      if (customerCanvasIcon.id.isNotEmpty) {
+        // Use canvas icon position and size
+        shipmentPosition = customerCanvasIcon.position;
+        shipmentSize = customerCanvasIcon.size;
+      } else {
+        // Use truck data box position and size
+        shipmentPosition = customerTruckDataBox!;
+        shipmentSize = const Size(120, 90); // Truck data box size
+      }
+      
+      final shipmentCenterX = shipmentPosition.dx + shipmentSize.width / 2;
+      
+      connectorX = shipmentCenterX;
+      connectorY = supplierCenterY;
+    } else {
+      // Normal case: both are data boxes or processes, center between them
+      final supplierCenterX = supplier.position.dx + supplier.size.width / 2;
+      final supplierCenterY = supplier.position.dy + supplier.size.height / 2;
+      final customerCenterX = customer.position.dx + customer.size.width / 2;
+      final customerCenterY = customer.position.dy + customer.size.height / 2;
+      
+      connectorX = (supplierCenterX + customerCenterX) / 2;
+      connectorY = (supplierCenterY + customerCenterY) / 2;
+    }
 
-    // If there's already one connector, stack vertically below
-    final stackOffset = existingConnectors.isNotEmpty ? 140.0 : 0.0; // Stack below existing
+    // If there's already one connector, stack horizontally to the right
+    final stackOffset = existingConnectors.isNotEmpty ? 100.0 : 0.0; // Stack to the right
 
     final newMaterialConnector = MaterialConnector(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -1160,7 +1350,7 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
       supplierProcessId: supplier.id.toString(),
       customerProcessId: customer.id.toString(),
       label: MaterialConnectorHelper.getColor(pendingMaterialConnectorType!).toString().split('.').last.toUpperCase(),
-      position: Offset(connectorX, connectorY + stackOffset),
+      position: Offset(connectorX + stackOffset, connectorY),
       numberOfPieces: null,
       color: MaterialConnectorHelper.getColor(pendingMaterialConnectorType!),
     );
@@ -1168,13 +1358,15 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
     setState(() {
       materialConnectors.add(newMaterialConnector);
       selectedMaterialConnector = newMaterialConnector.id;
-      showMaterialConnectorSelection = false;
+      connectionMode = ConnectionMode.none;
       pendingMaterialConnectorType = null;
+      pendingSupplierProcess = null;
+      pendingCustomerProcess = null;
     });
 
     _saveCanvasState();
 
-    final typeName = pendingMaterialConnectorType.toString().split('.').last.toUpperCase();
+    final typeName = newMaterialConnector.type.toString().split('.').last.toUpperCase();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('$typeName material connector created between ${supplier.name} and ${customer.name}'),
@@ -1183,11 +1375,153 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
     );
   }
 
-  void _cancelMaterialConnectorSelection() {
+  void _createKanbanLoopWithHandles(String supermarketId, ConnectionHandle supermarketHandle, ConnectionHandle supplierHandle) {
+    // Find the supermarket material connector
+    final supermarket = materialConnectors.firstWhere(
+      (c) => c.id == supermarketId,
+      orElse: () => MaterialConnector(
+        id: '',
+        type: CanvasIconType.fifo,
+        supplierProcessId: '',
+        customerProcessId: '',
+        label: '',
+        position: Offset.zero,
+      ),
+    );
+    
+    if (supermarket.id.isEmpty || supermarket.type != CanvasIconType.kanbanMarket) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Invalid supermarket selected for kanban loop.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      setState(() {
+        connectionMode = ConnectionMode.none;
+        pendingSupermarketId = null;
+        pendingKanbanSupplierProcess = null;
+        showConnectionHandles = false;
+        selectedItemForHandles = null;
+        selectedItemType = null;
+        selectedHandle = null;
+      });
+      return;
+    }
+
+    // Get the supplier process to calculate absolute handle position
+    final supplierProcess = processes.firstWhere((p) => p.id.toString() == supplierHandle.itemId);
+    
+    // Calculate absolute handle positions for both supermarket and supplier
+    // For supermarket: convert center position to top-left, then add handle offset
+    final supermarketTopLeft = Offset(
+      supermarket.position.dx - supermarket.size.width / 2,
+      supermarket.position.dy - supermarket.size.height / 2,
+    );
+    final absoluteSupermarketHandlePosition = supermarketTopLeft + supermarketHandle.offset;
+    
+    // For supplier process: position is already top-left, just add handle offset
+    final absoluteSupplierHandlePosition = supplierProcess.position + supplierHandle.offset;
+    
+    // Create the kanban loop using both specific handles
+    final newKanbanLoop = KanbanLoop.createWithHandles(
+      supermarketId: supermarketId,
+      supplierProcessId: supplierHandle.itemId,
+      supermarketHandlePosition: absoluteSupermarketHandlePosition,
+      supplierHandlePosition: absoluteSupplierHandlePosition,
+    );
+
     setState(() {
-      showMaterialConnectorSelection = false;
-      pendingMaterialConnectorType = null;
+      kanbanLoops.add(newKanbanLoop);
+      selectedKanbanLoop = newKanbanLoop.id;
+      connectionMode = ConnectionMode.none;
+      pendingSupermarketId = null;
+      pendingKanbanSupplierProcess = null;
+      showConnectionHandles = false;
+      selectedItemForHandles = null;
+      selectedItemType = null;
+      selectedHandle = null;
     });
+
+    _saveCanvasState();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Kanban loop created with precise handle connections'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _updateKanbanLoop(KanbanLoop updatedLoop) {
+    setState(() {
+      final index = kanbanLoops.indexWhere((loop) => loop.id == updatedLoop.id);
+      if (index != -1) {
+        kanbanLoops[index] = updatedLoop;
+      }
+    });
+    _saveCanvasState();
+  }
+
+  void _handleKeyEvent(KeyEvent event) {
+    if (event is KeyDownEvent) {
+      if (event.logicalKey == LogicalKeyboardKey.escape) {
+        // Cancel kanban loop creation mode
+        if (connectionMode == ConnectionMode.kanbanLoopSelecting || 
+            connectionMode == ConnectionMode.kanbanLoopConnecting) {
+          setState(() {
+            connectionMode = ConnectionMode.none;
+            pendingSupermarketId = null;
+            showConnectionHandles = false;
+            selectedItemForHandles = null;
+            selectedItemType = null;
+            selectedHandle = null;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Kanban loop creation cancelled.'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  void _showKanbanLoopDeleteConfirmation(KanbanLoop kanbanLoop) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete Kanban Loop'),
+          content: const Text('Are you sure you want to delete this kanban loop?'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('Delete'),
+              onPressed: () {
+                _deleteKanbanLoop(kanbanLoop.id);
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _deleteKanbanLoop(String id) {
+    setState(() {
+      kanbanLoops.removeWhere((loop) => loop.id == id);
+      if (selectedKanbanLoop == id) {
+        selectedKanbanLoop = null;
+      }
+    });
+    _saveCanvasState();
   }
 
   void _updateMaterialConnector(MaterialConnector updatedConnector) {
@@ -1272,6 +1606,19 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
         );
         return icon.id.isNotEmpty ? icon.position : null;
 
+      case 'materialConnector':
+        final materialConnector = materialConnectors.firstWhere(
+          (c) => c.id == itemId,
+          orElse: () => MaterialConnector(
+            id: '',
+            type: CanvasIconType.fifo,
+            supplierProcessId: '',
+            customerProcessId: '',
+            label: '',
+            position: Offset.zero,
+          ),
+        );
+        return materialConnector.id.isNotEmpty ? materialConnector.position : null;
       case 'customer':
         return customerDataBoxPositions[itemId];
       case 'supplier':
@@ -1305,6 +1652,19 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
 
       case 'icon':
         return const Size(50, 50); // Standard icon size
+      case 'materialConnector':
+        final materialConnector = materialConnectors.firstWhere(
+          (c) => c.id == itemId,
+          orElse: () => MaterialConnector(
+            id: '',
+            type: CanvasIconType.fifo,
+            supplierProcessId: '',
+            customerProcessId: '',
+            label: '',
+            position: Offset.zero,
+          ),
+        );
+        return materialConnector.id.isNotEmpty ? materialConnector.size : const Size(85, 130);
       case 'customer':
         return const Size(180, 150); // Customer data box actual rendered size
       case 'supplier':
@@ -1352,6 +1712,32 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
 
   /// Handle connection using a specific handle
   void _handleConnectionWithHandle(ConnectionHandle handle) {
+    // Handle kanban loop supermarket handle selection
+    if (connectionMode == ConnectionMode.kanbanLoopSelecting && pendingSupermarketId != null) {
+      // Store the selected supermarket handle and move to supplier selection
+      setState(() {
+        selectedHandle = handle; // Store the supermarket handle
+        connectionMode = ConnectionMode.kanbanLoopConnecting;
+        showConnectionHandles = false; // Hide supermarket handles
+        selectedItemForHandles = null;
+        selectedItemType = null;
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Supermarket handle selected. Now tap the supplier process for the kanban loop.'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+    
+    // Handle kanban loop supplier handle selection
+    if (connectionMode == ConnectionMode.kanbanLoopConnecting && pendingSupermarketId != null && selectedHandle != null) {
+      _createKanbanLoopWithHandles(pendingSupermarketId!, selectedHandle!, handle);
+      return;
+    }
+    
     final endpoint = ConnectorEndpoint(
       itemId: handle.itemId,
       itemType: handle.itemType,
@@ -1426,6 +1812,47 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
   }
 
   void _selectMaterialConnector(String materialConnectorId) {
+    // Handle kanban loop creation workflow
+    if (connectionMode == ConnectionMode.kanbanLoopSelecting) {
+      // Check if the selected material connector is a supermarket
+      final materialConnector = materialConnectors.firstWhere(
+        (c) => c.id == materialConnectorId,
+        orElse: () => MaterialConnector(
+          id: '',
+          type: CanvasIconType.fifo,
+          supplierProcessId: '',
+          customerProcessId: '',
+          label: '',
+          position: Offset.zero,
+        ),
+      );
+      
+      if (materialConnector.type == CanvasIconType.kanbanMarket) {
+        // Show connection handles on the supermarket for user to select
+        _showConnectionHandles(materialConnectorId, 'materialConnector');
+        
+        setState(() {
+          pendingSupermarketId = materialConnectorId;
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Select a connection handle on the supermarket, then tap the supplier process.'),
+            duration: Duration(seconds: 4),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select a supermarket material connector for kanban loops.'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
+    
+    // Normal material connector selection
     setState(() {
       selectedMaterialConnector = materialConnectorId;
       selectedConnector = null;
@@ -1435,10 +1862,47 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
       selectedSupplierDataBox = null;
       selectedProductionControlDataBox = null;
       selectedTruckDataBox = null;
+      selectedKanbanLoop = null;
+      
+      // Don't automatically show connection handles when just selecting a material connector
+      // Handles should only be shown when explicitly creating connections
+      selectedItemForHandles = null;
+      selectedItemType = null;
+      showConnectionHandles = false;
+      selectedHandle = null;
+      
       // Ensure we're not in connection mode when selecting a material connector
       if (connectionMode != ConnectionMode.none) {
         connectionMode = ConnectionMode.none;
         pendingConnection = null;
+      }
+    });
+  }
+
+  void _selectKanbanLoop(String kanbanLoopId) {
+    setState(() {
+      selectedKanbanLoop = kanbanLoopId;
+      selectedMaterialConnector = null;
+      selectedConnector = null;
+      selectedProcess = null;
+      selectedCanvasIcon = null;
+      selectedCustomerDataBox = null;
+      selectedSupplierDataBox = null;
+      selectedProductionControlDataBox = null;
+      selectedTruckDataBox = null;
+      
+      // Clear connection handles
+      selectedItemForHandles = null;
+      selectedItemType = null;
+      showConnectionHandles = false;
+      selectedHandle = null;
+      
+      // Ensure we're not in connection mode when selecting a kanban loop
+      if (connectionMode != ConnectionMode.none) {
+        connectionMode = ConnectionMode.none;
+        pendingConnection = null;
+        pendingSupermarketId = null;
+        pendingKanbanSupplierProcess = null;
       }
     });
   }
@@ -1472,6 +1936,63 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
         icon.position,
         icon.size,
       );
+    } else if (connectionMode == ConnectionMode.materialConnectorSelecting && icon.type == CanvasIconType.truck) {
+      // Handle material connector supplier selection with shipment icon only
+      
+      // Convert canvas icon to a ProcessObject-like structure for material connector
+      final supplierProcess = _convertCanvasIconToProcess(icon);
+      
+      // First show immediate feedback
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Supplier "${icon.label}" selected. Now selecting customer...'),
+          duration: const Duration(milliseconds: 1500),
+        ),
+      );
+      
+      setState(() {
+        pendingSupplierProcess = supplierProcess;
+        connectionMode = ConnectionMode.materialConnectorConnecting;
+      });
+      
+      // Show customer selection instruction after a brief delay
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted && connectionMode == ConnectionMode.materialConnectorConnecting) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Now tap the customer process to create the material connector.'),
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      });
+    } else if (connectionMode == ConnectionMode.materialConnectorConnecting && icon.type == CanvasIconType.truck) {
+      // Handle material connector customer selection with shipment icon only
+      
+      if (pendingSupplierProcess != null) {
+        final customerProcess = _convertCanvasIconToProcess(icon);
+        
+        if (customerProcess.id != pendingSupplierProcess!.id) {
+          _createMaterialConnector(pendingSupplierProcess!, customerProcess);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please select a different item for the customer.'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } else if ((connectionMode == ConnectionMode.materialConnectorSelecting || connectionMode == ConnectionMode.materialConnectorConnecting) && icon.type != CanvasIconType.truck) {
+      // User clicked non-shipment icon during material connector mode
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Only shipment icons can be used with material connectors. Selected: ${icon.label}'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
     } else {
       // Normal selection mode
       setState(() {
@@ -1484,6 +2005,19 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
         selectedConnector = null;
       });
     }
+  }
+
+  /// Convert a CanvasIcon to a ProcessObject-like structure for material connector compatibility
+  ProcessObject _convertCanvasIconToProcess(CanvasIcon icon) {
+    return ProcessObject(
+      id: int.tryParse(icon.id) ?? DateTime.now().millisecondsSinceEpoch, // Convert string ID to int, fallback to timestamp
+      name: icon.label,
+      description: 'Canvas Icon: ${icon.type.toString().split('.').last}',
+      color: icon.color,
+      position: icon.position,
+      valueStreamId: widget.valueStreamId,
+      size: icon.size,
+    );
   }
 
   void _deleteCanvasIcon(CanvasIcon icon) {
@@ -1505,10 +2039,34 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
       selectedProductionControlDataBox = null;
       selectedTruckDataBox = null;
       selectedConnector = null;
-      // Reset connection mode if user clicks empty space
-      if (connectionMode != ConnectionMode.none) {
+      selectedMaterialConnector = null;
+      selectedKanbanLoop = null;
+      
+      // Only reset connection mode if NOT in kanban loop workflow
+      // This allows users to click again if they miss a handle
+      if (connectionMode != ConnectionMode.none && 
+          connectionMode != ConnectionMode.kanbanLoopSelecting && 
+          connectionMode != ConnectionMode.kanbanLoopConnecting) {
         connectionMode = ConnectionMode.none;
         pendingConnection = null;
+        pendingMaterialConnectorType = null;
+        pendingSupplierProcess = null;
+        pendingCustomerProcess = null;
+      }
+      
+      // Hide connection handles if clicking in empty space during kanban loop creation
+      if (connectionMode == ConnectionMode.kanbanLoopConnecting) {
+        showConnectionHandles = false;
+        selectedItemForHandles = null;
+        selectedItemType = null;
+        selectedHandle = null;
+        // Show message to try again
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Click on a supplier process to show its connection handles.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
       }
     });
   }
@@ -1533,6 +2091,7 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
       canvasIcons.clear();
       connectors.clear(); // Clear connectors
       materialConnectors.clear(); // Clear material connectors
+      kanbanLoops.clear(); // Clear kanban loops
 
       // Restore canvas state
       for (final state in canvasState) {
@@ -1582,6 +2141,18 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
                 materialConnectors.add(materialConnector);
               } catch (e) {
                 // Silently ignore material connector parsing errors
+              }
+            }
+            break;
+          case 'kanbanLoop':
+            // Restore kanban loop from JSON data
+            if (state.userData != null) {
+              try {
+                final kanbanLoopData = jsonDecode(state.userData!);
+                final kanbanLoop = KanbanLoop.fromJson(kanbanLoopData);
+                kanbanLoops.add(kanbanLoop);
+              } catch (e) {
+                // Silently ignore kanban loop parsing errors
               }
             }
             break;
@@ -1706,6 +2277,19 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
           userData: jsonEncode(materialConnector.toJson()), // Store material connector data as JSON
         );
       }
+
+      // Save kanban loops
+      for (final kanbanLoop in kanbanLoops) {
+        await db.saveCanvasState(
+          valueStreamId: widget.valueStreamId,
+          partNumber: currentPartNumber!,
+          iconType: 'kanbanLoop',
+          iconId: kanbanLoop.id,
+          positionX: kanbanLoop.kanbanIconPosition.dx,
+          positionY: kanbanLoop.kanbanIconPosition.dy,
+          userData: jsonEncode(kanbanLoop.toJson()), // Store kanban loop data as JSON
+        );
+      }
     } catch (e) {
       // Silently ignore canvas state saving errors
     }
@@ -1801,7 +2385,7 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
       case CanvasIconType.buffer:
         return 'Buffer';
       case CanvasIconType.kanbanMarket:
-        return 'Kanban Market';
+        return 'Supermarket';
       case CanvasIconType.uncontrolled:
         return 'Uncontrolled';
       default:
@@ -1824,14 +2408,31 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
 
     final handles = _generateConnectionHandles(selectedItemForHandles!, selectedItemType!);
 
+    // Adjust position to account for handles extending outside the item bounds
+    const handleExtension = 12.0;
+    
+    // Different items use different coordinate systems:
+    // - MaterialConnector: position is center point
+    // - ProcessObject: position is top-left point  
+    // - DataBoxes: position is top-left point
+    final bool usesCenterPosition = selectedItemType == 'materialConnector';
+    
+    final topLeftPosition = usesCenterPosition 
+        ? Offset(
+            itemPosition.dx - itemSize.width / 2,
+            itemPosition.dy - itemSize.height / 2,
+          )
+        : itemPosition; // Already top-left for processes and data boxes
+    
     return Positioned(
-      left: itemPosition.dx,
-      top: itemPosition.dy,
+      left: topLeftPosition.dx - handleExtension,
+      top: topLeftPosition.dy - handleExtension,
       child: ConnectionHandleWidget(
         handles: handles,
         selectedHandle: selectedHandle,
         showHandles: showConnectionHandles,
         itemSize: itemSize,
+        paddingExtension: handleExtension,
         onHandleSelected: _selectConnectionHandle,
       ),
     );
@@ -1899,7 +2500,10 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
                       style: TextStyle(fontSize: 16, color: Colors.grey),
                     ),
                   )
-                : LayoutBuilder(
+                : KeyboardListener(
+                    focusNode: FocusNode()..requestFocus(),
+                    onKeyEvent: _handleKeyEvent,
+                    child: LayoutBuilder(
                     builder: (context, constraints) {
                       return GestureDetector(
                         onTap: _deselectAll, // Deselect when tapping empty space
@@ -1976,8 +2580,22 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
                                     materialConnector: materialConnector,
                                     processes: processes,
                                     isSelected: selectedMaterialConnector == materialConnector.id,
+                                    showConnectionHandles: false, // Don't show handles by default
+                                    selectedHandle: null,
                                     onTap: _selectMaterialConnector,
                                     onUpdate: _updateMaterialConnector,
+                                    onHandleSelected: _selectConnectionHandle,
+                                  );
+                                }),
+                                
+                                // Kanban loops (information flow from supermarkets to suppliers)
+                                ...kanbanLoops.map((kanbanLoop) {
+                                  return KanbanLoopWidget(
+                                    key: ValueKey(kanbanLoop.id),
+                                    kanbanLoop: kanbanLoop,
+                                    isSelected: selectedKanbanLoop == kanbanLoop.id,
+                                    onTap: _selectKanbanLoop,
+                                    onUpdate: _updateKanbanLoop,
                                   );
                                 }),
                                 
@@ -2145,6 +2763,44 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
                                     ),
                                   ),
 
+                                // Selected kanban loop options
+                                if (selectedKanbanLoop != null)
+                                  Positioned(
+                                    top: 16,
+                                    left: 400, // Position next to material connector panel
+                                    child: Card(
+                                      elevation: 4,
+                                      color: Colors.amber[50],
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(8),
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Text(
+                                              'Kanban Loop',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            ElevatedButton.icon(
+                                              onPressed: () {
+                                                final kanbanLoop = kanbanLoops.firstWhere((loop) => loop.id == selectedKanbanLoop);
+                                                _showKanbanLoopDeleteConfirmation(kanbanLoop);
+                                              },
+                                              icon: const Icon(Icons.delete),
+                                              label: const Text('Delete'),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: Colors.red,
+                                                foregroundColor: Colors.white,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+
                                 // Connection mode indicator
                                 if (connectionMode != ConnectionMode.none)
                                   Positioned(
@@ -2165,9 +2821,7 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
                                             ),
                                             const SizedBox(height: 4),
                                             Text(
-                                              connectionMode == ConnectionMode.selecting
-                                                  ? 'Select first item'
-                                                  : 'Select second item',
+                                              _getConnectionModeText(),
                                               style: TextStyle(
                                                 fontWeight: FontWeight.bold,
                                                 color: Colors.blue[700],
@@ -2179,6 +2833,9 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
                                                 setState(() {
                                                   connectionMode = ConnectionMode.none;
                                                   pendingConnection = null;
+                                                  pendingMaterialConnectorType = null;
+                                                  pendingSupplierProcess = null;
+                                                  pendingCustomerProcess = null;
                                                 });
                                               },
                                               style: ElevatedButton.styleFrom(
@@ -2202,15 +2859,6 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
                                 FloatingIconToolbar(
                                   onIconSelected: _addCanvasIcon,
                                 ),
-                                
-                                // Material connector selection overlay
-                                if (showMaterialConnectorSelection && pendingMaterialConnectorType != null)
-                                  MaterialConnectorSelectionWidget(
-                                    materialConnectorType: pendingMaterialConnectorType!,
-                                    processes: processes,
-                                    onProcessesSelected: _onMaterialConnectorProcessesSelected,
-                                    onCancel: _cancelMaterialConnectorSelection,
-                                  ),
                               ],
                             );
                           },
@@ -2218,6 +2866,7 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
                       );
                     },
                   ),
+                ), // KeyboardListener
         ), // PopScope child (Scaffold)
       ), // PopScope
     ); // HomeButtonWrapper

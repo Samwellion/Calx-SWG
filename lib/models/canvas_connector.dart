@@ -154,7 +154,11 @@ class CanvasConnector {
 
 /// Enum for connection mode states
 enum ConnectionMode {
-  none,        // Normal mode - no connections being made
-  selecting,   // User clicked arrow tool, waiting for first item selection
-  connecting,  // First item selected, waiting for second item selection
+  none,                    // Normal mode - no connections being made
+  selecting,               // User clicked arrow tool, waiting for first item selection
+  connecting,              // First item selected, waiting for second item selection
+  materialConnectorSelecting,  // User clicked material connector tool, waiting for supplier selection
+  materialConnectorConnecting, // Supplier selected, waiting for customer selection
+  kanbanLoopSelecting,     // User clicked kanban loop tool, waiting for supermarket selection
+  kanbanLoopConnecting,    // Supermarket selected, waiting for supplier selection
 }

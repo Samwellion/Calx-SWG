@@ -77,7 +77,7 @@ class TimeObservationTableState extends State<TimeObservationTable> {
 
         // Get comments from controller
         String? comments = _commentsControllers[i]?.text;
-        if (comments == null || comments.trim().isEmpty) {
+        if (comments!.trim().isEmpty) {
           comments = null;
         }
 
