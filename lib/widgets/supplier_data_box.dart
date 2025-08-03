@@ -204,6 +204,7 @@ class _SupplierDataBoxState extends State<SupplierDataBox> {
                                     controller: _leadTimeController,
                                     style: const TextStyle(fontSize: 11),
                                     keyboardType: TextInputType.number,
+                                    textAlign: TextAlign.right,
                                     decoration: const InputDecoration(
                                       border: UnderlineInputBorder(),
                                       contentPadding: EdgeInsets.symmetric(
@@ -239,6 +240,7 @@ class _SupplierDataBoxState extends State<SupplierDataBox> {
                                     controller: _expediteTimeController,
                                     style: const TextStyle(fontSize: 11),
                                     keyboardType: TextInputType.number,
+                                    textAlign: TextAlign.right,
                                     decoration: const InputDecoration(
                                       border: UnderlineInputBorder(),
                                       contentPadding: EdgeInsets.symmetric(

@@ -141,26 +141,26 @@ class ConnectionHandleCalculator {
     required Offset itemPosition,
     required Size itemSize,
   }) {
-    
+    // Calculate the relative offset within the item bounds
     switch (position) {
       case HandlePosition.top:
         return Offset(
           _getAlignedX(alignment, 0, itemSize.width),
-          0, // Place handle on the top edge
+          0, // Top edge
         );
       case HandlePosition.right:
         return Offset(
-          itemSize.width, // Place handle on the right edge
+          itemSize.width, // Right edge
           _getAlignedY(alignment, 0, itemSize.height),
         );
       case HandlePosition.bottom:
         return Offset(
           _getAlignedX(alignment, 0, itemSize.width),
-          itemSize.height, // Place handle on the bottom edge
+          itemSize.height, // Bottom edge
         );
       case HandlePosition.left:
         return Offset(
-          0, // Place handle on the left edge
+          0, // Left edge
           _getAlignedY(alignment, 0, itemSize.height),
         );
     }

@@ -8,6 +8,7 @@ class ConnectionHandleWidget extends StatelessWidget {
   final Function(ConnectionHandle) onHandleSelected;
   final bool showHandles;
   final Size itemSize;
+  final double paddingExtension;
 
   const ConnectionHandleWidget({
     super.key,
@@ -16,25 +17,18 @@ class ConnectionHandleWidget extends StatelessWidget {
     required this.itemSize,
     this.selectedHandle,
     this.showHandles = false,
+    this.paddingExtension = 0.0,
   });
 
   @override
   Widget build(BuildContext context) {
     if (!showHandles) return const SizedBox.shrink();
 
-    // Create a container that's slightly larger than the item to accommodate handles that extend outside
-    const handleExtension = 12.0;
-    final expandedWidth = itemSize.width + (handleExtension * 2);
-    final expandedHeight = itemSize.height + (handleExtension * 2);
-
-    return Transform.translate(
-      offset: const Offset(-handleExtension, -handleExtension), // Offset the entire widget
-      child: SizedBox(
-        width: expandedWidth,
-        height: expandedHeight,
-        child: Stack(
-          children: handles.map((handle) => _buildHandle(handle)).toList(),
-        ),
+    return SizedBox(
+      width: itemSize.width + (paddingExtension * 2),
+      height: itemSize.height + (paddingExtension * 2),
+      child: Stack(
+        children: handles.map((handle) => _buildHandle(handle)).toList(),
       ),
     );
   }
@@ -43,26 +37,23 @@ class ConnectionHandleWidget extends StatelessWidget {
     final isSelected = selectedHandle?.id == handle.id;
     final isDefault = handle.alignment == HandleAlignment.center;
     
-    // Since we offset the container by 12px, we need to add that back to position handles correctly
-    const handleExtension = 12.0;
+    // Position handle based on its calculated offset, accounting for padding
+    double leftOffset = handle.offset.dx + paddingExtension - 6; // Center the 12px handle
+    double topOffset = handle.offset.dy + paddingExtension - 6;
     
-    // Position handles on the edges of the original item (accounting for container offset)
-    double leftOffset = handle.offset.dx + handleExtension - 6; // Add extension offset, then center the 12px handle
-    double topOffset = handle.offset.dy + handleExtension - 6;
-    
-    // For edge handles, adjust to sit exactly on the edge with slight extension for visibility
+    // For edge handles, adjust to extend slightly outside the item bounds for better visibility
     switch (handle.position) {
       case HandlePosition.top:
-        topOffset = handle.offset.dy + handleExtension - 12; // Extend above the top edge
+        topOffset = handle.offset.dy + paddingExtension - 12; // Extend above the top edge
         break;
       case HandlePosition.right:
-        leftOffset = handle.offset.dx + handleExtension; // Extend beyond the right edge
+        leftOffset = handle.offset.dx + paddingExtension; // Extend beyond the right edge
         break;
       case HandlePosition.bottom:
-        topOffset = handle.offset.dy + handleExtension; // Extend below the bottom edge
+        topOffset = handle.offset.dy + paddingExtension; // Extend below the bottom edge
         break;
       case HandlePosition.left:
-        leftOffset = handle.offset.dx + handleExtension - 12; // Extend beyond the left edge
+        leftOffset = handle.offset.dx + paddingExtension - 12; // Extend beyond the left edge
         break;
     }
     
@@ -128,43 +119,33 @@ class ConnectionHandleHints extends StatelessWidget {
       (h) => h.alignment == HandleAlignment.center
     ).toList();
 
-    // Create a container that's slightly larger than the item to accommodate hints that extend outside
-    const handleExtension = 12.0;
-    final expandedWidth = itemSize.width + (handleExtension * 2);
-    final expandedHeight = itemSize.height + (handleExtension * 2);
-
-    return Transform.translate(
-      offset: const Offset(-handleExtension, -handleExtension), // Offset the entire widget
-      child: SizedBox(
-        width: expandedWidth,
-        height: expandedHeight,
-        child: Stack(
-          children: centerHandles.map((handle) => _buildHint(handle)).toList(),
-        ),
+    return SizedBox(
+      width: itemSize.width,
+      height: itemSize.height,
+      child: Stack(
+        children: centerHandles.map((handle) => _buildHint(handle)).toList(),
       ),
     );
   }
 
   Widget _buildHint(ConnectionHandle handle) {
-    // Position hints accounting for the container offset
-    const handleExtension = 12.0;
+    // Position hints based on the handle's calculated offset
+    double leftOffset = handle.offset.dx - 4; // Center the 8px hint
+    double topOffset = handle.offset.dy - 4;
     
-    double leftOffset = handle.offset.dx + handleExtension - 4; // Add extension offset, then center the 8px hint
-    double topOffset = handle.offset.dy + handleExtension - 4;
-    
-    // For edge hints, adjust to sit exactly on the edge with slight extension for visibility
+    // For edge hints, adjust to extend slightly outside the item bounds
     switch (handle.position) {
       case HandlePosition.top:
-        topOffset = handle.offset.dy + handleExtension - 8; // Extend above the top edge
+        topOffset = handle.offset.dy - 8; // Extend above the top edge
         break;
       case HandlePosition.right:
-        leftOffset = handle.offset.dx + handleExtension; // Extend beyond the right edge
+        leftOffset = handle.offset.dx; // Extend beyond the right edge
         break;
       case HandlePosition.bottom:
-        topOffset = handle.offset.dy + handleExtension; // Extend below the bottom edge
+        topOffset = handle.offset.dy; // Extend below the bottom edge
         break;
       case HandlePosition.left:
-        leftOffset = handle.offset.dx + handleExtension - 8; // Extend beyond the left edge
+        leftOffset = handle.offset.dx - 8; // Extend beyond the left edge
         break;
     }
     
