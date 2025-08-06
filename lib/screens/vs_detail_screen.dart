@@ -5,7 +5,6 @@ import '../database_provider.dart';
 import '../logic/app_database.dart';
 import '../widgets/app_footer.dart';
 import '../widgets/home_button_wrapper.dart';
-import 'process_canvas_screen.dart';
 
 class VSDetailScreen extends StatefulWidget {
   final String valueStreamName;
@@ -39,7 +38,6 @@ class _VSDetailScreenState extends State<VSDetailScreen> {
   List<VSShift> _vsShifts = [];
   bool _isAddingShift = false;
   final TextEditingController _newShiftNameController = TextEditingController();
-  String _calculatedTaktTime = '0:00:00';
   String _timePerUnit = '0:00:00';
 
   // Editing state
@@ -89,10 +87,14 @@ class _VSDetailScreenState extends State<VSDetailScreen> {
   Future<void> _initializeScreen() async {
     try {
       db = await DatabaseProvider.getInstance();
-      await _loadValueStreamData();
-      await _loadVSShifts();
+      await Future.wait([
+        _loadValueStreamData(),
+        _loadVSShifts(),
+      ]);
     } catch (e) {
-      debugPrint('Error initializing VS detail screen: $e');
+      if (mounted) {
+        _showErrorSnackbar('Failed to initialize screen: $e');
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -102,31 +104,56 @@ class _VSDetailScreenState extends State<VSDetailScreen> {
     }
   }
 
+  void _showErrorSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  void _showSuccessSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
   Future<void> _loadValueStreamData() async {
     try {
-      final valueStream = await (db.select(db.valueStreams)
-            ..where((vs) => vs.id.equals(widget.valueStreamId)))
-          .getSingleOrNull();
-
+      final valueStream = await _getValueStreamById(widget.valueStreamId);
+      
       if (valueStream != null && mounted) {
-        setState(() {
-          _monthlyDemandController.text = valueStream.mDemand?.toString() ?? '';
-          _managerEmpIdController.text =
-              valueStream.mngrEmpId?.toString() ?? '';
-          _selectedUOM = valueStream.uom;
-        });
+        _updateValueStreamForm(valueStream);
       }
     } catch (e) {
-      debugPrint('Error loading value stream data: $e');
+      if (mounted) {
+        _showErrorSnackbar('Failed to load value stream data: $e');
+      }
     }
+  }
+
+  Future<ValueStream?> _getValueStreamById(int id) async {
+    return await (db.select(db.valueStreams)
+          ..where((vs) => vs.id.equals(id)))
+        .getSingleOrNull();
+  }
+
+  void _updateValueStreamForm(ValueStream valueStream) {
+    setState(() {
+      _monthlyDemandController.text = valueStream.mDemand?.toString() ?? '';
+      _managerEmpIdController.text = valueStream.mngrEmpId?.toString() ?? '';
+      _selectedUOM = valueStream.uom;
+    });
   }
 
   Future<void> _loadVSShifts() async {
     try {
-      final shifts = await (db.select(db.vSShifts)
-            ..where((vs) => vs.vsId.equals(widget.valueStreamId)))
-          .get();
-
+      final shifts = await _getVSShiftsByValueStreamId(widget.valueStreamId);
+      
       if (mounted) {
         setState(() {
           _vsShifts = shifts;
@@ -134,58 +161,81 @@ class _VSDetailScreenState extends State<VSDetailScreen> {
         });
       }
     } catch (e) {
-      debugPrint('Error loading VS shifts: $e');
+      if (mounted) {
+        _showErrorSnackbar('Failed to load shifts: $e');
+      }
     }
   }
 
+  Future<List<VSShift>> _getVSShiftsByValueStreamId(int valueStreamId) async {
+    return await (db.select(db.vSShifts)
+          ..where((vs) => vs.vsId.equals(valueStreamId)))
+        .get();
+  }
+
   void _calculateTaktTime() {
+    final totalMinutes = _calculateTotalWorkingMinutes();
+    _timePerUnit = _calculateTimePerUnit(totalMinutes);
+  }
+
+  int _calculateTotalWorkingMinutes() {
     int totalMinutes = 0;
 
     for (final shift in _vsShifts) {
-      final List<String?> dayTimes = [
-        shift.sun,
-        shift.mon,
-        shift.tue,
-        shift.wed,
-        shift.thu,
-        shift.fri,
-        shift.sat
-      ];
-
+      final dayTimes = _getShiftDayTimes(shift);
+      
       for (final timeString in dayTimes) {
         if (timeString != null && timeString.isNotEmpty) {
-          final minutes = _parseTimeToMinutes(timeString);
-          totalMinutes += minutes;
+          totalMinutes += _parseTimeToMinutes(timeString);
         }
       }
     }
 
-    _calculatedTaktTime = _formatMinutesToTime(totalMinutes);
+    return totalMinutes;
+  }
 
-    // Calculate time per unit based on monthly demand
-    final monthlyDemand = _monthlyDemandController.text.isNotEmpty
-        ? int.tryParse(_monthlyDemandController.text)
-        : null;
+  List<String?> _getShiftDayTimes(VSShift shift) {
+    return [
+      shift.sun,
+      shift.mon,
+      shift.tue,
+      shift.wed,
+      shift.thu,
+      shift.fri,
+      shift.sat,
+    ];
+  }
+
+  String _calculateTimePerUnit(int totalMinutes) {
+    final monthlyDemand = _getMonthlyDemandFromController();
 
     if (monthlyDemand != null && monthlyDemand > 0 && totalMinutes > 0) {
-      final minutesPerUnit =
-          totalMinutes / (monthlyDemand / 4.33); // 4.33 weeks in a month
-      _timePerUnit = _formatMinutesToTime(minutesPerUnit.round());
-    } else {
-      _timePerUnit = '0:00:00';
+      final minutesPerUnit = totalMinutes / (monthlyDemand / 4.33); // 4.33 weeks in a month
+      return _formatMinutesToTime(minutesPerUnit.round());
     }
+    
+    return '0:00:00';
+  }
+
+  int? _getMonthlyDemandFromController() {
+    return _monthlyDemandController.text.isNotEmpty
+        ? int.tryParse(_monthlyDemandController.text)
+        : null;
   }
 
   int _parseTimeToMinutes(String timeString) {
     try {
-      final parts = timeString.split(':');
+      final trimmedTime = timeString.trim();
+      if (trimmedTime.isEmpty) return 0;
+      
+      final parts = trimmedTime.split(':');
       if (parts.length >= 2) {
         final hours = int.tryParse(parts[0]) ?? 0;
         final minutes = int.tryParse(parts[1]) ?? 0;
         return (hours * 60) + minutes;
       }
     } catch (e) {
-      debugPrint('Error parsing time string: $timeString');
+      // Silently handle parsing errors by returning 0
     }
     return 0;
   }
@@ -198,222 +248,234 @@ class _VSDetailScreenState extends State<VSDetailScreen> {
 
   Future<void> _saveValueStreamData() async {
     try {
-      final monthlyDemand = _monthlyDemandController.text.isNotEmpty
-          ? int.tryParse(_monthlyDemandController.text)
-          : null;
-      final managerEmpId = _managerEmpIdController.text.isNotEmpty
-          ? int.tryParse(_managerEmpIdController.text)
-          : null;
-
-      await (db.update(db.valueStreams)
-            ..where((vs) => vs.id.equals(widget.valueStreamId)))
-          .write(ValueStreamsCompanion(
-        mDemand: monthlyDemand != null
-            ? drift.Value(monthlyDemand)
-            : const drift.Value.absent(),
-        uom: _selectedUOM != null
-            ? drift.Value(_selectedUOM)
-            : const drift.Value.absent(),
-        mngrEmpId: managerEmpId != null
-            ? drift.Value(managerEmpId)
-            : const drift.Value.absent(),
-        taktTime:
-            drift.Value(_timePerUnit), // Save the calculated takt time (time per unit)
-      ));
-
-      // Recalculate takt time and time per unit after saving monthly demand
+      final valueStreamData = _buildValueStreamCompanion();
+      
+      await _updateValueStreamInDatabase(valueStreamData);
+      await _recalculateAndUpdateTaktTime();
+      
       if (mounted) {
-        setState(() {
-          _calculateTaktTime();
-        });
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Value Stream data saved successfully')),
-        );
+        _showSuccessSnackbar('Value Stream data saved successfully');
       }
     } catch (e) {
-      debugPrint('Error saving value stream data: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error saving value stream data')),
-        );
+        _showErrorSnackbar('Error saving value stream data: $e');
       }
     }
   }
 
-  Future<void> _addNewShift() async {
-    if (_newShiftNameController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a shift name')),
-      );
-      return;
+  ValueStreamsCompanion _buildValueStreamCompanion() {
+    final monthlyDemand = _getMonthlyDemandFromController();
+    final managerEmpId = _getManagerEmpIdFromController();
+
+    return ValueStreamsCompanion(
+      mDemand: monthlyDemand != null
+          ? drift.Value(monthlyDemand)
+          : const drift.Value.absent(),
+      uom: _selectedUOM != null
+          ? drift.Value(_selectedUOM)
+          : const drift.Value.absent(),
+      mngrEmpId: managerEmpId != null
+          ? drift.Value(managerEmpId)
+          : const drift.Value.absent(),
+      taktTime: drift.Value(_timePerUnit), // Save the calculated takt time (time per unit)
+    );
+  }
+
+  int? _getManagerEmpIdFromController() {
+    return _managerEmpIdController.text.isNotEmpty
+        ? int.tryParse(_managerEmpIdController.text)
+        : null;
+  }
+
+  Future<void> _updateValueStreamInDatabase(ValueStreamsCompanion companion) async {
+    await (db.update(db.valueStreams)
+          ..where((vs) => vs.id.equals(widget.valueStreamId)))
+        .write(companion);
+  }
+
+  Future<void> _recalculateAndUpdateTaktTime() async {
+    if (mounted) {
+      setState(() {
+        _calculateTaktTime();
+      });
     }
+  }
+
+  Future<void> _addNewShift() async {
+    if (!_validateShiftName()) return;
 
     try {
-      final companion = VSShiftsCompanion(
-        vsId: drift.Value(widget.valueStreamId),
-        shiftName: drift.Value(_newShiftNameController.text.trim()),
-        sun: _dayControllers['sun']!.text.isNotEmpty
-            ? drift.Value(_dayControllers['sun']!.text)
-            : const drift.Value.absent(),
-        mon: _dayControllers['mon']!.text.isNotEmpty
-            ? drift.Value(_dayControllers['mon']!.text)
-            : const drift.Value.absent(),
-        tue: _dayControllers['tue']!.text.isNotEmpty
-            ? drift.Value(_dayControllers['tue']!.text)
-            : const drift.Value.absent(),
-        wed: _dayControllers['wed']!.text.isNotEmpty
-            ? drift.Value(_dayControllers['wed']!.text)
-            : const drift.Value.absent(),
-        thu: _dayControllers['thu']!.text.isNotEmpty
-            ? drift.Value(_dayControllers['thu']!.text)
-            : const drift.Value.absent(),
-        fri: _dayControllers['fri']!.text.isNotEmpty
-            ? drift.Value(_dayControllers['fri']!.text)
-            : const drift.Value.absent(),
-        sat: _dayControllers['sat']!.text.isNotEmpty
-            ? drift.Value(_dayControllers['sat']!.text)
-            : const drift.Value.absent(),
-      );
-
-      await db.into(db.vSShifts).insert(companion);
-
-      // Clear form
-      _newShiftNameController.clear();
-      for (final controller in _dayControllers.values) {
-        controller.clear();
-      }
-
-      // Reload shifts
-      await _loadVSShifts();
-
-      // Don't close the form - let user add another shift if they want
-      // Clear the form but keep it open
-      // setState is not needed here as _loadVSShifts already triggers a rebuild
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Shift added successfully')),
-        );
-      }
+      final companion = _buildNewShiftCompanion();
+      await _insertShiftInDatabase(companion);
+      await _handleShiftAddSuccess();
     } catch (e) {
-      debugPrint('Error adding new shift: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error adding new shift: $e')),
-        );
+        _showErrorSnackbar('Error adding new shift: $e');
       }
+    }
+  }
+
+  bool _validateShiftName() {
+    if (_newShiftNameController.text.trim().isEmpty) {
+      _showErrorSnackbar('Please enter a shift name');
+      return false;
+    }
+    return true;
+  }
+
+  VSShiftsCompanion _buildNewShiftCompanion() {
+    return VSShiftsCompanion(
+      vsId: drift.Value(widget.valueStreamId),
+      shiftName: drift.Value(_newShiftNameController.text.trim()),
+      sun: _buildDayValue('sun'),
+      mon: _buildDayValue('mon'),
+      tue: _buildDayValue('tue'),
+      wed: _buildDayValue('wed'),
+      thu: _buildDayValue('thu'),
+      fri: _buildDayValue('fri'),
+      sat: _buildDayValue('sat'),
+    );
+  }
+
+  drift.Value<String> _buildDayValue(String day) {
+    return _dayControllers[day]!.text.isNotEmpty
+        ? drift.Value(_dayControllers[day]!.text)
+        : const drift.Value.absent();
+  }
+
+  Future<void> _insertShiftInDatabase(VSShiftsCompanion companion) async {
+    await db.into(db.vSShifts).insert(companion);
+  }
+
+  Future<void> _handleShiftAddSuccess() async {
+    _clearNewShiftForm();
+    setState(() {
+      _isAddingShift = false; // Close the add shift form
+    });
+    await _loadVSShifts();
+
+    if (mounted) {
+      _showSuccessSnackbar('Shift added successfully');
+    }
+  }
+
+  void _clearNewShiftForm() {
+    _newShiftNameController.clear();
+    for (final controller in _dayControllers.values) {
+      controller.clear();
     }
   }
 
   Future<void> _deleteShift(int shiftId) async {
     try {
-      await (db.delete(db.vSShifts)..where((vs) => vs.id.equals(shiftId))).go();
+      await _deleteShiftFromDatabase(shiftId);
       await _loadVSShifts();
-
+      
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Shift deleted successfully')),
-        );
+        _showSuccessSnackbar('Shift deleted successfully');
       }
     } catch (e) {
-      debugPrint('Error deleting shift: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error deleting shift')),
-        );
+        _showErrorSnackbar('Error deleting shift: $e');
       }
     }
+  }
+
+  Future<void> _deleteShiftFromDatabase(int shiftId) async {
+    await (db.delete(db.vSShifts)..where((vs) => vs.id.equals(shiftId))).go();
   }
 
   void _startEditingShift(VSShift shift) {
     setState(() {
       _editingShiftId = shift.id;
-      _editControllers['shiftName']!.text = shift.shiftName;
-      _editControllers['sun']!.text = shift.sun ?? '';
-      _editControllers['mon']!.text = shift.mon ?? '';
-      _editControllers['tue']!.text = shift.tue ?? '';
-      _editControllers['wed']!.text = shift.wed ?? '';
-      _editControllers['thu']!.text = shift.thu ?? '';
-      _editControllers['fri']!.text = shift.fri ?? '';
-      _editControllers['sat']!.text = shift.sat ?? '';
+      _populateEditControllers(shift);
     });
+  }
+
+  void _populateEditControllers(VSShift shift) {
+    _editControllers['shiftName']!.text = shift.shiftName;
+    _editControllers['sun']!.text = shift.sun ?? '';
+    _editControllers['mon']!.text = shift.mon ?? '';
+    _editControllers['tue']!.text = shift.tue ?? '';
+    _editControllers['wed']!.text = shift.wed ?? '';
+    _editControllers['thu']!.text = shift.thu ?? '';
+    _editControllers['fri']!.text = shift.fri ?? '';
+    _editControllers['sat']!.text = shift.sat ?? '';
   }
 
   void _cancelEditingShift() {
     setState(() {
       _editingShiftId = null;
-      // Clear edit controllers
-      for (var controller in _editControllers.values) {
-        controller.clear();
-      }
+      _clearEditControllers();
     });
+  }
+
+  void _clearEditControllers() {
+    for (var controller in _editControllers.values) {
+      controller.clear();
+    }
   }
 
   Future<void> _saveEditingShift() async {
     if (_editingShiftId == null) return;
-
-    if (_editControllers['shiftName']!.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a shift name')),
-      );
-      return;
-    }
+    
+    if (!_validateEditShiftName()) return;
 
     try {
-      final companion = VSShiftsCompanion(
-        id: drift.Value(_editingShiftId!),
-        vsId: drift.Value(widget.valueStreamId),
-        shiftName: drift.Value(_editControllers['shiftName']!.text.trim()),
-        sun: _editControllers['sun']!.text.isNotEmpty
-            ? drift.Value(_editControllers['sun']!.text)
-            : const drift.Value.absent(),
-        mon: _editControllers['mon']!.text.isNotEmpty
-            ? drift.Value(_editControllers['mon']!.text)
-            : const drift.Value.absent(),
-        tue: _editControllers['tue']!.text.isNotEmpty
-            ? drift.Value(_editControllers['tue']!.text)
-            : const drift.Value.absent(),
-        wed: _editControllers['wed']!.text.isNotEmpty
-            ? drift.Value(_editControllers['wed']!.text)
-            : const drift.Value.absent(),
-        thu: _editControllers['thu']!.text.isNotEmpty
-            ? drift.Value(_editControllers['thu']!.text)
-            : const drift.Value.absent(),
-        fri: _editControllers['fri']!.text.isNotEmpty
-            ? drift.Value(_editControllers['fri']!.text)
-            : const drift.Value.absent(),
-        sat: _editControllers['sat']!.text.isNotEmpty
-            ? drift.Value(_editControllers['sat']!.text)
-            : const drift.Value.absent(),
-      );
-
-      await (db.update(db.vSShifts)
-            ..where((vs) => vs.id.equals(_editingShiftId!)))
-          .write(companion);
-
-      // Clear editing state
-      setState(() {
-        _editingShiftId = null;
-      });
-
-      // Reload shifts to refresh display and recalculate takt time
-      await _loadVSShifts();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Shift updated successfully')),
-        );
-      }
+      final companion = _buildEditShiftCompanion();
+      await _updateShiftInDatabase(companion);
+      await _handleShiftUpdateSuccess();
     } catch (e) {
-      debugPrint('Error updating shift: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error updating shift: $e')),
-        );
+        _showErrorSnackbar('Error updating shift: $e');
       }
+    }
+  }
+
+  bool _validateEditShiftName() {
+    if (_editControllers['shiftName']!.text.trim().isEmpty) {
+      _showErrorSnackbar('Please enter a shift name');
+      return false;
+    }
+    return true;
+  }
+
+  VSShiftsCompanion _buildEditShiftCompanion() {
+    return VSShiftsCompanion(
+      id: drift.Value(_editingShiftId!),
+      vsId: drift.Value(widget.valueStreamId),
+      shiftName: drift.Value(_editControllers['shiftName']!.text.trim()),
+      sun: _buildEditDayValue('sun'),
+      mon: _buildEditDayValue('mon'),
+      tue: _buildEditDayValue('tue'),
+      wed: _buildEditDayValue('wed'),
+      thu: _buildEditDayValue('thu'),
+      fri: _buildEditDayValue('fri'),
+      sat: _buildEditDayValue('sat'),
+    );
+  }
+
+  drift.Value<String> _buildEditDayValue(String day) {
+    return _editControllers[day]!.text.isNotEmpty
+        ? drift.Value(_editControllers[day]!.text)
+        : const drift.Value.absent();
+  }
+
+  Future<void> _updateShiftInDatabase(VSShiftsCompanion companion) async {
+    await (db.update(db.vSShifts)
+          ..where((vs) => vs.id.equals(_editingShiftId!)))
+        .write(companion);
+  }
+
+  Future<void> _handleShiftUpdateSuccess() async {
+    setState(() {
+      _editingShiftId = null;
+    });
+
+    await _loadVSShifts();
+
+    if (mounted) {
+      _showSuccessSnackbar('Shift updated successfully');
     }
   }
 
@@ -548,26 +610,6 @@ class _VSDetailScreenState extends State<VSDetailScreen> {
                             color: Colors.grey[800],
                           ),
                           children: [
-                            const TextSpan(text: 'Total Time: '),
-                            TextSpan(
-                              text: _calculatedTaktTime,
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue[700],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      RichText(
-                        text: TextSpan(
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.grey[800],
-                          ),
-                          children: [
                             const TextSpan(text: 'Takt Time: '),
                             TextSpan(
                               text: _timePerUnit,
@@ -629,12 +671,19 @@ class _VSDetailScreenState extends State<VSDetailScreen> {
                 onPressed: () {
                   setState(() {
                     _isAddingShift = !_isAddingShift;
+                    if (!_isAddingShift) {
+                      // Clear form when canceling
+                      _newShiftNameController.clear();
+                      for (var controller in _dayControllers.values) {
+                        controller.clear();
+                      }
+                    }
                   });
                 },
-                icon: const Icon(Icons.add),
-                label: const Text('Add Shift'),
+                icon: Icon(_isAddingShift ? Icons.cancel : Icons.add),
+                label: Text(_isAddingShift ? 'Cancel' : 'Add Shift'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.yellow[600],
+                  backgroundColor: _isAddingShift ? Colors.orange[600] : Colors.yellow[600],
                 ),
               ),
             ],
@@ -738,20 +787,6 @@ class _VSDetailScreenState extends State<VSDetailScreen> {
               );
             }),
             const SizedBox(width: 8),
-            // Cancel Button
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  _isAddingShift = false;
-                });
-                _newShiftNameController.clear();
-                for (var controller in _dayControllers.values) {
-                  controller.clear();
-                }
-              },
-              child: const Text('Cancel'),
-            ),
-            const SizedBox(width: 4),
             // Add Shift Button
             ElevatedButton(
               onPressed: _addNewShift,
@@ -1040,23 +1075,6 @@ class _VSDetailScreenState extends State<VSDetailScreen> {
         appBar: AppBar(
           title: Text('${widget.valueStreamName} Details'),
           backgroundColor: Colors.white,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.dashboard_outlined),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ProcessCanvasScreen(
-                      valueStreamId: widget.valueStreamId,
-                      valueStreamName: widget.valueStreamName,
-                    ),
-                  ),
-                );
-              },
-              tooltip: 'Process Canvas',
-            ),
-          ],
         ),
         backgroundColor: Colors.yellow[100],
         body: Column(

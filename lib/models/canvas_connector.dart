@@ -161,4 +161,6 @@ enum ConnectionMode {
   materialConnectorConnecting, // Supplier selected, waiting for customer selection
   kanbanLoopSelecting,     // User clicked kanban loop tool, waiting for supermarket selection
   kanbanLoopConnecting,    // Supermarket selected, waiting for supplier selection
+  withdrawalLoopSelecting, // User clicked withdrawal loop tool, waiting for customer selection
+  withdrawalLoopConnecting, // Customer selected, waiting for supermarket selection
 }

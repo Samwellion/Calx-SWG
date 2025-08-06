@@ -221,6 +221,11 @@ class _DetailedProcessInputScreenState
 
   @override
   void dispose() {
+    // Save current field values before disposing
+    if (_selectedProcess != null) {
+      _saveCurrentFieldValues();
+    }
+
     _processNameController.dispose();
     _processDescriptionController.dispose();
     _dailyDemandController.dispose();
@@ -273,6 +278,11 @@ class _DetailedProcessInputScreenState
   void _onProcessSelectionChanged(ProcessesData? newProcess) async {
     if (newProcess == null || newProcess == _selectedProcess) return;
 
+    // Auto-save current field values before switching processes
+    if (_selectedProcess != null) {
+      await _saveCurrentFieldValues();
+    }
+
     setState(() {
       _selectedProcess = newProcess;
       _loading = true;
@@ -307,6 +317,24 @@ class _DetailedProcessInputScreenState
         _error = 'Failed to load process data: $e';
         _loading = false;
       });
+    }
+  }
+
+  // Auto-save all current field values
+  Future<void> _saveCurrentFieldValues() async {
+    if (_selectedProcess == null) return;
+
+    try {
+      // Save all field values that might have changed
+      await Future.wait([
+        _autoSaveProcessField('description', _processDescriptionController.text),
+        _autoSaveProcessField('staff', _staffController.text),
+        _autoSaveProcessField('wip', _wipController.text),
+        _autoSaveProcessField('uptime', _uptimeController.text),
+        _autoSaveProcessField('coTime', _coTimeController.text),
+      ]);
+    } catch (e) {
+      debugPrint('Error saving current field values: $e');
     }
   }
 
@@ -915,8 +943,12 @@ class _DetailedProcessInputScreenState
                       fillColor: Colors.white,
                       isDense: true,
                     ),
-                    onChanged: (value) =>
+                    onFieldSubmitted: (value) =>
                         _autoSaveProcessField('description', value),
+                    onEditingComplete: () =>
+                        _autoSaveProcessField('description', _processDescriptionController.text),
+                    onTapOutside: (event) =>
+                        _autoSaveProcessField('description', _processDescriptionController.text),
                   ),
                   const SizedBox(height: 12),
 
@@ -945,8 +977,12 @@ class _DetailedProcessInputScreenState
                             }
                             return null;
                           },
-                          onChanged: (value) =>
+                          onFieldSubmitted: (value) =>
                               _autoSaveProcessField('staff', value),
+                          onEditingComplete: () =>
+                              _autoSaveProcessField('staff', _staffController.text),
+                          onTapOutside: (event) =>
+                              _autoSaveProcessField('staff', _staffController.text),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -972,8 +1008,12 @@ class _DetailedProcessInputScreenState
                             }
                             return null;
                           },
-                          onChanged: (value) =>
+                          onFieldSubmitted: (value) =>
                               _autoSaveProcessField('wip', value),
+                          onEditingComplete: () =>
+                              _autoSaveProcessField('wip', _wipController.text),
+                          onTapOutside: (event) =>
+                              _autoSaveProcessField('wip', _wipController.text),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -1005,8 +1045,12 @@ class _DetailedProcessInputScreenState
                             }
                             return null;
                           },
-                          onChanged: (value) =>
+                          onFieldSubmitted: (value) =>
                               _autoSaveProcessField('uptime', value),
+                          onEditingComplete: () =>
+                              _autoSaveProcessField('uptime', _uptimeController.text),
+                          onTapOutside: (event) =>
+                              _autoSaveProcessField('uptime', _uptimeController.text),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -1022,8 +1066,12 @@ class _DetailedProcessInputScreenState
                             hintText: '01:30:00',
                           ),
                           validator: _validateTimeFormat,
-                          onChanged: (value) =>
+                          onFieldSubmitted: (value) =>
                               _autoSaveProcessField('coTime', value),
+                          onEditingComplete: () =>
+                              _autoSaveProcessField('coTime', _coTimeController.text),
+                          onTapOutside: (event) =>
+                              _autoSaveProcessField('coTime', _coTimeController.text),
                         ),
                       ),
                     ],

@@ -40,6 +40,9 @@ class _MaterialConnectorWidgetState extends State<MaterialConnectorWidget> {
   bool _isUserEditing = false; // Track if user is actively typing
   ProcessObject? _supplierProcess;
   ProcessObject? _customerProcess;
+  bool _isDragging = false;
+  Offset? _startPosition;
+  Offset? _initialTouchPosition;
 
   @override
   void initState() {
@@ -136,10 +139,17 @@ class _MaterialConnectorWidgetState extends State<MaterialConnectorWidget> {
       return []; // Only supermarkets have handles
     }
 
+    // Material connectors store their center position, but ConnectionHandleCalculator expects top-left position
+    // Convert center position to top-left by subtracting half the size
+    final topLeftPosition = Offset(
+      widget.materialConnector.position.dx - widget.materialConnector.size.width / 2,
+      widget.materialConnector.position.dy - widget.materialConnector.size.height / 2,
+    );
+
     return ConnectionHandleCalculator.calculateHandles(
       itemId: widget.materialConnector.id,
       itemType: 'materialConnector',
-      itemPosition: widget.materialConnector.position,
+      itemPosition: topLeftPosition,
       itemSize: widget.materialConnector.size,
     );
   }
@@ -160,7 +170,32 @@ class _MaterialConnectorWidgetState extends State<MaterialConnectorWidget> {
           top: widget.materialConnector.position.dy - widget.materialConnector.size.height / 2,
           child: GestureDetector(
             onTap: () => widget.onTap?.call(widget.materialConnector.id),
-            child: Container(
+            onPanStart: (details) {
+              setState(() {
+                _isDragging = true;
+                _startPosition = widget.materialConnector.position;
+                _initialTouchPosition = details.globalPosition;
+              });
+            },
+            onPanUpdate: (details) {
+              if (_startPosition != null && _initialTouchPosition != null) {
+                final delta = details.globalPosition - _initialTouchPosition!;
+                final newPosition = _startPosition! + delta;
+                final updatedMaterialConnector = widget.materialConnector.copyWith(
+                  position: newPosition,
+                );
+                widget.onUpdate?.call(updatedMaterialConnector);
+              }
+            },
+            onPanEnd: (details) {
+              setState(() {
+                _isDragging = false;
+                _startPosition = null;
+                _initialTouchPosition = null;
+              });
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
               width: widget.materialConnector.size.width,
               height: widget.materialConnector.size.height,
               decoration: BoxDecoration(
@@ -170,13 +205,21 @@ class _MaterialConnectorWidgetState extends State<MaterialConnectorWidget> {
                   width: widget.isSelected ? 2.0 : 1.0,
                 ),
                 borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                boxShadow: _isDragging || widget.isSelected
+                    ? [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(_isDragging ? 0.3 : 0.1),
+                          blurRadius: _isDragging ? 8 : 4,
+                          offset: Offset(0, _isDragging ? 4 : 2),
+                        ),
+                      ]
+                    : [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
               ),
               child: Padding(
                 padding: const EdgeInsets.all(4.0), // Increased padding for better spacing

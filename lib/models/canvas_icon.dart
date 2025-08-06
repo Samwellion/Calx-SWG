@@ -11,6 +11,7 @@ enum CanvasIconType {
   truckDataBox, // Special data box for truck/shipment with frequency input
   supplier,
   tugger, // TODO: Implement tugger icon
+  kanbanPost, // Kanban post for collecting kanban cards and information
   
   // Material and Info Connectors
   electronicArrow, // Electronic information flow connector
@@ -97,10 +98,10 @@ class CanvasIconTemplate {
       color: Colors.blue,
     ),
     CanvasIconTemplate(
-      type: CanvasIconType.dataBox,
-      label: 'Data Box',
-      iconData: Icons.data_usage,
-      color: Colors.teal,
+      type: CanvasIconType.kanbanPost,
+      label: 'Kanban Post',
+      iconData: Icons.view_agenda,
+      color: Colors.brown,
     ),
     CanvasIconTemplate(
       type: CanvasIconType.productionControl,

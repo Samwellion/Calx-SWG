@@ -38,18 +38,25 @@ class _ProcessInputScreenState extends State<ProcessInputScreen> {
   Map<int, bool> _editingStates = {};
   Map<int, TextEditingController> _processDescriptionControllers = {};
 
-  @override
+    @override
   void initState() {
     super.initState();
-    DatabaseProvider.getInstance().then((database) {
+    _initializeScreen();
+  }
+
+  Future<void> _initializeScreen() async {
+    try {
+      final database = await DatabaseProvider.getInstance();
       db = database;
-      _loadProcesses();
-    }).catchError((e) {
-      setState(() {
-        _error = 'Database initialization failed: $e';
-        _loading = false;
-      });
-    });
+      await _loadProcesses();
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Database initialization failed: $e';
+          _loading = false;
+        });
+      }
+    }
   }
 
   Future<void> _loadProcesses() async {
@@ -166,79 +173,31 @@ class _ProcessInputScreenState extends State<ProcessInputScreen> {
   Future<void> _saveProcess() async {
     final processName = _processNameController.text.trim();
     final processDescription = _processDescriptionController.text.trim();
+    
     if (processName.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Process Name is required!')),
-      );
+      _showErrorSnackbar('Process Name is required!');
       return;
     }
-    setState(() => _saving = true);
-    try {
-      // Debug: Check for existing processes with similar names
-      final existingProcesses = await db.customSelectQuery(
-        '''SELECT process_name, LOWER(process_name) as lower_name
-           FROM processes 
-           WHERE value_stream_id = ? 
-           AND (process_name = ? OR LOWER(process_name) = LOWER(?))''',
-        variables: [
-          drift.Variable.withInt(widget.valueStreamId),
-          drift.Variable.withString(processName),
-          drift.Variable.withString(processName),
-        ],
-      ).get();
 
-      if (existingProcesses.isNotEmpty) {
-        if (mounted) {
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('Duplicate Process Found'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                      'Found ${existingProcesses.length} existing process(es) with similar names:'),
-                  const SizedBox(height: 8),
-                  for (final existing in existingProcesses)
-                    Text('- "${existing.data['process_name']}"'),
-                  const SizedBox(height: 16),
-                  Text('Attempted to save: "$processName"'),
-                  Text('Value Stream ID: ${widget.valueStreamId}'),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('OK'),
-                ),
-              ],
-            ),
-          );
-        }
-        setState(() => _saving = false);
+    setState(() => _saving = true);
+
+    try {
+      // Check for duplicates
+      if (await _isDuplicateProcess(processName)) {
+        await _showDuplicateDialog(processName);
         return;
       }
 
-      // Get the next order index (current max + 1)
-      final nextOrderIndex = _processes.length;
-
-      final processId = await db.upsertProcess(
-        ProcessesCompanion(
-          valueStreamId: drift.Value(widget.valueStreamId),
-          processName: drift.Value(processName),
-          processDescription: drift.Value(
-              processDescription.isEmpty ? null : processDescription),
-          orderIndex: drift.Value(nextOrderIndex),
-        ),
-      );
-
+      // Save the process
+      final processId = await _createProcess(processName, processDescription);
+      
       // Copy VSShifts to ProcessShift for the new process
       await db.copyVSShiftsToProcessShift(widget.valueStreamId, processId);
 
+      // Refresh the list and reset form
       await _loadProcesses();
-      _processNameController.clear();
-      _processDescriptionController.clear();
+      _clearForm();
+      _requestFocusOnProcessName();
 
       if (mounted) {
         ErrorHandler.showSuccessSnackbar(
@@ -249,8 +208,74 @@ class _ProcessInputScreenState extends State<ProcessInputScreen> {
         ErrorHandler.showConstraintErrorDialog(context, e);
       }
     } finally {
-      setState(() => _saving = false);
+      if (mounted) {
+        setState(() => _saving = false);
+      }
     }
+  }
+
+  Future<bool> _isDuplicateProcess(String processName) async {
+    final existingProcesses = await db.customSelectQuery(
+      '''SELECT process_name FROM processes 
+         WHERE value_stream_id = ? 
+         AND LOWER(process_name) = LOWER(?)''',
+      variables: [
+        drift.Variable.withInt(widget.valueStreamId),
+        drift.Variable.withString(processName),
+      ],
+    ).get();
+    
+    return existingProcesses.isNotEmpty;
+  }
+
+  Future<void> _showDuplicateDialog(String processName) async {
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Duplicate Process'),
+        content: Text('A process named "$processName" already exists.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<int> _createProcess(String processName, String processDescription) async {
+    final nextOrderIndex = _processes.length;
+    
+    return await db.upsertProcess(
+      ProcessesCompanion(
+        valueStreamId: drift.Value(widget.valueStreamId),
+        processName: drift.Value(processName),
+        processDescription: drift.Value(
+            processDescription.isEmpty ? null : processDescription),
+        orderIndex: drift.Value(nextOrderIndex),
+      ),
+    );
+  }
+
+  void _clearForm() {
+    _processNameController.clear();
+    _processDescriptionController.clear();
+  }
+
+  void _requestFocusOnProcessName() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        // Request focus on the process name field
+        FocusScope.of(context).requestFocus();
+      }
+    });
+  }
+
+  void _showErrorSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   void _trySaveOnEnter() {

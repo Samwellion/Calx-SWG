@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import '../models/canvas_connector.dart';
 import '../models/process_object.dart';
 import '../models/canvas_icon.dart';
+import '../models/material_connector.dart';
 import 'dart:math' as math;
 
 class ConnectorWidget extends StatelessWidget {
   final CanvasConnector connector;
   final List<ProcessObject> processes;
   final List<CanvasIcon> canvasIcons;
+  final List<MaterialConnector> materialConnectors;
   final Map<String, Offset> customerDataBoxPositions;
   final Map<String, Offset> supplierDataBoxPositions;
   final Map<String, Offset> productionControlDataBoxPositions;
@@ -20,6 +22,7 @@ class ConnectorWidget extends StatelessWidget {
     required this.connector,
     required this.processes,
     required this.canvasIcons,
+    required this.materialConnectors,
     required this.customerDataBoxPositions,
     required this.supplierDataBoxPositions,
     required this.productionControlDataBoxPositions,
@@ -118,6 +121,20 @@ class ConnectorWidget extends StatelessWidget {
           ),
         );
         return icon.id.isNotEmpty ? icon.position : null;
+
+      case 'materialConnector':
+        final materialConnector = materialConnectors.firstWhere(
+          (mc) => mc.id == endpoint.itemId,
+          orElse: () => MaterialConnector(
+            id: '',
+            type: CanvasIconType.fifo,
+            supplierProcessId: '',
+            customerProcessId: '',
+            label: '',
+            position: Offset.zero,
+          ),
+        );
+        return materialConnector.id.isNotEmpty ? materialConnector.position : null;
 
       case 'customer':
         return customerDataBoxPositions[endpoint.itemId];

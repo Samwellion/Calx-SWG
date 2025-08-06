@@ -1,38 +1,38 @@
 import 'package:flutter/material.dart';
 
-class KanbanLoop {
+class WithdrawalLoop {
   final String id;
   final String supermarketId; // ID of the supermarket material connector
-  final String supplierProcessId; // ID of the supplier process
-  final Offset supermarketHandlePosition; // Position of the supermarket top center handle
-  final Offset supplierHandlePosition; // Position of the supplier process handle
+  final String customerProcessId; // ID of the customer process
+  final Offset customerHandlePosition; // Position of the customer process handle (start)
+  final Offset supermarketHandlePosition; // Position of the supermarket handle (end)
   final List<Offset> pathPoints; // Points defining the 90-degree path
   final Offset kanbanIconPosition; // Position of the 5-sided kanban icon (center of path)
   final double? hoursValue; // Hours value in HH format
   
-  const KanbanLoop({
+  const WithdrawalLoop({
     required this.id,
     required this.supermarketId,
-    required this.supplierProcessId,
+    required this.customerProcessId,
+    required this.customerHandlePosition,
     required this.supermarketHandlePosition,
-    required this.supplierHandlePosition,
     required this.pathPoints,
     required this.kanbanIconPosition,
     this.hoursValue,
   });
 
-  /// Calculate the 90-degree path from supermarket handle through kanban icon to supplier handle
+  /// Calculate the 90-degree path from customer handle through kanban icon to supermarket handle
   static List<Offset> calculatePath(Offset start, Offset end, Offset kanbanPosition) {
     // Create a path with 90-degree angles that goes through the kanban icon position
     final kanbanX = kanbanPosition.dx;
     final kanbanY = kanbanPosition.dy;
     
     return [
-      start, // Start at supermarket handle (top center)
+      start, // Start at customer handle
       Offset(start.dx, kanbanY), // Go vertically to kanban Y level
       Offset(kanbanX, kanbanY), // Go horizontally to kanban icon
-      Offset(end.dx, kanbanY), // Go horizontally to supplier X level
-      end, // Go vertically down to supplier handle
+      Offset(end.dx, kanbanY), // Go horizontally to supermarket X level
+      end, // Go vertically to supermarket handle
     ];
   }
 
@@ -78,13 +78,13 @@ class KanbanLoop {
     return pathPoints.isNotEmpty ? pathPoints[pathPoints.length ~/ 2] : Offset.zero;
   }
 
-  /// Create a new KanbanLoop from supermarket and supplier handle positions
-  factory KanbanLoop.createWithHandle({
+  /// Create a new WithdrawalLoop from customer and supermarket handle positions
+  factory WithdrawalLoop.createWithHandle({
     required String supermarketId,
-    required String supplierProcessId,
+    required String customerProcessId,
+    required Offset customerHandlePosition, // Specific customer handle position
     required Offset supermarketPosition,
     required Size supermarketSize,
-    required Offset supplierHandlePosition, // Specific handle position
   }) {
     // Calculate the top center handle position of the supermarket
     final supermarketHandle = Offset(
@@ -93,53 +93,53 @@ class KanbanLoop {
     );
     
     // Calculate initial kanban icon position
-    final kanbanIconPosition = calculateInitialKanbanPosition(supermarketHandle, supplierHandlePosition);
+    final kanbanIconPosition = calculateInitialKanbanPosition(customerHandlePosition, supermarketHandle);
     
     // Calculate the path points through the kanban icon
-    final pathPoints = calculatePath(supermarketHandle, supplierHandlePosition, kanbanIconPosition);
+    final pathPoints = calculatePath(customerHandlePosition, supermarketHandle, kanbanIconPosition);
     
-    return KanbanLoop(
+    return WithdrawalLoop(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       supermarketId: supermarketId,
-      supplierProcessId: supplierProcessId,
+      customerProcessId: customerProcessId,
+      customerHandlePosition: customerHandlePosition,
       supermarketHandlePosition: supermarketHandle,
-      supplierHandlePosition: supplierHandlePosition,
       pathPoints: pathPoints,
       kanbanIconPosition: kanbanIconPosition,
       hoursValue: null, // Initialize with null
     );
   }
 
-  /// Create a new KanbanLoop from specific supermarket and supplier handle positions
-  factory KanbanLoop.createWithHandles({
+  /// Create a new WithdrawalLoop from specific customer and supermarket handle positions
+  factory WithdrawalLoop.createWithHandles({
     required String supermarketId,
-    required String supplierProcessId,
+    required String customerProcessId,
+    required Offset customerHandlePosition, // Specific customer handle position
     required Offset supermarketHandlePosition, // Specific supermarket handle position
-    required Offset supplierHandlePosition, // Specific supplier handle position
   }) {
     // Calculate initial kanban icon position
-    final kanbanIconPosition = calculateInitialKanbanPosition(supermarketHandlePosition, supplierHandlePosition);
+    final kanbanIconPosition = calculateInitialKanbanPosition(customerHandlePosition, supermarketHandlePosition);
     
     // Calculate the path points through the kanban icon
-    final pathPoints = calculatePath(supermarketHandlePosition, supplierHandlePosition, kanbanIconPosition);
+    final pathPoints = calculatePath(customerHandlePosition, supermarketHandlePosition, kanbanIconPosition);
     
-    return KanbanLoop(
+    return WithdrawalLoop(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       supermarketId: supermarketId,
-      supplierProcessId: supplierProcessId,
+      customerProcessId: customerProcessId,
+      customerHandlePosition: customerHandlePosition,
       supermarketHandlePosition: supermarketHandlePosition,
-      supplierHandlePosition: supplierHandlePosition,
       pathPoints: pathPoints,
       kanbanIconPosition: kanbanIconPosition,
       hoursValue: null, // Initialize with null
     );
   }
 
-  /// Update the kanban loop when the kanban icon is moved
-  KanbanLoop updateKanbanPosition(Offset newKanbanPosition) {
+  /// Update the withdrawal loop when the kanban icon is moved
+  WithdrawalLoop updateKanbanPosition(Offset newKanbanPosition) {
     final newPathPoints = calculatePath(
+      customerHandlePosition, 
       supermarketHandlePosition, 
-      supplierHandlePosition, 
       newKanbanPosition
     );
     
@@ -149,22 +149,22 @@ class KanbanLoop {
     );
   }
 
-  KanbanLoop copyWith({
+  WithdrawalLoop copyWith({
     String? id,
     String? supermarketId,
-    String? supplierProcessId,
+    String? customerProcessId,
+    Offset? customerHandlePosition,
     Offset? supermarketHandlePosition,
-    Offset? supplierHandlePosition,
     List<Offset>? pathPoints,
     Offset? kanbanIconPosition,
     double? hoursValue,
   }) {
-    return KanbanLoop(
+    return WithdrawalLoop(
       id: id ?? this.id,
       supermarketId: supermarketId ?? this.supermarketId,
-      supplierProcessId: supplierProcessId ?? this.supplierProcessId,
+      customerProcessId: customerProcessId ?? this.customerProcessId,
+      customerHandlePosition: customerHandlePosition ?? this.customerHandlePosition,
       supermarketHandlePosition: supermarketHandlePosition ?? this.supermarketHandlePosition,
-      supplierHandlePosition: supplierHandlePosition ?? this.supplierHandlePosition,
       pathPoints: pathPoints ?? this.pathPoints,
       kanbanIconPosition: kanbanIconPosition ?? this.kanbanIconPosition,
       hoursValue: hoursValue ?? this.hoursValue,
@@ -176,14 +176,14 @@ class KanbanLoop {
     return {
       'id': id,
       'supermarketId': supermarketId,
-      'supplierProcessId': supplierProcessId,
+      'customerProcessId': customerProcessId,
+      'customerHandlePosition': {
+        'dx': customerHandlePosition.dx,
+        'dy': customerHandlePosition.dy,
+      },
       'supermarketHandlePosition': {
         'dx': supermarketHandlePosition.dx,
         'dy': supermarketHandlePosition.dy,
-      },
-      'supplierHandlePosition': {
-        'dx': supplierHandlePosition.dx,
-        'dy': supplierHandlePosition.dy,
       },
       'pathPoints': pathPoints.map((point) => {
         'dx': point.dx,
@@ -198,18 +198,18 @@ class KanbanLoop {
   }
 
   /// Create from JSON
-  factory KanbanLoop.fromJson(Map<String, dynamic> json) {
-    return KanbanLoop(
+  factory WithdrawalLoop.fromJson(Map<String, dynamic> json) {
+    return WithdrawalLoop(
       id: json['id'],
       supermarketId: json['supermarketId'],
-      supplierProcessId: json['supplierProcessId'],
+      customerProcessId: json['customerProcessId'],
+      customerHandlePosition: Offset(
+        json['customerHandlePosition']['dx'].toDouble(),
+        json['customerHandlePosition']['dy'].toDouble(),
+      ),
       supermarketHandlePosition: Offset(
         json['supermarketHandlePosition']['dx'].toDouble(),
         json['supermarketHandlePosition']['dy'].toDouble(),
-      ),
-      supplierHandlePosition: Offset(
-        json['supplierHandlePosition']['dx'].toDouble(),
-        json['supplierHandlePosition']['dy'].toDouble(),
       ),
       pathPoints: (json['pathPoints'] as List).map((point) => Offset(
         point['dx'].toDouble(),

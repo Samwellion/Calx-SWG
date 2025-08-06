@@ -49,15 +49,22 @@ class _PartInputScreenState extends State<PartInputScreen> {
   @override
   void initState() {
     super.initState();
-    DatabaseProvider.getInstance().then((database) {
+    _initializeScreen();
+  }
+
+  Future<void> _initializeScreen() async {
+    try {
+      final database = await DatabaseProvider.getInstance();
       db = database;
-      _loadParts();
-    }).catchError((e) {
-      setState(() {
-        _error = 'Database initialization failed: $e';
-        _loading = false;
-      });
-    });
+      await _loadParts();
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Database initialization failed: $e';
+          _loading = false;
+        });
+      }
+    }
   }
 
   Future<void> _loadParts() async {
@@ -65,63 +72,62 @@ class _PartInputScreenState extends State<PartInputScreen> {
       _loading = true;
       _error = null;
     });
+    
     try {
-      // First, verify the value stream exists and get the correct ID by name
-      // This handles cases where the ID might be stale after app restart
-      final valueStreamCheck = await db.customSelect(
-        '''SELECT vs.id, vs.name 
-           FROM value_streams vs 
-           JOIN plants p ON vs.plant_id = p.id 
-           WHERE vs.name = ? AND p.name = ?''',
-        variables: [
-          drift.Variable.withString(widget.valueStreamName),
-          drift.Variable.withString(widget.plantName),
-        ],
-      ).get();
-
-      int actualValueStreamId = widget.valueStreamId;
-
-      if (valueStreamCheck.isNotEmpty) {
-        actualValueStreamId = valueStreamCheck.first.data['id'] as int;
-      } else {
-        // Log warning: Value stream not found, using original ID
-        debugPrint(
-            'Warning: Value stream "${widget.valueStreamName}" not found in plant "${widget.plantName}"');
-      }
-
+      final actualValueStreamId = await _getValidatedValueStreamId();
+      
       // Query parts using the correct value stream ID
       final result = await db.customSelect(
         'SELECT id, part_number, part_description, monthly_demand FROM parts WHERE value_stream_id = ?',
         variables: [drift.Variable.withInt(actualValueStreamId)],
       ).get();
 
-      setState(() {
-        _parts = result.map((row) => row.data).toList();
-        _editingStates = {for (var part in _parts) part['id']: false};
-        _partNumberControllers = {
-          for (var part in _parts)
-            part['id']: TextEditingController(text: part['part_number'])
-        };
-        _partDescriptionControllers = {
-          for (var part in _parts)
-            part['id']: TextEditingController(text: part['part_description'])
-        };
-        _monthlyDemandControllers = {
-          for (var part in _parts)
-            part['id']: TextEditingController(
-                text: part['monthly_demand']?.toString() ?? '')
-        };
-        _loading = false;
-      });
+      _updatePartsState(result);
+      _setupInitialFocus();
 
       // Only check for orphaned parts if no parts were found for this value stream
       if (_parts.isEmpty) {
         await _handleOrphanedParts(actualValueStreamId);
       }
     } catch (e) {
-      setState(() {
-        _error = 'Failed to load parts: $e';
-        _loading = false;
+      if (mounted) {
+        setState(() {
+          _error = 'Failed to load parts: $e';
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  void _updatePartsState(List<drift.QueryRow> result) {
+    if (!mounted) return;
+    
+    setState(() {
+      _parts = result.map((row) => row.data).toList();
+      _editingStates = {for (var part in _parts) part['id']: false};
+      _partNumberControllers = {
+        for (var part in _parts)
+          part['id']: TextEditingController(text: part['part_number'])
+      };
+      _partDescriptionControllers = {
+        for (var part in _parts)
+          part['id']: TextEditingController(text: part['part_description'])
+      };
+      _monthlyDemandControllers = {
+        for (var part in _parts)
+          part['id']: TextEditingController(
+              text: part['monthly_demand']?.toString() ?? '')
+      };
+      _loading = false;
+    });
+  }
+
+  void _setupInitialFocus() {
+    if (mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _partNumberFocus.canRequestFocus) {
+          _partNumberFocus.requestFocus();
+        }
       });
     }
   }
@@ -173,7 +179,8 @@ class _PartInputScreenState extends State<PartInputScreen> {
         }
       }
     } catch (e) {
-      debugPrint('Error handling orphaned parts: $e');
+      // Handle errors in orphaned parts cleanup silently
+      // as this is a background maintenance operation
     }
   }
 
@@ -201,76 +208,45 @@ class _PartInputScreenState extends State<PartInputScreen> {
     final partNumber = _partNumberController.text.trim();
     final partDescription = _partDescriptionController.text.trim();
     final monthlyDemandText = _monthlyDemandController.text.trim();
-    final monthlyDemand =
-        monthlyDemandText.isNotEmpty ? int.tryParse(monthlyDemandText) : null;
-
+    
     if (partNumber.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Part Number is required!')),
-      );
+      _showErrorSnackbar('Part Number is required!');
       return;
     }
 
     // Validate monthly demand if provided
+    final monthlyDemand = _validateMonthlyDemand(monthlyDemandText);
     if (monthlyDemandText.isNotEmpty && monthlyDemand == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Monthly Demand must be a valid number!')),
-      );
+      _showErrorSnackbar('Monthly Demand must be a valid number!');
       return;
     }
 
-    // Check for duplicate part numbers
-    if (_parts.any((part) =>
-        part['part_number']?.toLowerCase() == partNumber.toLowerCase())) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('A part with this number already exists!')),
-      );
+    // Check for duplicates
+    if (await _isDuplicatePart(partNumber)) {
+      _showErrorSnackbar('A part with this number already exists!');
       return;
     }
 
     setState(() => _saving = true);
 
     try {
-      // Get the correct value stream ID
-      final valueStreamCheck = await db.customSelect(
-        '''SELECT vs.id FROM value_streams vs 
-           JOIN plants p ON vs.plant_id = p.id 
-           WHERE vs.name = ? AND p.name = ?''',
-        variables: [
-          drift.Variable.withString(widget.valueStreamName),
-          drift.Variable.withString(widget.plantName),
-        ],
-      ).get();
-
-      final actualValueStreamId = valueStreamCheck.isNotEmpty
-          ? valueStreamCheck.first.data['id'] as int
-          : widget.valueStreamId;
-
-      // Get the organization ID from the company name
+      // Get the correct value stream ID and organization ID
+      final actualValueStreamId = await _getValidatedValueStreamId();
       final organizationId = await db.upsertOrganization(widget.companyName);
 
-      await db.insertPart(
-        PartsCompanion.insert(
-          valueStreamId: actualValueStreamId,
-          organizationId: organizationId,
-          partNumber: partNumber,
-          partDescription: partDescription.isEmpty
-              ? drift.Value.absent()
-              : drift.Value(partDescription),
-          monthlyDemand: monthlyDemand != null
-              ? drift.Value(monthlyDemand)
-              : const drift.Value.absent(),
-        ),
+      // Create the part
+      await _createPart(
+        actualValueStreamId, 
+        organizationId, 
+        partNumber, 
+        partDescription, 
+        monthlyDemand
       );
 
+      // Refresh and reset
       await _loadParts();
-      _partNumberController.clear();
-      _partDescriptionController.clear();
-      _monthlyDemandController.clear();
-
-      // Reset focus to part number field for efficient data entry
-      _partNumberFocus.requestFocus();
+      _clearForm();
+      _requestFocusOnPartNumber();
 
       if (mounted) {
         ErrorHandler.showSuccessSnackbar(
@@ -285,6 +261,73 @@ class _PartInputScreenState extends State<PartInputScreen> {
         setState(() => _saving = false);
       }
     }
+  }
+
+  int? _validateMonthlyDemand(String text) {
+    return text.isNotEmpty ? int.tryParse(text) : null;
+  }
+
+  Future<bool> _isDuplicatePart(String partNumber) async {
+    return _parts.any((part) =>
+        part['part_number']?.toLowerCase() == partNumber.toLowerCase());
+  }
+
+  Future<int> _getValidatedValueStreamId() async {
+    final valueStreamCheck = await db.customSelect(
+      '''SELECT vs.id FROM value_streams vs 
+         JOIN plants p ON vs.plant_id = p.id 
+         WHERE vs.name = ? AND p.name = ?''',
+      variables: [
+        drift.Variable.withString(widget.valueStreamName),
+        drift.Variable.withString(widget.plantName),
+      ],
+    ).get();
+
+    return valueStreamCheck.isNotEmpty
+        ? valueStreamCheck.first.data['id'] as int
+        : widget.valueStreamId;
+  }
+
+  Future<void> _createPart(
+    int valueStreamId,
+    int organizationId,
+    String partNumber,
+    String partDescription,
+    int? monthlyDemand,
+  ) async {
+    await db.insertPart(
+      PartsCompanion.insert(
+        valueStreamId: valueStreamId,
+        organizationId: organizationId,
+        partNumber: partNumber,
+        partDescription: partDescription.isEmpty
+            ? drift.Value.absent()
+            : drift.Value(partDescription),
+        monthlyDemand: monthlyDemand != null
+            ? drift.Value(monthlyDemand)
+            : const drift.Value.absent(),
+      ),
+    );
+  }
+
+  void _clearForm() {
+    _partNumberController.clear();
+    _partDescriptionController.clear();
+    _monthlyDemandController.clear();
+  }
+
+  void _requestFocusOnPartNumber() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _partNumberFocus.canRequestFocus) {
+        _partNumberFocus.requestFocus();
+      }
+    });
+  }
+
+  void _showErrorSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   void _trySaveOnEnter() {
@@ -452,131 +495,146 @@ class _PartInputScreenState extends State<PartInputScreen> {
                     // Left Column: Selection Card and Form
                     Expanded(
                       flex: 2,
-                      child: Column(
-                        children: [
-                          SelectionDisplayCard(
-                            companyName: widget.companyName,
-                            plantName: widget.plantName,
-                            valueStreamName: widget.valueStreamName,
-                          ),
-                          const SizedBox(height: 8),
-                          Card(
-                            color: Colors.yellow[50],
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16)),
-                            elevation: 8,
-                            child: Padding(
-                              padding: const EdgeInsets.all(24.0),
-                              child: _loading
-                                  ? const Center(
-                                      child: CircularProgressIndicator())
-                                  : _error != null
-                                      ? Center(
-                                          child: Text(_error!,
-                                              style: const TextStyle(
-                                                  color: Colors.red)))
-                                      : Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.stretch,
-                                          children: [
-                                            const Text(
-                                              'Enter Part',
-                                              textAlign: TextAlign.center,
-                                              style: TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 14),
-                                            TextField(
-                                              controller: _partNumberController,
-                                              focusNode: _partNumberFocus,
-                                              decoration: const InputDecoration(
-                                                labelText: 'Part Number',
-                                                border: OutlineInputBorder(),
-                                                filled: true,
-                                                fillColor: Colors.white,
-                                              ),
-                                              textInputAction:
-                                                  TextInputAction.next,
-                                              onSubmitted: (_) =>
-                                                  _partDescriptionFocus
-                                                      .requestFocus(),
-                                            ),
-                                            const SizedBox(height: 14),
-                                            TextField(
-                                              controller:
-                                                  _partDescriptionController,
-                                              focusNode: _partDescriptionFocus,
-                                              decoration: const InputDecoration(
-                                                labelText: 'Part Description',
-                                                border: OutlineInputBorder(),
-                                                filled: true,
-                                                fillColor: Colors.white,
-                                              ),
-                                              textInputAction:
-                                                  TextInputAction.next,
-                                              onSubmitted: (_) =>
-                                                  _monthlyDemandFocus
-                                                      .requestFocus(),
-                                            ),
-                                            const SizedBox(height: 14),
-                                            TextField(
-                                              controller:
-                                                  _monthlyDemandController,
-                                              focusNode: _monthlyDemandFocus,
-                                              decoration: const InputDecoration(
-                                                labelText:
-                                                    'Monthly Demand (Optional)',
-                                                border: OutlineInputBorder(),
-                                                filled: true,
-                                                fillColor: Colors.white,
-                                                hintText: 'Enter quantity',
-                                              ),
-                                              keyboardType:
-                                                  TextInputType.number,
-                                              inputFormatters: [
-                                                FilteringTextInputFormatter
-                                                    .digitsOnly
-                                              ],
-                                              textInputAction:
-                                                  TextInputAction.done,
-                                              onSubmitted: (_) =>
-                                                  _trySaveOnEnter(),
-                                            ),
-                                            const SizedBox(height: 20),
-                                            SizedBox(
-                                              width: double.infinity,
-                                              child: ElevatedButton(
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor:
-                                                      Colors.yellow[300],
-                                                  foregroundColor: Colors.black,
-                                                  padding: const EdgeInsets
-                                                      .symmetric(vertical: 16),
-                                                  textStyle: const TextStyle(
-                                                      fontSize: 18,
-                                                      fontWeight:
-                                                          FontWeight.bold),
-                                                  shape: RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              12)),
-                                                  elevation: 6,
-                                                ),
-                                                onPressed:
-                                                    _saving ? null : _savePart,
-                                                child: _saving
-                                                    ? const CircularProgressIndicator()
-                                                    : const Text('Save Part'),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                      child: FocusTraversalGroup(
+                        policy: OrderedTraversalPolicy(),
+                        child: Column(
+                          children: [
+                            SelectionDisplayCard(
+                              companyName: widget.companyName,
+                              plantName: widget.plantName,
+                              valueStreamName: widget.valueStreamName,
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 8),
+                            Card(
+                              color: Colors.yellow[50],
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16)),
+                              elevation: 8,
+                              child: Padding(
+                                padding: const EdgeInsets.all(24.0),
+                                child: _loading
+                                    ? const Center(
+                                        child: CircularProgressIndicator())
+                                    : _error != null
+                                        ? Center(
+                                            child: Text(_error!,
+                                                style: const TextStyle(
+                                                    color: Colors.red)))
+                                        : Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.stretch,
+                                            children: [
+                                              const Text(
+                                                'Enter Part',
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 14),
+                                              FocusTraversalOrder(
+                                                order: const NumericFocusOrder(1.0),
+                                                child: TextField(
+                                                  controller: _partNumberController,
+                                                  focusNode: _partNumberFocus,
+                                                  decoration: const InputDecoration(
+                                                    labelText: 'Part Number',
+                                                    border: OutlineInputBorder(),
+                                                    filled: true,
+                                                    fillColor: Colors.white,
+                                                  ),
+                                                  textInputAction:
+                                                      TextInputAction.next,
+                                                  onSubmitted: (_) =>
+                                                      _partDescriptionFocus
+                                                          .requestFocus(),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 14),
+                                              FocusTraversalOrder(
+                                                order: const NumericFocusOrder(2.0),
+                                                child: TextField(
+                                                  controller:
+                                                      _partDescriptionController,
+                                                  focusNode: _partDescriptionFocus,
+                                                  decoration: const InputDecoration(
+                                                    labelText: 'Part Description',
+                                                    border: OutlineInputBorder(),
+                                                    filled: true,
+                                                    fillColor: Colors.white,
+                                                  ),
+                                                  textInputAction:
+                                                      TextInputAction.next,
+                                                  onSubmitted: (_) =>
+                                                      _monthlyDemandFocus
+                                                          .requestFocus(),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 14),
+                                              FocusTraversalOrder(
+                                                order: const NumericFocusOrder(3.0),
+                                                child: TextField(
+                                                  controller:
+                                                      _monthlyDemandController,
+                                                  focusNode: _monthlyDemandFocus,
+                                                  decoration: const InputDecoration(
+                                                    labelText:
+                                                        'Monthly Demand (Optional)',
+                                                    border: OutlineInputBorder(),
+                                                    filled: true,
+                                                    fillColor: Colors.white,
+                                                    hintText: 'Enter quantity',
+                                                  ),
+                                                  keyboardType:
+                                                      TextInputType.number,
+                                                  inputFormatters: [
+                                                    FilteringTextInputFormatter
+                                                        .digitsOnly
+                                                  ],
+                                                  textInputAction:
+                                                      TextInputAction.done,
+                                                  onSubmitted: (_) =>
+                                                      _trySaveOnEnter(),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 20),
+                                              FocusTraversalOrder(
+                                                order: const NumericFocusOrder(4.0),
+                                                child: SizedBox(
+                                                  width: double.infinity,
+                                                  child: ElevatedButton(
+                                                    style: ElevatedButton.styleFrom(
+                                                      backgroundColor:
+                                                          Colors.yellow[300],
+                                                      foregroundColor: Colors.black,
+                                                      padding: const EdgeInsets
+                                                          .symmetric(vertical: 16),
+                                                      textStyle: const TextStyle(
+                                                          fontSize: 18,
+                                                          fontWeight:
+                                                              FontWeight.bold),
+                                                      shape: RoundedRectangleBorder(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                  12)),
+                                                      elevation: 6,
+                                                    ),
+                                                    onPressed:
+                                                        _saving ? null : _savePart,
+                                                    child: _saving
+                                                        ? const CircularProgressIndicator()
+                                                        : const Text('Save Part'),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(width: 32),
@@ -584,218 +642,221 @@ class _PartInputScreenState extends State<PartInputScreen> {
                     Expanded(
                       flex:
                           4, // Increased from 3 to 4 for more horizontal space
-                      child: Card(
-                        color: Colors.yellow[50],
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16)),
-                        elevation: 8,
-                        child: Padding(
-                          padding: const EdgeInsets.all(24.0),
-                          child: _loading
-                              ? const Center(child: CircularProgressIndicator())
-                              : _error != null
-                                  ? Center(
-                                      child: Text(_error!,
-                                          style: const TextStyle(
-                                              color: Colors.red)))
-                                  : Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                        const Text('Saved Parts',
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 18)),
-                                        const SizedBox(height: 8),
-                                        SizedBox(
-                                          height:
-                                              400, // Fixed height for the table
-                                          child: _parts.isEmpty
-                                              ? const Center(
-                                                  child: Text(
-                                                      'No parts saved yet.'))
-                                              : SingleChildScrollView(
-                                                  scrollDirection:
-                                                      Axis.vertical,
-                                                  child: LayoutBuilder(builder:
-                                                      (context, constraints) {
-                                                    return DataTable(
-                                                      columnSpacing:
-                                                          30, // Increased from 20 to 30 for better spacing
-                                                      columns: [
-                                                        DataColumn(
-                                                          label: SizedBox(
-                                                            width: constraints
-                                                                    .maxWidth *
-                                                                0.13, // Reduced from 0.22 to 0.13 (40% reduction)
-                                                            child: const Text(
-                                                                'Part Number'),
-                                                          ),
-                                                        ),
-                                                        DataColumn(
-                                                          label: SizedBox(
-                                                            width: constraints
-                                                                    .maxWidth *
-                                                                0.40, // Increased from 0.38 to 0.40
-                                                            child: const Text(
-                                                                'Description'),
-                                                          ),
-                                                        ),
-                                                        DataColumn(
-                                                          label: SizedBox(
-                                                            width: constraints
-                                                                    .maxWidth *
-                                                                0.20, // Increased from 0.18 to 0.20
-                                                            child: const Text(
-                                                                'Monthly Demand'),
-                                                          ),
-                                                        ),
-                                                        const DataColumn(
-                                                          label:
-                                                              Text('Actions'),
-                                                        ),
-                                                      ],
-                                                      rows: _parts.map((part) {
-                                                        final isEditing =
-                                                            _editingStates[part[
-                                                                    'id']] ??
-                                                                false;
-                                                        return DataRow(cells: [
-                                                          DataCell(
-                                                            isEditing
-                                                                ? TextFormField(
-                                                                    controller:
-                                                                        _partNumberControllers[
-                                                                            part['id']],
-                                                                    decoration:
-                                                                        const InputDecoration(
-                                                                      labelText:
-                                                                          'Part Number',
-                                                                      isDense:
-                                                                          true,
-                                                                    ),
-                                                                  )
-                                                                : Text(part[
-                                                                        'part_number'] ??
-                                                                    ''),
-                                                          ),
-                                                          DataCell(
-                                                            isEditing
-                                                                ? TextFormField(
-                                                                    controller:
-                                                                        _partDescriptionControllers[
-                                                                            part['id']],
-                                                                    decoration:
-                                                                        const InputDecoration(
-                                                                      labelText:
-                                                                          'Description',
-                                                                      isDense:
-                                                                          true,
-                                                                    ),
-                                                                  )
-                                                                : Text(part[
-                                                                        'part_description'] ??
-                                                                    ''),
-                                                          ),
-                                                          DataCell(
-                                                            isEditing
-                                                                ? TextFormField(
-                                                                    controller:
-                                                                        _monthlyDemandControllers[
-                                                                            part['id']],
-                                                                    decoration:
-                                                                        const InputDecoration(
-                                                                      labelText:
-                                                                          'Monthly Demand',
-                                                                      isDense:
-                                                                          true,
-                                                                    ),
-                                                                    keyboardType:
-                                                                        TextInputType
-                                                                            .number,
-                                                                    inputFormatters: [
-                                                                      FilteringTextInputFormatter
-                                                                          .digitsOnly
-                                                                    ],
-                                                                  )
-                                                                : Text(part['monthly_demand']
-                                                                        ?.toString() ??
-                                                                    ''),
-                                                          ),
-                                                          DataCell(
-                                                            Row(
-                                                              mainAxisSize:
-                                                                  MainAxisSize
-                                                                      .min,
-                                                              children: [
-                                                                if (isEditing) ...[
-                                                                  IconButton(
-                                                                    icon: const Icon(
-                                                                        Icons
-                                                                            .check,
-                                                                        color: Colors
-                                                                            .green),
-                                                                    onPressed: () =>
-                                                                        _updatePart(
-                                                                            part['id']),
-                                                                    tooltip:
-                                                                        'Save',
-                                                                  ),
-                                                                  IconButton(
-                                                                    icon: const Icon(
-                                                                        Icons
-                                                                            .close,
-                                                                        color: Colors
-                                                                            .orange),
-                                                                    onPressed: () =>
-                                                                        _cancelEdit(
-                                                                            part['id']),
-                                                                    tooltip:
-                                                                        'Cancel',
-                                                                  ),
-                                                                ] else ...[
-                                                                  IconButton(
-                                                                    icon: const Icon(
-                                                                        Icons
-                                                                            .edit,
-                                                                        color: Colors
-                                                                            .blue),
-                                                                    onPressed:
-                                                                        () {
-                                                                      setState(
-                                                                          () {
-                                                                        _editingStates[part['id']] =
-                                                                            true;
-                                                                      });
-                                                                    },
-                                                                    tooltip:
-                                                                        'Edit',
-                                                                  ),
-                                                                  IconButton(
-                                                                    icon: const Icon(
-                                                                        Icons
-                                                                            .delete,
-                                                                        color: Colors
-                                                                            .red),
-                                                                    onPressed: () =>
-                                                                        _deletePart(
-                                                                            part['id']),
-                                                                    tooltip:
-                                                                        'Delete',
-                                                                  ),
-                                                                ],
-                                                              ],
+                      child: FocusTraversalGroup(
+                        policy: OrderedTraversalPolicy(),
+                        child: Card(
+                          color: Colors.yellow[50],
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16)),
+                          elevation: 8,
+                          child: Padding(
+                            padding: const EdgeInsets.all(24.0),
+                            child: _loading
+                                ? const Center(child: CircularProgressIndicator())
+                                : _error != null
+                                    ? Center(
+                                        child: Text(_error!,
+                                            style: const TextStyle(
+                                                color: Colors.red)))
+                                    : Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          const Text('Saved Parts',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 18)),
+                                          const SizedBox(height: 8),
+                                          SizedBox(
+                                            height:
+                                                400, // Fixed height for the table
+                                            child: _parts.isEmpty
+                                                ? const Center(
+                                                    child: Text(
+                                                        'No parts saved yet.'))
+                                                : SingleChildScrollView(
+                                                    scrollDirection:
+                                                        Axis.vertical,
+                                                    child: LayoutBuilder(builder:
+                                                        (context, constraints) {
+                                                      return DataTable(
+                                                        columnSpacing:
+                                                            30, // Increased from 20 to 30 for better spacing
+                                                        columns: [
+                                                          DataColumn(
+                                                            label: SizedBox(
+                                                              width: constraints
+                                                                      .maxWidth *
+                                                                  0.13, // Reduced from 0.22 to 0.13 (40% reduction)
+                                                              child: const Text(
+                                                                  'Part Number'),
                                                             ),
                                                           ),
-                                                        ]);
-                                                      }).toList(),
-                                                    );
-                                                  }),
-                                                ),
-                                        ),
-                                      ],
-                                    ),
+                                                          DataColumn(
+                                                            label: SizedBox(
+                                                              width: constraints
+                                                                      .maxWidth *
+                                                                  0.40, // Increased from 0.38 to 0.40
+                                                              child: const Text(
+                                                                  'Description'),
+                                                            ),
+                                                          ),
+                                                          DataColumn(
+                                                            label: SizedBox(
+                                                              width: constraints
+                                                                      .maxWidth *
+                                                                  0.20, // Increased from 0.18 to 0.20
+                                                              child: const Text(
+                                                                  'Monthly Demand'),
+                                                            ),
+                                                          ),
+                                                          const DataColumn(
+                                                            label:
+                                                                Text('Actions'),
+                                                          ),
+                                                        ],
+                                                        rows: _parts.map((part) {
+                                                          final isEditing =
+                                                              _editingStates[part[
+                                                                      'id']] ??
+                                                                  false;
+                                                          return DataRow(cells: [
+                                                            DataCell(
+                                                              isEditing
+                                                                  ? TextFormField(
+                                                                      controller:
+                                                                          _partNumberControllers[
+                                                                              part['id']],
+                                                                      decoration:
+                                                                          const InputDecoration(
+                                                                        labelText:
+                                                                            'Part Number',
+                                                                        isDense:
+                                                                            true,
+                                                                      ),
+                                                                    )
+                                                                  : Text(part[
+                                                                          'part_number'] ??
+                                                                      ''),
+                                                            ),
+                                                            DataCell(
+                                                              isEditing
+                                                                  ? TextFormField(
+                                                                      controller:
+                                                                          _partDescriptionControllers[
+                                                                              part['id']],
+                                                                      decoration:
+                                                                          const InputDecoration(
+                                                                        labelText:
+                                                                            'Description',
+                                                                        isDense:
+                                                                            true,
+                                                                      ),
+                                                                    )
+                                                                  : Text(part[
+                                                                          'part_description'] ??
+                                                                      ''),
+                                                            ),
+                                                            DataCell(
+                                                              isEditing
+                                                                  ? TextFormField(
+                                                                      controller:
+                                                                          _monthlyDemandControllers[
+                                                                              part['id']],
+                                                                      decoration:
+                                                                          const InputDecoration(
+                                                                        labelText:
+                                                                            'Monthly Demand',
+                                                                        isDense:
+                                                                            true,
+                                                                      ),
+                                                                      keyboardType:
+                                                                          TextInputType
+                                                                              .number,
+                                                                      inputFormatters: [
+                                                                        FilteringTextInputFormatter
+                                                                            .digitsOnly
+                                                                      ],
+                                                                    )
+                                                                  : Text(part['monthly_demand']
+                                                                          ?.toString() ??
+                                                                      ''),
+                                                            ),
+                                                            DataCell(
+                                                              Row(
+                                                                mainAxisSize:
+                                                                    MainAxisSize
+                                                                        .min,
+                                                                children: [
+                                                                  if (isEditing) ...[
+                                                                    IconButton(
+                                                                      icon: const Icon(
+                                                                          Icons
+                                                                              .check,
+                                                                          color: Colors
+                                                                              .green),
+                                                                      onPressed: () =>
+                                                                          _updatePart(
+                                                                              part['id']),
+                                                                      tooltip:
+                                                                          'Save',
+                                                                    ),
+                                                                    IconButton(
+                                                                      icon: const Icon(
+                                                                          Icons
+                                                                              .close,
+                                                                          color: Colors
+                                                                              .orange),
+                                                                      onPressed: () =>
+                                                                          _cancelEdit(
+                                                                              part['id']),
+                                                                      tooltip:
+                                                                          'Cancel',
+                                                                    ),
+                                                                  ] else ...[
+                                                                    IconButton(
+                                                                      icon: const Icon(
+                                                                          Icons
+                                                                              .edit,
+                                                                          color: Colors
+                                                                              .blue),
+                                                                      onPressed:
+                                                                          () {
+                                                                        setState(
+                                                                            () {
+                                                                          _editingStates[part['id']] =
+                                                                              true;
+                                                                        });
+                                                                      },
+                                                                      tooltip:
+                                                                          'Edit',
+                                                                    ),
+                                                                    IconButton(
+                                                                      icon: const Icon(
+                                                                          Icons
+                                                                              .delete,
+                                                                          color: Colors
+                                                                              .red),
+                                                                      onPressed: () =>
+                                                                          _deletePart(
+                                                                              part['id']),
+                                                                      tooltip:
+                                                                          'Delete',
+                                                                    ),
+                                                                  ],
+                                                                ],
+                                                              ),
+                                                            ),
+                                                          ]);
+                                                        }).toList(),
+                                                      );
+                                                    }),
+                                                  ),
+                                          ),
+                                        ],
+                                      ),
+                          ),
                         ),
                       ),
                     ),

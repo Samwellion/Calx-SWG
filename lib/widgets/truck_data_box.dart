@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../models/connection_handle.dart';
+import 'connection_handle_widget.dart';
 
 class TruckDataBox extends StatefulWidget {
   final String truckId;
@@ -9,6 +11,11 @@ class TruckDataBox extends StatefulWidget {
   final Function(String, String)? onDataChanged; // New callback for data changes
   final bool isSelected;
   final String? initialUserData; // Initial data to restore
+  
+  // Connection handle properties
+  final bool showConnectionHandles;
+  final ConnectionHandle? selectedHandle;
+  final Function(ConnectionHandle)? onHandleSelected;
 
   const TruckDataBox({
     super.key,
@@ -20,6 +27,9 @@ class TruckDataBox extends StatefulWidget {
     this.onDataChanged,
     this.isSelected = false,
     this.initialUserData,
+    this.showConnectionHandles = false,
+    this.selectedHandle,
+    this.onHandleSelected,
   });
 
   @override
@@ -206,6 +216,54 @@ class _TruckDataBoxState extends State<TruckDataBox> {
                         size: 12,
                       ),
                     ),
+                  ),
+                ),
+              
+              // Connection handles
+              if (widget.showConnectionHandles)
+                Positioned(
+                  left: -8,
+                  top: -8,
+                  child: ConnectionHandleWidget(
+                    handles: [
+                      // Left handle
+                      ConnectionHandle(
+                        itemId: widget.truckId,
+                        itemType: 'truck',
+                        offset: const Offset(-8, 37),
+                        position: HandlePosition.left,
+                        alignment: HandleAlignment.center,
+                      ),
+                      // Right handle
+                      ConnectionHandle(
+                        itemId: widget.truckId,
+                        itemType: 'truck',
+                        offset: const Offset(120, 37), // 120 = width of truck box
+                        position: HandlePosition.right,
+                        alignment: HandleAlignment.center,
+                      ),
+                      // Top handle
+                      ConnectionHandle(
+                        itemId: widget.truckId,
+                        itemType: 'truck',
+                        offset: const Offset(52, -8),
+                        position: HandlePosition.top,
+                        alignment: HandleAlignment.center,
+                      ),
+                      // Bottom handle
+                      ConnectionHandle(
+                        itemId: widget.truckId,
+                        itemType: 'truck',
+                        offset: const Offset(52, 90), // 90 = height of truck box
+                        position: HandlePosition.bottom,
+                        alignment: HandleAlignment.center,
+                      ),
+                    ],
+                    selectedHandle: widget.selectedHandle,
+                    showHandles: widget.showConnectionHandles,
+                    itemSize: const Size(120, 90),
+                    paddingExtension: 8,
+                    onHandleSelected: widget.onHandleSelected ?? (_) {},
                   ),
                 ),
             ],
