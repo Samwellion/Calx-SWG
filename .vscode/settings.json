@@ -35,5 +35,6 @@
     "dart.flutterSdkPath": "/Users/samscottmaxwell/development/flutter",
     "githubPullRequests.ignoredPullRequestBranches": [
         "master"
-    ]
+    ],
+    "java.configuration.updateBuildConfiguration": "interactive"
 }

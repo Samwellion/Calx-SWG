@@ -140,9 +140,7 @@ class _KanbanLoopWidgetState extends State<KanbanLoopWidget> {
                 if (_startPosition != null && _initialTouchPosition != null) {
                   final delta = details.globalPosition - _initialTouchPosition!;
                   final newPosition = _startPosition! + delta;
-                  print('DEBUG: Kanban icon drag update - newPosition: $newPosition');
                   final updatedLoop = widget.kanbanLoop.updateKanbanPosition(newPosition);
-                  print('DEBUG: Updated kanban loop with position: ${updatedLoop.kanbanIconPosition}');
                   widget.onUpdate?.call(updatedLoop);
                 }
               },
@@ -240,7 +238,7 @@ class _KanbanLoopWidgetState extends State<KanbanLoopWidget> {
         
         // Arrowhead at the supplier end - this should not intercept touch events
         Positioned(
-          left: widget.kanbanLoop.supplierHandlePosition.dx - 8,
+          left: widget.kanbanLoop.supplierHandlePosition.dx - 4, // Adjusted for smaller arrow
           top: widget.kanbanLoop.supplierHandlePosition.dy - 4,
           child: IgnorePointer(
             child: CustomPaint(
@@ -248,7 +246,7 @@ class _KanbanLoopWidgetState extends State<KanbanLoopWidget> {
                 color: widget.isSelected ? Colors.blue : Colors.amber,
                 direction: _getArrowDirection(),
               ),
-              size: const Size(16, 8),
+              size: const Size(8, 8), // Reduced size to match withdrawal loop
             ),
           ),
         ),
@@ -409,7 +407,8 @@ class ArrowheadPainter extends CustomPainter {
 
     final path = Path();
     
-    // Create an arrowhead pointing in the specified direction
+    // Create a small closed arrowhead matching withdrawal loop style
+    // Using standardized 8.0 size
     final tipX = size.width;
     final tipY = size.height / 2;
     final baseX = 0.0;

@@ -93,9 +93,25 @@ class _FloatingIconToolbarState extends State<FloatingIconToolbar>
   }
 
   Widget _buildExpandedToolbar() {
+    // Group templates by category for better organization
+    final processTemplates = CanvasIconTemplate.templates.where((t) => 
+      t.type == CanvasIconType.fifo || t.type == CanvasIconType.kanbanMarket ||
+      t.type == CanvasIconType.buffer || t.type == CanvasIconType.kanbanPost
+    ).toList();
+    
+    final dataBoxTemplates = CanvasIconTemplate.templates.where((t) => 
+      t.type == CanvasIconType.customer || t.type == CanvasIconType.supplier ||
+      t.type == CanvasIconType.productionControl || t.type == CanvasIconType.truck
+    ).toList();
+    
+    final informationTemplates = CanvasIconTemplate.templates.where((t) => 
+      t.type == CanvasIconType.electronicInformation || t.type == CanvasIconType.manualInformation ||
+      t.type == CanvasIconType.push || t.type == CanvasIconType.pull
+    ).toList();
+
     return Container(
       margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -108,9 +124,9 @@ class _FloatingIconToolbarState extends State<FloatingIconToolbar>
           ),
         ],
       ),
-      width: 280,
-      height: 320,
+      width: 300,
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           // Header
           Container(
@@ -124,27 +140,80 @@ class _FloatingIconToolbarState extends State<FloatingIconToolbar>
               ),
             ),
           ),
-          const Divider(height: 1),
+          const Divider(height: 1, thickness: 1),
           
-          // Icon grid
-          Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.all(8),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-                childAspectRatio: 1,
+          // Process/Material Flow section
+          if (processTemplates.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: const Text(
+                'Material Flow',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey,
+                ),
               ),
-              itemCount: CanvasIconTemplate.templates.length,
-              itemBuilder: (context, index) {
-                final template = CanvasIconTemplate.templates[index];
-                return _buildIconButton(template);
-              },
             ),
-          ),
+            const SizedBox(height: 4),
+            _buildIconGrid(processTemplates),
+          ],
+          
+          // Divider between sections
+          if (processTemplates.isNotEmpty && dataBoxTemplates.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            const Divider(height: 1, thickness: 1, indent: 20, endIndent: 20),
+            const SizedBox(height: 4),
+          ],
+          
+          // Data Boxes section
+          if (dataBoxTemplates.isNotEmpty) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: const Text(
+                'Data Boxes',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey,
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            _buildIconGrid(dataBoxTemplates),
+          ],
+          
+          // Divider between sections
+          if (dataBoxTemplates.isNotEmpty && informationTemplates.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            const Divider(height: 1, thickness: 1, indent: 20, endIndent: 20),
+            const SizedBox(height: 4),
+          ],
+          
+          // Information Flow section
+          if (informationTemplates.isNotEmpty) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: const Text(
+                'Information Flow',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey,
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            _buildIconGrid(informationTemplates),
+          ],
           
           // Instructions
+          const SizedBox(height: 8),
+          const Divider(height: 1, thickness: 1),
           Container(
             padding: const EdgeInsets.all(8),
             child: const Text(
@@ -159,6 +228,14 @@ class _FloatingIconToolbarState extends State<FloatingIconToolbar>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildIconGrid(List<CanvasIconTemplate> templates) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: templates.map((template) => _buildIconButton(template)).toList(),
     );
   }
 
@@ -213,6 +290,8 @@ class _FloatingIconToolbarState extends State<FloatingIconToolbar>
         },
         borderRadius: BorderRadius.circular(8),
         child: Container(
+          width: 56,
+          height: 56,
           decoration: BoxDecoration(
             color: template.color.withOpacity(0.1),
             borderRadius: BorderRadius.circular(8),
@@ -228,23 +307,23 @@ class _FloatingIconToolbarState extends State<FloatingIconToolbar>
               template.type == CanvasIconType.fifo
                   ? FifoIcon(
                       color: template.color,
-                      size: 24, // Keep toolbar icon at normal size
+                      size: 20, // Slightly smaller for compact layout
                     )
                   : Icon(
                       template.iconData,
                       color: template.color,
-                      size: 24,
+                      size: 20,
                     ),
               const SizedBox(height: 2),
               Text(
                 template.label,
                 style: TextStyle(
-                  fontSize: 8,
+                  fontSize: 7,
                   color: template.color.withOpacity(0.8),
                   fontWeight: FontWeight.w500,
                 ),
                 textAlign: TextAlign.center,
-                maxLines: 1,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
             ],
