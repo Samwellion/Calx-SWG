@@ -79,7 +79,36 @@ class ConnectorWidget extends StatelessWidget {
   Offset _getConnectorEndpoint(ConnectorEndpoint endpoint, Offset itemPosition) {
     // If we have a handle, convert relative position to absolute position
     if (endpoint.handle != null) {
-      return itemPosition + endpoint.handle!.offset;
+      // Different items use different coordinate systems:
+      // - MaterialConnector: itemPosition is center point, but handles are calculated from top-left
+      // - ProcessObject: itemPosition is top-left point
+      // - DataBoxes: itemPosition is top-left point
+      
+      if (endpoint.itemType == 'materialConnector') {
+        // For material connectors, convert center position to top-left, then add handle offset
+        final materialConnector = materialConnectors.firstWhere(
+          (mc) => mc.id == endpoint.itemId,
+          orElse: () => MaterialConnector(
+            id: '',
+            type: CanvasIconType.fifo,
+            supplierProcessId: '',
+            customerProcessId: '',
+            label: '',
+            position: Offset.zero,
+            size: const Size(85, 130),
+          ),
+        );
+        
+        final topLeftPosition = Offset(
+          itemPosition.dx - materialConnector.size.width / 2,
+          itemPosition.dy - materialConnector.size.height / 2,
+        );
+        
+        return topLeftPosition + endpoint.handle!.offset;
+      } else {
+        // For processes and data boxes, itemPosition is already top-left
+        return itemPosition + endpoint.handle!.offset;
+      }
     }
     
     // Fall back to legacy connection point if available
@@ -446,30 +475,31 @@ class ArrowPainter extends CustomPainter {
   }
 
   void _drawArrowHead(Canvas canvas, Paint paint) {
-    const arrowLength = 15.0;
-    const arrowAngle = 25 * math.pi / 180; // 25 degrees in radians
-
-    final angle = math.atan2(endPoint.dy - startPoint.dy, endPoint.dx - startPoint.dx);
-
-    // Arrow head points
-    final arrowPoint1 = Offset(
-      endPoint.dx - arrowLength * math.cos(angle - arrowAngle),
-      endPoint.dy - arrowLength * math.sin(angle - arrowAngle),
-    );
-
-    final arrowPoint2 = Offset(
-      endPoint.dx - arrowLength * math.cos(angle + arrowAngle),
-      endPoint.dy - arrowLength * math.sin(angle + arrowAngle),
-    );
-
-    // Draw arrow head
+    // Standardized small closed arrowhead matching withdrawal loop style
+    const arrowSize = 8.0;
+    final direction = endPoint - startPoint;
+    if (direction.distance == 0) return;
+    
+    final normalizedDirection = direction / direction.distance;
+    final perpendicular = Offset(-normalizedDirection.dy, normalizedDirection.dx);
+    
+    final arrowTip = endPoint;
+    final arrowBase = endPoint - normalizedDirection * arrowSize;
+    final arrowLeft = arrowBase + perpendicular * arrowSize / 2;
+    final arrowRight = arrowBase - perpendicular * arrowSize / 2;
+    
     final arrowPath = Path()
-      ..moveTo(endPoint.dx, endPoint.dy)
-      ..lineTo(arrowPoint1.dx, arrowPoint1.dy)
-      ..moveTo(endPoint.dx, endPoint.dy)
-      ..lineTo(arrowPoint2.dx, arrowPoint2.dy);
-
-    canvas.drawPath(arrowPath, paint);
+      ..moveTo(arrowTip.dx, arrowTip.dy)
+      ..lineTo(arrowLeft.dx, arrowLeft.dy)
+      ..lineTo(arrowRight.dx, arrowRight.dy)
+      ..close();
+    
+    // Draw filled arrowhead with same color as line
+    final arrowPaint = Paint()
+      ..color = paint.color
+      ..style = PaintingStyle.fill;
+    
+    canvas.drawPath(arrowPath, arrowPaint);
   }
 
   void _drawLabel(Canvas canvas) {
