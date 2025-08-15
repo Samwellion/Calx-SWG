@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/connection_handle.dart';
 import 'connection_handle_widget.dart';
+import '../utils/canvas_drag_handler.dart';
 
 class TruckDataBox extends StatefulWidget {
   final String truckId;
@@ -36,11 +37,8 @@ class TruckDataBox extends StatefulWidget {
   State<TruckDataBox> createState() => _TruckDataBoxState();
 }
 
-class _TruckDataBoxState extends State<TruckDataBox> {
-  bool _isDragging = false;
+class _TruckDataBoxState extends State<TruckDataBox> with CanvasDragHandler {
   final TextEditingController _freqController = TextEditingController();
-  Offset? _startPosition;
-  Offset? _initialTouchPosition;
 
   @override
   void initState() {
@@ -104,29 +102,12 @@ class _TruckDataBoxState extends State<TruckDataBox> {
     return Positioned(
       left: widget.position.dx,
       top: widget.position.dy,
-      child: GestureDetector(
+      child: createDraggableWrapper(
+        currentPosition: widget.position,
+        onPositionChanged: (newPosition) {
+          widget.onPositionChanged(widget.truckId, newPosition);
+        },
         onTap: () => widget.onTap?.call(widget.truckId),
-        onPanStart: (details) {
-          setState(() {
-            _isDragging = true;
-            _startPosition = widget.position;
-            _initialTouchPosition = details.globalPosition;
-          });
-        },
-        onPanUpdate: (details) {
-          if (_startPosition != null && _initialTouchPosition != null) {
-            final delta = details.globalPosition - _initialTouchPosition!;
-            final newPosition = _startPosition! + delta;
-            widget.onPositionChanged(widget.truckId, newPosition);
-          }
-        },
-        onPanEnd: (details) {
-          setState(() {
-            _isDragging = false;
-            _startPosition = null;
-            _initialTouchPosition = null;
-          });
-        },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           width: 120, // Increased width for better text space
@@ -137,7 +118,7 @@ class _TruckDataBoxState extends State<TruckDataBox> {
               color: widget.isSelected ? Colors.blue : Colors.black,
               width: widget.isSelected ? 3 : 2,
             ),
-            boxShadow: _isDragging || widget.isSelected
+            boxShadow: isDragging || widget.isSelected
                 ? [
                     BoxShadow(
                       color: Colors.grey.withOpacity(0.5),

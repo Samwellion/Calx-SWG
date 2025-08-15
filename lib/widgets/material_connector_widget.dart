@@ -8,6 +8,7 @@ import 'fifo_icon.dart';
 import 'uncontrolled_icon.dart';
 import 'supermarket_icon.dart';
 import 'connection_handle_widget.dart';
+import '../utils/canvas_drag_handler.dart';
 
 class MaterialConnectorWidget extends StatefulWidget {
   final MaterialConnector materialConnector;
@@ -35,14 +36,11 @@ class MaterialConnectorWidget extends StatefulWidget {
   State<MaterialConnectorWidget> createState() => _MaterialConnectorWidgetState();
 }
 
-class _MaterialConnectorWidgetState extends State<MaterialConnectorWidget> {
+class _MaterialConnectorWidgetState extends State<MaterialConnectorWidget> with CanvasDragHandler {
   late TextEditingController _piecesController;
   bool _isUserEditing = false; // Track if user is actively typing
   ProcessObject? _supplierProcess;
   ProcessObject? _customerProcess;
-  bool _isDragging = false;
-  Offset? _startPosition;
-  Offset? _initialTouchPosition;
 
   @override
   void initState() {
@@ -168,32 +166,15 @@ class _MaterialConnectorWidgetState extends State<MaterialConnectorWidget> {
         Positioned(
           left: widget.materialConnector.position.dx - widget.materialConnector.size.width / 2,
           top: widget.materialConnector.position.dy - widget.materialConnector.size.height / 2,
-          child: GestureDetector(
+          child: createDraggableWrapper(
+            currentPosition: widget.materialConnector.position,
+            onPositionChanged: (newPosition) {
+              final updatedMaterialConnector = widget.materialConnector.copyWith(
+                position: newPosition,
+              );
+              widget.onUpdate?.call(updatedMaterialConnector);
+            },
             onTap: () => widget.onTap?.call(widget.materialConnector.id),
-            onPanStart: (details) {
-              setState(() {
-                _isDragging = true;
-                _startPosition = widget.materialConnector.position;
-                _initialTouchPosition = details.globalPosition;
-              });
-            },
-            onPanUpdate: (details) {
-              if (_startPosition != null && _initialTouchPosition != null) {
-                final delta = details.globalPosition - _initialTouchPosition!;
-                final newPosition = _startPosition! + delta;
-                final updatedMaterialConnector = widget.materialConnector.copyWith(
-                  position: newPosition,
-                );
-                widget.onUpdate?.call(updatedMaterialConnector);
-              }
-            },
-            onPanEnd: (details) {
-              setState(() {
-                _isDragging = false;
-                _startPosition = null;
-                _initialTouchPosition = null;
-              });
-            },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 150),
               width: widget.materialConnector.size.width,
@@ -205,12 +186,12 @@ class _MaterialConnectorWidgetState extends State<MaterialConnectorWidget> {
                   width: widget.isSelected ? 2.0 : 1.0,
                 ),
                 borderRadius: BorderRadius.circular(8),
-                boxShadow: _isDragging || widget.isSelected
+                boxShadow: isDragging || widget.isSelected
                     ? [
                         BoxShadow(
-                          color: Colors.black.withOpacity(_isDragging ? 0.3 : 0.1),
-                          blurRadius: _isDragging ? 8 : 4,
-                          offset: Offset(0, _isDragging ? 4 : 2),
+                          color: Colors.black.withOpacity(isDragging ? 0.3 : 0.1),
+                          blurRadius: isDragging ? 8 : 4,
+                          offset: Offset(0, isDragging ? 4 : 2),
                         ),
                       ]
                     : [

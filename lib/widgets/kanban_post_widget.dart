@@ -1,148 +1,71 @@
 import 'package:flutter/material.dart';
 import '../models/kanban_post.dart';
-import '../models/connection_handle.dart';
-import 'connection_handle_widget.dart';
+import '../utils/unified_canvas_drag.dart';
 
-class KanbanPostWidget extends StatefulWidget {
+class KanbanPostWidget extends StatelessWidget with UnifiedCanvasDrag {
   final KanbanPost kanbanPost;
   final bool isSelected;
   final Function(String)? onTap;
-  final Function(KanbanPost)? onUpdate;
-  final Function(ConnectionHandle)? onHandleSelected;
-  final bool showConnectionHandles;
-  final ConnectionHandle? selectedHandle;
+  final Function(String, Offset) onPositionChanged;
 
   const KanbanPostWidget({
     super.key,
     required this.kanbanPost,
     this.isSelected = false,
     this.onTap,
-    this.onUpdate,
-    this.onHandleSelected,
-    this.showConnectionHandles = false,
-    this.selectedHandle,
+    required this.onPositionChanged,
   });
 
   @override
-  State<KanbanPostWidget> createState() => _KanbanPostWidgetState();
-}
-
-class _KanbanPostWidgetState extends State<KanbanPostWidget> {
-  /// Generate connection handles for kanban post
-  List<ConnectionHandle> _generateConnectionHandles() {
-    return ConnectionHandleCalculator.calculateHandles(
-      itemId: widget.kanbanPost.id,
-      itemType: 'kanbanPost',
-      itemPosition: widget.kanbanPost.position,
-      itemSize: widget.kanbanPost.size,
+  Widget build(BuildContext context) {
+    return createUnifiedDraggable<KanbanPost>(
+      data: kanbanPost,
+      position: kanbanPost.position,
+      size: kanbanPost.size,
+      childBuilder: (isDragging, isGhost) => _buildKanbanPost(
+        isDragging: isDragging,
+        isGhost: isGhost,
+      ),
+      onDragEnd: (postData, globalOffset) {
+        onPositionChanged(kanbanPost.id, globalOffset);
+      },
+      onTap: () => onTap?.call(kanbanPost.id),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        // Main kanban post widget
-        Positioned(
-          left: widget.kanbanPost.position.dx - widget.kanbanPost.size.width / 2,
-          top: widget.kanbanPost.position.dy - widget.kanbanPost.size.height / 2,
-          child: Draggable<String>(
-            data: widget.kanbanPost.id,
-            feedback: Container(
-              width: widget.kanbanPost.size.width,
-              height: widget.kanbanPost.size.height,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.8),
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(2.0), // Minimal padding
-                child: CustomPaint(
-                  painter: KanbanPostIconPainter(color: Colors.brown),
-                  size: const Size(50, 45), // Icon only - no text field
+  Widget _buildKanbanPost({bool isDragging = false, bool isGhost = false}) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      width: kanbanPost.size.width,
+      height: kanbanPost.size.height,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: isDragging || isSelected
+            ? [
+                BoxShadow(
+                  color: Colors.black.withOpacity(isDragging ? 0.3 : 0.1),
+                  blurRadius: isDragging ? 8 : 4,
+                  offset: Offset(0, isDragging ? 4 : 2),
                 ),
-              ),
-            ),
-            childWhenDragging: Container(
-              width: widget.kanbanPost.size.width,
-              height: widget.kanbanPost.size.height,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            onDragEnd: (details) {
-              // Convert global coordinates to local canvas coordinates
-              final overlay = Overlay.of(context);
-              final renderBox = overlay.context.findRenderObject() as RenderBox?;
-              if (renderBox != null) {
-                try {
-                  final localPosition = renderBox.globalToLocal(details.offset);
-                  final updatedKanbanPost = widget.kanbanPost.copyWith(position: localPosition);
-                  widget.onUpdate?.call(updatedKanbanPost);
-                } catch (e) {
-                  // Fallback to using offset directly
-                  final updatedKanbanPost = widget.kanbanPost.copyWith(position: details.offset);
-                  widget.onUpdate?.call(updatedKanbanPost);
-                }
-              } else {
-                // Fallback to using offset directly
-                final updatedKanbanPost = widget.kanbanPost.copyWith(position: details.offset);
-                widget.onUpdate?.call(updatedKanbanPost);
-              }
-            },
-            child: GestureDetector(
-              onTap: () => widget.onTap?.call(widget.kanbanPost.id),
-              child: Container(
-                width: widget.kanbanPost.size.width,
-                height: widget.kanbanPost.size.height,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+              ]
+            : [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(2.0), // Minimal padding
-                  child: CustomPaint(
-                    painter: KanbanPostIconPainter(
-                      color: widget.isSelected ? Colors.blue : Colors.black,
-                    ),
-                    size: const Size(50, 45), // Icon only - no text field
-                  ),
-                ),
-              ),
-            ),
+              ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(2.0), // Minimal padding
+        child: CustomPaint(
+          painter: KanbanPostIconPainter(
+            color: isSelected ? Colors.blue : Colors.black,
           ),
+          size: const Size(50, 45), // Icon only - no text field
         ),
-        
-        // Connection handles overlay
-        if (widget.showConnectionHandles)
-          Positioned(
-            left: widget.kanbanPost.position.dx - widget.kanbanPost.size.width / 2 - 12,
-            top: widget.kanbanPost.position.dy - widget.kanbanPost.size.height / 2 - 12,
-            child: ConnectionHandleWidget(
-              handles: _generateConnectionHandles(),
-              selectedHandle: widget.selectedHandle,
-              showHandles: widget.showConnectionHandles,
-              itemSize: widget.kanbanPost.size,
-              paddingExtension: 12.0,
-              onHandleSelected: widget.onHandleSelected ?? (_) {},
-            ),
-          ),
-      ],
+      ),
     );
   }
 }

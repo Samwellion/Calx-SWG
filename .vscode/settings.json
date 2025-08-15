@@ -32,9 +32,10 @@
         "xctest"
     ],
     "dart.showTodos": false,
-    "dart.flutterSdkPath": "/Users/samscottmaxwell/development/flutter",
+    "dart.flutterSdkPath": "C:\\Dev\\flutter\\flutter",
     "githubPullRequests.ignoredPullRequestBranches": [
         "master"
     ],
-    "java.configuration.updateBuildConfiguration": "interactive"
+    "java.configuration.updateBuildConfiguration": "interactive",
+    "chat.agent.maxRequests": 50
 }

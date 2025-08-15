@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/kanban_loop.dart';
+import '../utils/canvas_drag_handler.dart';
 
 class KanbanLoopWidget extends StatefulWidget {
   final KanbanLoop kanbanLoop;
@@ -20,14 +21,11 @@ class KanbanLoopWidget extends StatefulWidget {
   State<KanbanLoopWidget> createState() => _KanbanLoopWidgetState();
 }
 
-class _KanbanLoopWidgetState extends State<KanbanLoopWidget> {
+class _KanbanLoopWidgetState extends State<KanbanLoopWidget> with CanvasDragHandler {
   late TextEditingController _hoursController;
   late FocusNode _hoursFocusNode;
   bool _isUserEditing = false;
   bool _showHoursInput = false; // Track if we should show input field or display text
-  bool _isDragging = false;
-  Offset? _startPosition;
-  Offset? _initialTouchPosition;
 
   @override
   void initState() {
@@ -127,30 +125,13 @@ class _KanbanLoopWidgetState extends State<KanbanLoopWidget> {
           child: SizedBox(
             width: 30,
             height: 30,
-            child: GestureDetector(
+            child: createDraggableWrapper(
+              currentPosition: widget.kanbanLoop.kanbanIconPosition,
+              onPositionChanged: (newPosition) {
+                final updatedLoop = widget.kanbanLoop.updateKanbanPosition(newPosition);
+                widget.onUpdate?.call(updatedLoop);
+              },
               onTap: () => widget.onTap?.call(widget.kanbanLoop.id),
-              onPanStart: (details) {
-                setState(() {
-                  _isDragging = true;
-                  _startPosition = widget.kanbanLoop.kanbanIconPosition;
-                  _initialTouchPosition = details.globalPosition;
-                });
-              },
-              onPanUpdate: (details) {
-                if (_startPosition != null && _initialTouchPosition != null) {
-                  final delta = details.globalPosition - _initialTouchPosition!;
-                  final newPosition = _startPosition! + delta;
-                  final updatedLoop = widget.kanbanLoop.updateKanbanPosition(newPosition);
-                  widget.onUpdate?.call(updatedLoop);
-                }
-              },
-              onPanEnd: (details) {
-                setState(() {
-                  _isDragging = false;
-                  _startPosition = null;
-                  _initialTouchPosition = null;
-                });
-              },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
                 width: 30,
@@ -158,7 +139,7 @@ class _KanbanLoopWidgetState extends State<KanbanLoopWidget> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.white,
-                  boxShadow: _isDragging
+                  boxShadow: isDragging
                       ? [
                           BoxShadow(
                             color: Colors.black.withOpacity(0.3),
@@ -238,7 +219,7 @@ class _KanbanLoopWidgetState extends State<KanbanLoopWidget> {
         
         // Arrowhead at the supplier end - this should not intercept touch events
         Positioned(
-          left: widget.kanbanLoop.supplierHandlePosition.dx - 4, // Adjusted for smaller arrow
+          left: widget.kanbanLoop.supplierHandlePosition.dx - 8,
           top: widget.kanbanLoop.supplierHandlePosition.dy - 4,
           child: IgnorePointer(
             child: CustomPaint(
@@ -246,7 +227,7 @@ class _KanbanLoopWidgetState extends State<KanbanLoopWidget> {
                 color: widget.isSelected ? Colors.blue : Colors.amber,
                 direction: _getArrowDirection(),
               ),
-              size: const Size(8, 8), // Reduced size to match withdrawal loop
+              size: const Size(16, 8),
             ),
           ),
         ),
@@ -407,8 +388,7 @@ class ArrowheadPainter extends CustomPainter {
 
     final path = Path();
     
-    // Create a small closed arrowhead matching withdrawal loop style
-    // Using standardized 8.0 size
+    // Create an arrowhead pointing in the specified direction
     final tipX = size.width;
     final tipY = size.height / 2;
     final baseX = 0.0;

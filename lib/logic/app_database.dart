@@ -673,7 +673,7 @@ class AppDatabase extends _$AppDatabase {
       for (final part in processPartsList) {
         String? processTimeString = part.userOverrideTime ?? part.processTime;
 
-        if (processTimeString!.isNotEmpty) {
+        if (processTimeString != null && processTimeString.isNotEmpty) {
           final timeInSeconds = _parseTimeStringToSeconds(processTimeString);
           if (timeInSeconds > 0) {
             cycleTimesInSeconds.add(timeInSeconds);

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/withdrawal_loop.dart';
+import '../utils/canvas_drag_handler.dart';
 
 class WithdrawalLoopWidget extends StatefulWidget {
   final WithdrawalLoop withdrawalLoop;
@@ -20,14 +21,11 @@ class WithdrawalLoopWidget extends StatefulWidget {
   State<WithdrawalLoopWidget> createState() => _WithdrawalLoopWidgetState();
 }
 
-class _WithdrawalLoopWidgetState extends State<WithdrawalLoopWidget> {
+class _WithdrawalLoopWidgetState extends State<WithdrawalLoopWidget> with CanvasDragHandler {
   late TextEditingController _hoursController;
   late FocusNode _hoursFocusNode;
   bool _isUserEditing = false;
   bool _showHoursInput = false; // Track if we should show input field or display text
-  bool _isDragging = false;
-  Offset? _startPosition;
-  Offset? _initialTouchPosition;
 
   @override
   void initState() {
@@ -127,30 +125,13 @@ class _WithdrawalLoopWidgetState extends State<WithdrawalLoopWidget> {
           child: SizedBox(
             width: 30,
             height: 30,
-            child: GestureDetector(
+            child: createDraggableWrapper(
+              currentPosition: widget.withdrawalLoop.kanbanIconPosition,
+              onPositionChanged: (newPosition) {
+                final updatedLoop = widget.withdrawalLoop.updateKanbanPosition(newPosition);
+                widget.onUpdate?.call(updatedLoop);
+              },
               onTap: () => widget.onTap?.call(widget.withdrawalLoop.id),
-              onPanStart: (details) {
-                setState(() {
-                  _isDragging = true;
-                  _startPosition = widget.withdrawalLoop.kanbanIconPosition;
-                  _initialTouchPosition = details.globalPosition;
-                });
-              },
-              onPanUpdate: (details) {
-                if (_startPosition != null && _initialTouchPosition != null) {
-                  final delta = details.globalPosition - _initialTouchPosition!;
-                  final newPosition = _startPosition! + delta;
-                  final updatedLoop = widget.withdrawalLoop.updateKanbanPosition(newPosition);
-                  widget.onUpdate?.call(updatedLoop);
-                }
-              },
-              onPanEnd: (details) {
-                setState(() {
-                  _isDragging = false;
-                  _startPosition = null;
-                  _initialTouchPosition = null;
-                });
-              },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
                 width: 30,
@@ -158,7 +139,7 @@ class _WithdrawalLoopWidgetState extends State<WithdrawalLoopWidget> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.white,
-                  boxShadow: _isDragging
+                  boxShadow: isDragging
                       ? [
                           BoxShadow(
                             color: Colors.black.withOpacity(0.3),

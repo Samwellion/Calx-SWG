@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import '../models/process_object.dart';
+import '../utils/unified_canvas_drag.dart';
 
-class DraggableProcessWidget extends StatelessWidget {
+class DraggableProcessWidget extends StatelessWidget with UnifiedCanvasDrag {
   final ProcessObject process;
   final VoidCallback? onTap;
-  final Function(Offset)? onDragEnd;
+  final Function(ProcessObject, Offset)? onDragEnd;
   final bool isSelected;
 
   const DraggableProcessWidget({
@@ -17,38 +18,29 @@ class DraggableProcessWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Positioned(
-      left: process.position.dx,
-      top: process.position.dy,
-      child: Draggable<ProcessObject>(
-        data: process,
-        feedback: Material(
-          color: Colors.transparent,
-          elevation: 8,
-          borderRadius: BorderRadius.circular(8),
-          child: SizedBox(
-            width: process.size.width,
-            height: process.size.height,
-            child: _buildProcessContainer(isDragging: true),
-          ),
-        ),
-        childWhenDragging: _buildProcessContainer(isGhost: true),
-        child: _buildProcessContainer(),
-        onDragEnd: (details) {
-          if (onDragEnd != null && details.wasAccepted == false) {
-            // Only update position if the drag wasn't accepted by a DragTarget
-            // The offset from DragEndDetails is in global coordinates
-            onDragEnd!(details.offset);
-          }
-        },
+    return createUnifiedDraggable<ProcessObject>(
+      data: process,
+      position: process.position,
+      size: process.size,
+      childBuilder: (isDragging, isGhost) => _buildProcessContainer(
+        isDragging: isDragging,
+        isGhost: isGhost,
       ),
+      onDragEnd: (processData, globalOffset) {
+        if (onDragEnd != null) {
+          onDragEnd!(processData, globalOffset);
+        }
+      },
+      onTap: onTap,
     );
   }
 
   Widget _buildProcessContainer(
       {bool isDragging = false, bool isGhost = false}) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        onTap?.call();
+      },
       child: Container(
         width: process.size.width,
         height: process.size.height,

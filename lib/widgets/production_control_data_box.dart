@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/canvas_drag_handler.dart';
 
 class ProductionControlDataBox extends StatefulWidget {
   final String productionControlId;
@@ -22,39 +23,19 @@ class ProductionControlDataBox extends StatefulWidget {
   State<ProductionControlDataBox> createState() => _ProductionControlDataBoxState();
 }
 
-class _ProductionControlDataBoxState extends State<ProductionControlDataBox> {
-  bool _isDragging = false;
-  Offset? _startPosition;
-  Offset? _initialTouchPosition;
+class _ProductionControlDataBoxState extends State<ProductionControlDataBox> with CanvasDragHandler {
 
   @override
   Widget build(BuildContext context) {
     return Positioned(
       left: widget.position.dx,
       top: widget.position.dy,
-      child: GestureDetector(
+      child: createDraggableWrapper(
+        currentPosition: widget.position,
+        onPositionChanged: (newPosition) {
+          widget.onPositionChanged(widget.productionControlId, newPosition);
+        },
         onTap: () => widget.onTap?.call(widget.productionControlId),
-        onPanStart: (details) {
-          setState(() {
-            _isDragging = true;
-            _startPosition = widget.position;
-            _initialTouchPosition = details.globalPosition;
-          });
-        },
-        onPanUpdate: (details) {
-          if (_startPosition != null && _initialTouchPosition != null) {
-            final delta = details.globalPosition - _initialTouchPosition!;
-            final newPosition = _startPosition! + delta;
-            widget.onPositionChanged(widget.productionControlId, newPosition);
-          }
-        },
-        onPanEnd: (details) {
-          setState(() {
-            _isDragging = false;
-            _startPosition = null;
-            _initialTouchPosition = null;
-          });
-        },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           width: 180,
@@ -65,7 +46,7 @@ class _ProductionControlDataBoxState extends State<ProductionControlDataBox> {
               color: widget.isSelected ? Colors.blue : Colors.black,
               width: widget.isSelected ? 3 : 2,
             ),
-            boxShadow: _isDragging || widget.isSelected
+            boxShadow: isDragging || widget.isSelected
                 ? [
                     BoxShadow(
                       color: Colors.grey.withOpacity(0.5),
