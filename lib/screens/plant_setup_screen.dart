@@ -9,6 +9,10 @@ import '../database_provider.dart';
 import '../logic/plant_repository.dart';
 import '../widgets/plant_details_panel.dart';
 import '../widgets/plant_list.dart';
+import '../screens/home_screen.dart';
+import '../screens/organization_setup_screen.dart';
+import '../widgets/plant_value_stream_help_popup.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // Global map to hold plant name -> value streams (one-to-many)
 Map<String, List<String>> plantValueStreams = {};
@@ -28,6 +32,7 @@ class PlantSetupScreen extends StatefulWidget {
 }
 
 class _PlantSetupScreenState extends State<PlantSetupScreen> {
+  static const _kPlantSetupHelpShownKey = 'plantSetupHelpShown';
   Future<void>? _initialLoad;
   bool _isLoading = false;
   late PlantRepository _repository;
@@ -38,6 +43,7 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
   void initState() {
     super.initState();
     _selectedPlantIdx = widget.initialPlantIndex; // Use the passed-in index
+    _checkAndShowHelp();
     _initialLoad = _loadInitialData();
 
     // Add listeners to track changes
@@ -72,6 +78,20 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
     setState(() {
       _hasUnsavedChanges = false;
     });
+  }
+
+  Future<void> _checkAndShowHelp() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasShownHelp = prefs.getBool(_kPlantSetupHelpShownKey) ?? false;
+    
+    if (!hasShownHelp && mounted) {
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const PlantValueStreamHelpPopup(),
+      );
+      await prefs.setBool(_kPlantSetupHelpShownKey, true);
+    }
   }
 
   Future<bool> _onWillPop() async {
@@ -310,6 +330,98 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
               Navigator.of(context).pop();
             }
           },
+
+          child: Scaffold(
+            appBar: AppBar(
+              title: const Text('Plant Setup'),
+              backgroundColor: Colors.white,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.help_outline),
+                  tooltip: 'Show Help',
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => const PlantValueStreamHelpPopup(),
+                    );
+                  },
+                ),
+              ],
+            ),
+            drawer: _buildCustomDrawer(),
+            backgroundColor: Colors.yellow[100],
+            resizeToAvoidBottomInset: true,
+            body: LayoutBuilder(
+              builder: (context, constraints) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Main body
+                    Expanded(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(width: 24),
+                          // Plant list - aligned to top, takes only needed space
+                          Align(
+                            alignment: Alignment.topCenter,
+                            child: PlantList(
+                              plants: plants,
+                              selectedPlantIdx: _selectedPlantIdx,
+                              onPlantSelected: (idx) async {
+                                // 1. Save the current plant's details
+                                await _saveCurrentPlantDetails();
+
+                                // 2. Set loading state and update index
+                                setState(() {
+                                  _selectedPlantIdx = idx;
+                                  _isLoading = true;
+                                });
+
+                                // 3. Load data for the newly selected plant
+                                await _loadSelectedPlantData();
+
+                                // 4. Turn off loading state
+                                setState(() {
+                                  _isLoading = false;
+                                });
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 32),
+                          // Plant details panel - takes remaining space
+                          if (_isLoading)
+                            const Expanded(
+                              child: Center(child: CircularProgressIndicator()),
+                            )
+                          else if (selectedPlant != null)
+                            Expanded(
+                              child: PlantDetailsPanel(
+                                plant: selectedPlant,
+                                valueStreams:
+                                    plantValueStreams[selectedPlant.name]!,
+                                controller: _controllers[selectedPlant.name]!,
+                                onAdd: () async {
+                                  final value =
+                                      _controllers[selectedPlant.name]!
+                                          .text
+                                          .trim();
+                                  if (value.isNotEmpty &&
+                                      !plantValueStreams[selectedPlant.name]!
+                                          .contains(value)) {
+                                    setState(() {
+                                      plantValueStreams[selectedPlant.name]!
+                                          .add(value);
+                                      // Only clear the value stream input field
+                                      _controllers[selectedPlant.name]!.clear();
+                                      _markAsChanged(); // Mark as changed when value stream is added
+                                    });
+                                    // Auto-save immediately when value stream is added
+                                    await _saveCurrentPlantDetails();
+                                  }
+                                  // Do NOT reload or reset plant address fields here
+                                },
+                                onRemove: (idx) async {
           child: HomeButtonWrapper(
             child: Scaffold(
               appBar: AppBar(

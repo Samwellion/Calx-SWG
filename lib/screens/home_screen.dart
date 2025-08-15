@@ -16,6 +16,7 @@ import '../widgets/app_footer.dart';
 import 'elements_input_screen.dart';
 import 'time_observation_form.dart';
 import '../widgets/app_drawer.dart';
+import '../widgets/help_popup.dart';
 import '../widgets/full_hierarchy_tree.dart';
 
 final RouteObserver<ModalRoute<void>> routeObserver =
@@ -34,6 +35,8 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   static const _kValueStreamKey = 'selectedValueStream';
   static const _kValueStreamIdKey = 'selectedValueStreamId';
   static const _kProcessKey = 'selectedProcess';
+  static const _kFirstLaunchKey = 'isFirstLaunch';
+
 
   bool hasSetupsForSelectedProcess = false;
   bool hasPartsInDatabase = false;
@@ -1412,6 +1415,23 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   void initState() {
     super.initState();
     _initializeScreen();
+    _checkFirstLaunch();
+  }
+
+  Future<void> _checkFirstLaunch() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isFirstLaunch = prefs.getBool(_kFirstLaunchKey) ?? true;
+    
+    if (isFirstLaunch && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const HelpPopup(),
+        );
+      });
+      await prefs.setBool(_kFirstLaunchKey, false);
+    }
   }
 
   Future<void> _initializeScreen() async {
@@ -1805,6 +1825,18 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       appBar: AppBar(
         title: const Text('Home'),
         backgroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            tooltip: 'Show Help',
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => const HelpPopup(),
+              );
+            },
+          ),
+        ],
       ),
       drawer: const AppDrawer(),
       backgroundColor: Colors.yellow[100],

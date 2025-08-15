@@ -8,6 +8,8 @@ import '../widgets/app_footer.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/home_button_wrapper.dart';
 import '../utils/error_handler.dart';
+import '../widgets/part_input_help_popup.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class PartInputScreen extends StatefulWidget {
   final int valueStreamId;
@@ -28,6 +30,7 @@ class PartInputScreen extends StatefulWidget {
 }
 
 class _PartInputScreenState extends State<PartInputScreen> {
+  static const _kPartInputHelpShownKey = 'partInputHelpShown';
   final TextEditingController _partNumberController = TextEditingController();
   final TextEditingController _partDescriptionController =
       TextEditingController();
@@ -49,9 +52,11 @@ class _PartInputScreenState extends State<PartInputScreen> {
   @override
   void initState() {
     super.initState();
+    _checkAndShowHelp();
+    DatabaseProvider.getInstance().then((database) {
+
     _initializeScreen();
   }
-
   Future<void> _initializeScreen() async {
     try {
       final database = await DatabaseProvider.getInstance();
@@ -64,6 +69,20 @@ class _PartInputScreenState extends State<PartInputScreen> {
           _loading = false;
         });
       }
+    }
+  }
+
+  Future<void> _checkAndShowHelp() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasShownHelp = prefs.getBool(_kPartInputHelpShownKey) ?? false;
+    
+    if (!hasShownHelp && mounted) {
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const PartInputHelpPopup(),
+      );
+      await prefs.setBool(_kPartInputHelpShownKey, true);
     }
   }
 
@@ -466,6 +485,18 @@ class _PartInputScreenState extends State<PartInputScreen> {
       appBar: AppBar(
         title: const Text('Part Input'),
         backgroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            tooltip: 'Show Help',
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => const PartInputHelpPopup(),
+              );
+            },
+          ),
+        ],
       ),
       drawer: const AppDrawer(),
       backgroundColor: Colors.yellow[100],
