@@ -1,0 +1,40 @@
+{
+    "cSpell.words": [
+        "APPICON",
+        "assetcatalog",
+        "AUTORELEASING",
+        "backgrounded",
+        "cfbundle",
+        "dsym",
+        "HIDPI",
+        "INFOPLIST",
+        "libc",
+        "lproj",
+        "LTWH",
+        "mngr",
+        "MSGSEND",
+        "newtimeobs",
+        "NONNULL",
+        "OBJC",
+        "Onone",
+        "ORGANIZATIONNAME",
+        "ovrd",
+        "PFEP",
+        "Prefs",
+        "Repeatables",
+        "RUNPATH",
+        "SANDBOXING",
+        "SDKROOT",
+        "vsid",
+        "wholemodule",
+        "xcassets",
+        "xcfilelist",
+        "xctest"
+    ],
+    "dart.showTodos": false,
+    "dart.flutterSdkPath": "/Users/samscottmaxwell/development/flutter",
+    "githubPullRequests.ignoredPullRequestBranches": [
+        "master"
+    ],
+    "java.configuration.updateBuildConfiguration": "interactive"
+}

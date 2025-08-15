@@ -1,0 +1,37 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Flutter: Run macOS (with CodeSign fix)",
+            "type": "shell",
+            "command": "./scripts/build_and_run.sh",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": [],
+            "detail": "Build and run Flutter macOS app with automatic CodeSign error handling"
+        },
+        {
+            "label": "Flutter: Clean Build (CodeSign fix)",
+            "type": "shell",
+            "command": "./scripts/clean_build.sh",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": [],
+            "detail": "Clean extended attributes and re-sign existing build"
+        }
+    ]
+}

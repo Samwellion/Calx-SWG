@@ -3,10 +3,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../screens/home_screen.dart';
 import '../screens/organization_setup_screen.dart';
 import '../screens/plant_setup_screen.dart';
+import '../screens/part_input_screen.dart';
+import '../screens/process_input_screen.dart';
 import '../screens/elements_input_screen.dart';
 import '../screens/time_observation_form.dart';
 import '../screens/setup_element_viewer.dart';
-import '../screens/task_study_viewer.dart';
+import '../screens/time_study_viewer.dart';
+import '../screens/time_study_review_screen.dart';
+import '../screens/full_hierarchy_demo_screen.dart';
 
 class AppDrawer extends StatefulWidget {
   const AppDrawer({super.key});
@@ -19,11 +23,13 @@ class _AppDrawerState extends State<AppDrawer> {
   static const _kCompanyKey = 'selectedCompany';
   static const _kPlantKey = 'selectedPlant';
   static const _kValueStreamKey = 'selectedValueStream';
+  static const _kValueStreamIdKey = 'selectedValueStreamId';
   static const _kProcessKey = 'selectedProcess';
 
   String? selectedCompany;
   String? selectedPlant;
   String? selectedValueStream;
+  int? selectedValueStreamId;
   String? selectedProcess;
 
   @override
@@ -41,6 +47,8 @@ class _AppDrawerState extends State<AppDrawer> {
       selectedPlant = (p != null && p.isNotEmpty) ? p : null;
       final vs = prefs.getString(_kValueStreamKey);
       selectedValueStream = (vs != null && vs.isNotEmpty) ? vs : null;
+      final vsid = prefs.getInt(_kValueStreamIdKey);
+      selectedValueStreamId = (vsid != null && vsid != -1) ? vsid : null;
       final proc = prefs.getString(_kProcessKey);
       selectedProcess = (proc != null && proc.isNotEmpty) ? proc : null;
     });
@@ -58,6 +66,11 @@ class _AppDrawerState extends State<AppDrawer> {
       hasCompanySelection && hasPlantSelection && hasValueStreamSelection;
   bool get canAccessPartInput =>
       hasCompanySelection && hasPlantSelection && hasValueStreamSelection;
+  bool get canAccessElementsInput =>
+      hasCompanySelection &&
+      hasPlantSelection &&
+      hasValueStreamSelection &&
+      hasProcessSelection;
 
   void _showRequirementsDialog(
       BuildContext context, String feature, List<String> requirements) {
@@ -241,10 +254,26 @@ class _AppDrawerState extends State<AppDrawer> {
                   icon: Icons.precision_manufacturing,
                   title: 'Part Number Setup',
                   onTap: () {
-                    Navigator.pop(context); // Close the drawer first
-                    // TODO: Navigate to actual Part Setup screen when implemented
-                    _showRequirementsDialog(context, 'Part Number Setup',
-                        ['Feature not yet implemented']);
+                    if (selectedValueStreamId != null &&
+                        selectedValueStream != null &&
+                        selectedCompany != null &&
+                        selectedPlant != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PartInputScreen(
+                            valueStreamId: selectedValueStreamId!,
+                            valueStreamName: selectedValueStream!,
+                            companyName: selectedCompany!,
+                            plantName: selectedPlant!,
+                          ),
+                        ),
+                      );
+                    } else {
+                      Navigator.pop(context); // Close the drawer first
+                      _showRequirementsDialog(context, 'Part Number Setup',
+                          ['Company', 'Plant', 'Value Stream']);
+                    }
                   },
                 )
               else
@@ -261,10 +290,26 @@ class _AppDrawerState extends State<AppDrawer> {
                   icon: Icons.settings,
                   title: 'Process Setup',
                   onTap: () {
-                    Navigator.pop(context); // Close the drawer first
-                    // TODO: Navigate to process input screen
-                    _showRequirementsDialog(context, 'Process Setup',
-                        ['Feature access from Home screen']);
+                    if (selectedValueStreamId != null &&
+                        selectedValueStream != null &&
+                        selectedCompany != null &&
+                        selectedPlant != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ProcessInputScreen(
+                            valueStreamId: selectedValueStreamId!,
+                            valueStreamName: selectedValueStream!,
+                            companyName: selectedCompany!,
+                            plantName: selectedPlant!,
+                          ),
+                        ),
+                      );
+                    } else {
+                      Navigator.pop(context); // Close the drawer first
+                      _showRequirementsDialog(context, 'Process Setup',
+                          ['Company', 'Plant', 'Value Stream']);
+                    }
                   },
                 )
               else
@@ -282,8 +327,8 @@ class _AppDrawerState extends State<AppDrawer> {
             leading: const Icon(Icons.engineering),
             title: const Text('Standard Work Development'),
             children: <Widget>[
-              // Add Elements in Setup - Requires Company, Plant, Value Stream
-              if (canAccessPartInput)
+              // Add Elements in Setup - Requires Company, Plant, Value Stream, Process
+              if (canAccessElementsInput)
                 _buildEnabledListTile(
                   icon: Icons.add_circle_outline,
                   title: 'Add Elements in Setup',
@@ -304,8 +349,16 @@ class _AppDrawerState extends State<AppDrawer> {
                 _buildDisabledListTile(
                   icon: Icons.add_circle_outline,
                   title: 'Add Elements in Setup',
-                  requirements: ['Company', 'Plant', 'Value Stream'],
-                  subtitle: 'Requires: Company, Plant, Value Stream',
+                  requirements: [
+                    'Company',
+                    'Plant',
+                    'Value Stream',
+                    'Process',
+                    'Parts in database',
+                    'Processes in database'
+                  ],
+                  subtitle:
+                      'Requires: Company, Plant, Value Stream, Process, and existing parts/processes',
                 ),
 
               // Time Observation - Requires Company, Plant, Value Stream, Process
@@ -337,7 +390,14 @@ class _AppDrawerState extends State<AppDrawer> {
                       ? 'Requires: Company, Plant, Value Stream'
                       : 'Requires: Company, Plant, Value Stream, Process',
                 ),
+            ],
+          ),
 
+          // Data Viewers
+          ExpansionTile(
+            leading: const Icon(Icons.visibility),
+            title: const Text('Data Viewers'),
+            children: <Widget>[
               // Setup Element Viewer - No requirements (view-only)
               _buildEnabledListTile(
                 icon: Icons.view_list,
@@ -351,15 +411,41 @@ class _AppDrawerState extends State<AppDrawer> {
                 },
               ),
 
-              // Task Study Viewer - No requirements (view-only)
+              // Time Study Viewer - No requirements (view-only)
               _buildEnabledListTile(
-                icon: Icons.assignment_outlined,
-                title: 'Task Study Viewer',
+                icon: Icons.timer_outlined,
+                title: 'Time Study Viewer',
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => const TaskStudyViewerScreen()),
+                        builder: (context) => const TimeStudyViewerScreen()),
+                  );
+                },
+              ),
+
+              // Time Study Review - No requirements (view-only)
+              _buildEnabledListTile(
+                icon: Icons.analytics_outlined,
+                title: 'Time Study Review',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const TimeStudyReviewScreen()),
+                  );
+                },
+              ),
+
+              // Full Hierarchy Tree Demo - No requirements (view-only)
+              _buildEnabledListTile(
+                icon: Icons.account_tree_outlined,
+                title: 'Full Hierarchy Tree',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const FullHierarchyDemoScreen()),
                   );
                 },
               ),

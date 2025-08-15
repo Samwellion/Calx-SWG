@@ -4,7 +4,9 @@ import 'screens/home_screen.dart';
 
 void main() {
   runApp(MaterialApp(
-    home: HomeScreen(),
+    title: 'Calx - NewTimeObs',
+    home: const HomeScreen(),
+    // Removed routes table since we're using home property
   ));
 }
 // The main.dart file initializes the Flutter application and sets the HomeScreen as the home widget.

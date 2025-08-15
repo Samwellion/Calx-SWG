@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/detailed_selection_display_card.dart';
+import '../widgets/home_button_wrapper.dart';
 import '../control_buttons.dart';
 import '../logic/simple_stopwatch.dart';
 import '../database_provider.dart';
@@ -107,8 +108,6 @@ class _TimeObservationFormState extends State<TimeObservationForm> {
 
   List<Map<String, dynamic>> _parts = [];
   String? _selectedPartNumber;
-  bool _loadingParts = true;
-  String? _partsError;
   String? _currentSetupName;
 
   @override
@@ -137,10 +136,7 @@ class _TimeObservationFormState extends State<TimeObservationForm> {
   }
 
   Future<void> _loadParts() async {
-    setState(() {
-      _loadingParts = true;
-      _partsError = null;
-    });
+    setState(() {});
     try {
       final db = await DatabaseProvider.getInstance();
       final result = await db.customSelect(
@@ -152,16 +148,12 @@ class _TimeObservationFormState extends State<TimeObservationForm> {
         if (_parts.isNotEmpty && _selectedPartNumber == null) {
           _selectedPartNumber = _parts[0]['part_number'];
         }
-        _loadingParts = false;
       });
 
       // Load setup name after parts are loaded
       await _loadSetupName();
     } catch (e) {
-      setState(() {
-        _partsError = 'Failed to load parts: $e';
-        _loadingParts = false;
-      });
+      setState(() {});
     }
   }
 
@@ -377,22 +369,26 @@ class _TimeObservationFormState extends State<TimeObservationForm> {
           }
 
           if (shouldUpdate) {
+            // Update SetupElement with new time and study data
             await (db.update(db.setupElements)
                   ..where((se) => se.id.equals(setupElement.id)))
                 .write(SetupElementsCompanion(
               time: drift.Value(observedTime),
+              lrt: drift.Value(lowestRepeatableTime ?? 'N/A'),
+              overrideTime: drift.Value(overrideTime),
+              comments: drift.Value(comments),
+            ));
+          } else {
+            // Just update the study data fields without changing the element time
+            await (db.update(db.setupElements)
+                  ..where((se) => se.id.equals(setupElement.id)))
+                .write(SetupElementsCompanion(
+              lrt: drift.Value(lowestRepeatableTime ?? 'N/A'),
+              overrideTime: drift.Value(overrideTime),
+              comments: drift.Value(comments),
             ));
           }
         }
-
-        // Create TaskStudy record for this element
-        await db.insertTaskStudy(TaskStudyCompanion.insert(
-          studyId: studyId,
-          taskName: elementName,
-          lrt: lowestRepeatableTime ?? 'N/A',
-          overrideTime: drift.Value(overrideTime),
-          comments: drift.Value(comments),
-        ));
 
         // Create TimeStudy records for each lap time
         for (final lapTime in times) {
@@ -462,6 +458,7 @@ class _TimeObservationFormState extends State<TimeObservationForm> {
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
     final isKeyboardVisible = keyboardHeight > 0;
 
+
     return GestureDetector(
       onTap: () {
         // Dismiss keyboard when tapping outside text fields
@@ -495,186 +492,217 @@ class _TimeObservationFormState extends State<TimeObservationForm> {
                     MediaQuery.of(context).padding.top -
                     MediaQuery.of(context).padding.bottom -
                     kToolbarHeight, // AppBar height
+
+    final existingFab = FloatingActionButton(
+      onPressed: () {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return Dialog(
+              child: Container(
+                constraints: const BoxConstraints(
+                  maxWidth: 500,
+                  maxHeight: 350,
+                ),
+                child: DetailedSelectionDisplayCard(
+                  companyName: widget.companyName,
+                  plantName: widget.plantName,
+                  valueStreamName: widget.valueStreamName,
+                  processName: widget.processName,
+                  partNumber: _selectedPartNumber,
+                  setupName: _currentSetupName ?? 'Standard',
+                ),
               ),
-              child: IntrinsicHeight(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Persistent top container for timer and buttons (original header)
-                      Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.symmetric(
-                            vertical: isKeyboardVisible
-                                ? 8
-                                : 12, // Reduce padding when keyboard visible
-                            horizontal: 16),
-                        decoration: BoxDecoration(
-                          color: Colors.yellow[100],
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.08),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
+            );
+          },
+        );
+      },
+      backgroundColor: Theme.of(context).primaryColor,
+      foregroundColor: Colors.white,
+      child: const Icon(Icons.info),
+    );
+
+    return HomeButtonWrapper(
+        existingFab: existingFab,
+        child: GestureDetector(
+          onTap: () {
+            // Dismiss keyboard when tapping outside text fields
+            FocusScope.of(context).unfocus();
+          },
+          child: Scaffold(
+            appBar: AppBar(
+              title: const Text('Time Observation'),
+              backgroundColor: Colors.white,
+            ),
+            drawer: const AppDrawer(),
+            backgroundColor: Colors.yellow[100],
+            resizeToAvoidBottomInset: true, // Enable keyboard avoidance
+            body: SafeArea(
+              child: SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: MediaQuery.of(context).size.height -
+                        MediaQuery.of(context).padding.top -
+                        MediaQuery.of(context).padding.bottom -
+                        kToolbarHeight, // AppBar height
+                  ),
+                  child: IntrinsicHeight(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Persistent top container for timer and buttons (original header)
+                          Container(
+                            width: double.infinity,
+                            padding: EdgeInsets.symmetric(
+                                vertical: isKeyboardVisible
+                                    ? 8
+                                    : 12, // Reduce padding when keyboard visible
+                                horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.yellow[100],
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.08),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Left: Part number and Observer Name
-                            Column(
+                            child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                // Part number at top left
-                                if (_selectedPartNumber != null) ...[
-                                  Row(
-                                    children: [
-                                      const Text('Part: ',
-                                          style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16)),
-                                      Text(_selectedPartNumber!,
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16)),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                ],
-                                // Observer Name below part number
+                                // Left: Part number and Observer Name
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Text(
-                                      'Observer Name',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
+                                    // Part number at top left
+                                    if (_selectedPartNumber != null) ...[
+                                      Row(
+                                        children: [
+                                          const Text('Part: ',
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16)),
+                                          Text(_selectedPartNumber!,
+                                              style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16)),
+                                        ],
                                       ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Container(
-                                      constraints: const BoxConstraints(
-                                        maxWidth: 300,
-                                        minWidth: 200,
-                                      ),
-                                      child: TextField(
-                                        controller: _observerNameController,
-                                        decoration: const InputDecoration(
-                                          border: OutlineInputBorder(),
-                                          isDense: true,
-                                          contentPadding: EdgeInsets.symmetric(
-                                              vertical: 8, horizontal: 12),
+                                      const SizedBox(height: 8),
+                                    ],
+                                    // Observer Name below part number
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Observer Name',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                          ),
                                         ),
-                                      ),
+                                        const SizedBox(height: 4),
+                                        Container(
+                                          constraints: const BoxConstraints(
+                                            maxWidth: 300,
+                                            minWidth: 200,
+                                          ),
+                                          child: TextField(
+                                            controller: _observerNameController,
+                                            decoration: const InputDecoration(
+                                              border: OutlineInputBorder(),
+                                              isDense: true,
+                                              contentPadding:
+                                                  EdgeInsets.symmetric(
+                                                      vertical: 8,
+                                                      horizontal: 12),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
-                              ],
-                            ),
-                            const SizedBox(width: 24),
-                            // Timer and buttons side by side, aligned to top
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                TimerDisplay(
-                                  elapsed: _elapsed,
-                                  lapTime: _lapTime,
-                                  isCompact: isKeyboardVisible,
-                                ),
-                                const SizedBox(width: 16), // Normal spacing
-                                ControlButtons(
-                                  onStart: observerNameNotEmpty ? _start : null,
-                                  onStop: _stop,
-                                  onReset: _resetToPreStart,
-                                  onMarkLap: _markLap,
-                                  onSave: _saveObservedTimes,
-                                  running: _simpleStopwatch.isRunning,
-                                  isInitial: _isInitial,
-                                  hasStopped: _hasStopped,
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Flexible(
-                        child: Container(
-                          constraints: BoxConstraints(
-                            minHeight: isKeyboardVisible
-                                ? 200
-                                : 400, // Reduce height when keyboard is visible
-                            maxHeight: isKeyboardVisible
-                                ? MediaQuery.of(context).size.height * 0.3
-                                : // 30% when keyboard visible
-                                MediaQuery.of(context).size.height *
-                                    0.6, // 60% when keyboard hidden
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Left side: Observer Name above the table
-                              Expanded(
-                                flex: 3,
-                                child: Column(
+                                const SizedBox(width: 24),
+                                // Timer and buttons side by side, aligned to top
+                                Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Expanded(
-                                      child: TimeObservationTable(
-                                        key: _tableKey,
-                                      ),
+                                    TimerDisplay(
+                                      elapsed: _elapsed,
+                                      lapTime: _lapTime,
+                                      isCompact: isKeyboardVisible,
+                                    ),
+                                    const SizedBox(width: 16), // Normal spacing
+                                    ControlButtons(
+                                      onStart:
+                                          observerNameNotEmpty ? _start : null,
+                                      onStop: _stop,
+                                      onReset: _resetToPreStart,
+                                      onMarkLap: _markLap,
+                                      onSave: _saveObservedTimes,
+                                      running: _simpleStopwatch.isRunning,
+                                      isInitial: _isInitial,
+                                      hasStopped: _hasStopped,
                                     ),
                                   ],
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
+                          const SizedBox(height: 16),
+                          Flexible(
+                            child: Container(
+                              constraints: BoxConstraints(
+                                minHeight: isKeyboardVisible
+                                    ? 200
+                                    : 400, // Reduce height when keyboard is visible
+                                maxHeight: isKeyboardVisible
+                                    ? MediaQuery.of(context).size.height * 0.3
+                                    : // 30% when keyboard visible
+                                    MediaQuery.of(context).size.height *
+                                        0.6, // 60% when keyboard hidden
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Left side: Observer Name above the table
+                                  Expanded(
+                                    flex: 3,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Expanded(
+                                          child: TimeObservationTable(
+                                            key: _tableKey,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          // Footer using AppFooter widget
+                          const AppFooter(),
+                        ],
                       ),
-                      // Footer using AppFooter widget
-                      const AppFooter(),
-                    ],
+                    ),
                   ),
                 ),
               ),
             ),
+            floatingActionButton: existingFab,
           ),
-        ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            showDialog(
-              context: context,
-              builder: (BuildContext context) {
-                return Dialog(
-                  child: Container(
-                    constraints: const BoxConstraints(
-                      maxWidth: 500,
-                      maxHeight: 350,
-                    ),
-                    child: DetailedSelectionDisplayCard(
-                      companyName: widget.companyName,
-                      plantName: widget.plantName,
-                      valueStreamName: widget.valueStreamName,
-                      processName: widget.processName,
-                      partNumber: _selectedPartNumber,
-                      setupName: _currentSetupName ?? 'Standard',
-                    ),
-                  ),
-                );
-              },
-            );
-          },
-          backgroundColor: Theme.of(context).primaryColor,
-          foregroundColor: Colors.white,
-          child: const Icon(Icons.info),
-        ),
-      ),
-    );
+        ));
   }
 }
