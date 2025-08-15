@@ -17,17 +17,18 @@ class SupplierManager {
   }) : _showMessage = showMessage,
        _onStateChanged = onStateChanged;
 
-  /// Get all suppliers as a list
+  // Getters
   List<Supplier> get suppliers => _suppliers.values.toList();
-
-  /// Get selected supplier ID
+  Supplier? get selectedSupplier => _selectedSupplierId != null 
+      ? _suppliers[_selectedSupplierId] 
+      : null;
   String? get selectedSupplierId => _selectedSupplierId;
 
   /// Create a new supplier on the canvas
   Future<Supplier> createSupplier({
     required int valueStreamId,
     required String partNumber,
-    Offset position = const Offset(100, 200),
+    Offset position = const Offset(300, 200),
     String? customLabel,
   }) async {
     final supplierId = DateTime.now().millisecondsSinceEpoch.toString();
@@ -39,18 +40,18 @@ class SupplierManager {
       id: supplierId,
       position: position,
       data: data,
+      isSelected: true,
       valueStreamId: valueStreamId,
     );
-    
+
     _suppliers[supplierId] = supplier;
     _selectedSupplierId = supplierId;
-    _onStateChanged?.call();
-    
-    _showMessage?.call('Supplier created at position (${position.dx.toInt()}, ${position.dy.toInt()})');
+    _notifyStateChanged();
     
     // Auto-save to database
     await saveToDatabase(valueStreamId, partNumber);
     
+    _showMessage?.call('Supplier created');
     return supplier;
   }
 
@@ -59,7 +60,7 @@ class SupplierManager {
     final supplier = _suppliers[supplierId];
     if (supplier != null) {
       _suppliers[supplierId] = supplier.copyWith(position: newPosition);
-      _onStateChanged?.call();
+      _notifyStateChanged();
       
       // Auto-save to database
       await saveToDatabase(valueStreamId, partNumber);
@@ -67,41 +68,57 @@ class SupplierManager {
   }
 
   /// Update supplier data
-  void updateData(String supplierId, SupplierData newData) {
+  Future<void> updateData(String supplierId, SupplierData newData, int valueStreamId, String partNumber) async {
     final supplier = _suppliers[supplierId];
     if (supplier != null) {
       _suppliers[supplierId] = supplier.copyWith(data: newData);
-      _onStateChanged?.call();
+      _notifyStateChanged();
       
-      // Persist the update
-      _persistSupplier(_suppliers[supplierId]!);
+      // Auto-save to database
+      await saveToDatabase(valueStreamId, partNumber);
+      _showMessage?.call('Supplier data updated');
     }
   }
 
   /// Select a supplier
   void selectSupplier(String supplierId) {
-    if (_suppliers.containsKey(supplierId)) {
+    // First deselect current supplier
+    if (_selectedSupplierId != null) {
+      final current = _suppliers[_selectedSupplierId!];
+      if (current != null) {
+        _suppliers[_selectedSupplierId!] = current.copyWith(isSelected: false);
+      }
+    }
+
+    // Select new supplier
+    final supplier = _suppliers[supplierId];
+    if (supplier != null) {
+      _suppliers[supplierId] = supplier.copyWith(isSelected: true);
       _selectedSupplierId = supplierId;
-      _onStateChanged?.call();
+      _notifyStateChanged();
     }
   }
 
   /// Deselect all suppliers
   void deselectAll() {
-    _selectedSupplierId = null;
-    _onStateChanged?.call();
+    if (_selectedSupplierId != null) {
+      final supplier = _suppliers[_selectedSupplierId!];
+      if (supplier != null) {
+        _suppliers[_selectedSupplierId!] = supplier.copyWith(isSelected: false);
+      }
+      _selectedSupplierId = null;
+      _notifyStateChanged();
+    }
   }
 
   /// Delete a supplier
   Future<void> deleteSupplier(String supplierId, int valueStreamId, String partNumber) async {
     if (_suppliers.containsKey(supplierId)) {
       _suppliers.remove(supplierId);
-      
       if (_selectedSupplierId == supplierId) {
         _selectedSupplierId = null;
       }
-      
-      _onStateChanged?.call();
+      _notifyStateChanged();
       _showMessage?.call('Supplier deleted');
       
       // Auto-save to database
@@ -109,57 +126,92 @@ class SupplierManager {
     }
   }
 
-  /// Get supplier by ID
-  Supplier? getSupplier(String supplierId) {
-    return _suppliers[supplierId];
+  /// Check if a supplier can be used as a connection point
+  bool canConnectToSupplier(String supplierId) {
+    return _suppliers.containsKey(supplierId);
   }
 
-  /// Check if supplier is selected
-  bool isSelected(String supplierId) {
-    return _selectedSupplierId == supplierId;
+  /// Get supplier connection point for material connectors
+  Offset? getConnectionPoint(String supplierId) {
+    final supplier = _suppliers[supplierId];
+    if (supplier != null) {
+      // Return center-right point for outgoing connections
+      return Offset(
+        supplier.position.dx + 100, // Width of supplier box
+        supplier.position.dy + 50,  // Half height of supplier box
+      );
+    }
+    return null;
   }
 
   /// Clear all suppliers
-  void clearAll() {
+  void clear() {
     _suppliers.clear();
     _selectedSupplierId = null;
+    _notifyStateChanged();
+  }
+
+  /// Load supplier data from value stream - removed hardcoded defaults
+  Future<SupplierData> _loadSupplierData(int valueStreamId) async {
+    try {
+      // Note: ValueStream table doesn't have leadTime/expediteTime fields
+      // Return empty defaults (0) instead of hardcoded values
+      return const SupplierData(
+        leadTime: '0',
+        expediteTime: '0',
+      );
+    } catch (e) {
+      _showMessage?.call('Warning: Could not load supplier data');
+      // Return empty defaults instead of hardcoded values
+      return const SupplierData(
+        leadTime: '0',
+        expediteTime: '0',
+      );
+    }
+  }
+
+  void _notifyStateChanged() {
     _onStateChanged?.call();
   }
 
-  /// Load supplier data from value stream database
-  Future<SupplierData> _loadSupplierData(int valueStreamId) async {
-    try {
-      final db = await DatabaseProvider.getInstance();
-      final valueStream = await (db.select(db.valueStreams)
-            ..where((vs) => vs.id.equals(valueStreamId)))
-          .getSingleOrNull();
-      
-      if (valueStream != null) {
-        return SupplierData(
-          leadTime: '0',  // Start with empty/zero values
-          expediteTime: '0',  // Start with empty/zero values
-          additionalData: {
-            'valueStreamId': valueStream.id.toString(),
-            'valueStreamName': valueStream.name,
-          },
-        );
-      }
-    } catch (e) {
-      _showMessage?.call('Error loading supplier data: $e');
-    }
-    
-    // Return default data if loading fails
-    return const SupplierData();
+  /// Save suppliers to persistence (placeholder for future implementation)
+  Map<String, dynamic> toJson() {
+    return {
+      'suppliers': _suppliers.map((key, supplier) => MapEntry(key, {
+        'id': supplier.id,
+        'position': {'dx': supplier.position.dx, 'dy': supplier.position.dy},
+        'data': supplier.data.toJson(),
+        'valueStreamId': supplier.valueStreamId,
+      })),
+      'selectedSupplierId': _selectedSupplierId,
+    };
   }
 
-  /// Persist supplier to database
-  Future<void> _persistSupplier(Supplier supplier) async {
-    try {
-      // TODO: Implement supplier persistence to database
-      // For now, we'll store in a simple format
-    } catch (e) {
-      _showMessage?.call('Error saving supplier: $e');
+  /// Load suppliers from persistence (placeholder for future implementation)
+  void fromJson(Map<String, dynamic> json) {
+    _suppliers.clear();
+    
+    final suppliersData = json['suppliers'] as Map<String, dynamic>?;
+    if (suppliersData != null) {
+      for (final entry in suppliersData.entries) {
+        final data = entry.value as Map<String, dynamic>;
+        final positionData = data['position'] as Map<String, dynamic>;
+        final supplierData = data['data'] as Map<String, dynamic>;
+        
+        _suppliers[entry.key] = Supplier(
+          id: data['id'] as String,
+          position: Offset(
+            positionData['dx'] as double,
+            positionData['dy'] as double,
+          ),
+          data: SupplierData.fromJson(supplierData),
+          valueStreamId: data['valueStreamId'] as int,
+        );
+      }
     }
+    
+    _selectedSupplierId = json['selectedSupplierId'] as String?;
+    _notifyStateChanged();
   }
 
   /// Save suppliers to database
@@ -195,11 +247,13 @@ class SupplierManager {
     try {
       final db = await DatabaseProvider.getInstance();
       
-      final canvasStates = await (db.select(db.canvasStates)
-        ..where((cs) => 
-          cs.valueStreamId.equals(valueStreamId) &
-          cs.partNumber.equals(partNumber) &
-          cs.iconType.equals('supplier'))
+      final canvasStates = await db.customSelect(
+        'SELECT * FROM canvas_states WHERE value_stream_id = ? AND part_number = ? AND icon_type = ?',
+        variables: [
+          drift.Variable.withInt(valueStreamId),
+          drift.Variable.withString(partNumber), 
+          drift.Variable.withString('supplier')
+        ]
       ).get();
       
       _suppliers.clear();
@@ -208,11 +262,11 @@ class SupplierManager {
       for (final state in canvasStates) {
         try {
           final supplier = Supplier.fromJson(
-            state.userData!,
-            id: state.iconId,
+            state.data['userData'] as String,
+            id: state.data['icon_id'] as String,
             position: Offset(
-              state.positionX,
-              state.positionY,
+              state.data['position_x'] as double,
+              state.data['position_y'] as double,
             ),
           );
           _suppliers[supplier.id] = supplier;
@@ -221,56 +275,9 @@ class SupplierManager {
         }
       }
       
-      _onStateChanged?.call();
+      _notifyStateChanged();
     } catch (e) {
       _showMessage?.call('Warning: Could not load supplier data');
     }
   }
-
-  /// Load all suppliers from database
-  Future<void> loadSuppliersFromDatabase() async {
-    try {
-      // TODO: Implement loading suppliers from database
-    } catch (e) {
-      _showMessage?.call('Error loading suppliers: $e');
-    }
-  }
-
-  /// Export suppliers data
-  Map<String, dynamic> exportData() {
-    return {
-      'suppliers': _suppliers.values.map((s) => s.toJson()).toList(),
-      'selectedSupplierId': _selectedSupplierId,
-    };
-  }
-
-  /// Import suppliers data
-  void importData(Map<String, dynamic> data) {
-    try {
-      _suppliers.clear();
-      
-      final suppliersData = data['suppliers'] as List<dynamic>? ?? [];
-      for (final supplierJson in suppliersData) {
-        final supplierMap = supplierJson as Map<String, dynamic>;
-        final supplier = Supplier.fromJsonMap(supplierMap);
-        _suppliers[supplier.id] = supplier;
-      }
-      
-      _selectedSupplierId = data['selectedSupplierId'] as String?;
-      _onStateChanged?.call();
-      
-      _showMessage?.call('Loaded ${_suppliers.length} suppliers');
-    } catch (e) {
-      _showMessage?.call('Error importing suppliers: $e');
-    }
-  }
-
-  /// Get suppliers count
-  int get supplierCount => _suppliers.length;
-
-  /// Get all supplier IDs
-  List<String> get supplierIds => _suppliers.keys.toList();
-
-  /// Check if any suppliers exist
-  bool get hasSuppliers => _suppliers.isNotEmpty;
 }

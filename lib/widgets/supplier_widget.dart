@@ -1,5 +1,3 @@
-// ignore_for_file: unused_element
-
 import 'package:flutter/material.dart';
 import '../models/supplier.dart';
 import '../utils/unified_canvas_drag.dart';
@@ -10,7 +8,7 @@ class SupplierWidget extends StatefulWidget {
   final Function(String supplierId) onTap;
   final Function(String supplierId, Offset position) onPositionChanged;
   final Function(String supplierId)? onDelete;
-  final Function(String supplierId, SupplierData data)? onDataChanged;
+  final Function(String supplierId, SupplierData newData)? onDataChanged;
 
   const SupplierWidget({
     super.key,
@@ -27,6 +25,67 @@ class SupplierWidget extends StatefulWidget {
 
 class _SupplierWidgetState extends State<SupplierWidget> with UnifiedCanvasDrag {
   static const Size _supplierSize = Size(180, 150);
+  late TextEditingController _leadTimeController;
+  late TextEditingController _expediteTimeController;
+  late FocusNode _leadTimeFocusNode;
+  late FocusNode _expediteTimeFocusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _leadTimeController = TextEditingController(text: widget.supplier.data.leadTime);
+    _expediteTimeController = TextEditingController(text: widget.supplier.data.expediteTime);
+    _leadTimeFocusNode = FocusNode();
+    _expediteTimeFocusNode = FocusNode();
+    
+    // Add listeners to handle focus changes
+    _leadTimeFocusNode.addListener(() {
+      if (!_leadTimeFocusNode.hasFocus) {
+        _updateLeadTime(_leadTimeController.text);
+      }
+    });
+    
+    _expediteTimeFocusNode.addListener(() {
+      if (!_expediteTimeFocusNode.hasFocus) {
+        _updateExpediteTime(_expediteTimeController.text);
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(SupplierWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Only update controllers if the data actually changed from external source
+    if (oldWidget.supplier.data.leadTime != widget.supplier.data.leadTime) {
+      _leadTimeController.text = widget.supplier.data.leadTime;
+    }
+    if (oldWidget.supplier.data.expediteTime != widget.supplier.data.expediteTime) {
+      _expediteTimeController.text = widget.supplier.data.expediteTime;
+    }
+  }
+
+  @override
+  void dispose() {
+    _leadTimeController.dispose();
+    _expediteTimeController.dispose();
+    _leadTimeFocusNode.dispose();
+    _expediteTimeFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _updateLeadTime(String value) {
+    if (widget.onDataChanged != null) {
+      final newData = widget.supplier.data.copyWith(leadTime: value);
+      widget.onDataChanged!(widget.supplier.id, newData);
+    }
+  }
+
+  void _updateExpediteTime(String value) {
+    if (widget.onDataChanged != null) {
+      final newData = widget.supplier.data.copyWith(expediteTime: value);
+      widget.onDataChanged!(widget.supplier.id, newData);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -103,19 +162,19 @@ class _SupplierWidgetState extends State<SupplierWidget> with UnifiedCanvasDrag 
                 Expanded(
                   child: Column(
                     children: [
-                      _buildEditableField('Lead Time:', widget.supplier.data.leadTime, (value) {
-                        if (widget.onDataChanged != null) {
-                          final updatedData = widget.supplier.data.copyWith(leadTime: value);
-                          widget.onDataChanged!(widget.supplier.id, updatedData);
-                        }
-                      }),
+                      _buildEditableField(
+                        'Lead Time:', 
+                        _leadTimeController, 
+                        _leadTimeFocusNode,
+                        _updateLeadTime,
+                      ),
                       const SizedBox(height: 6),
-                      _buildEditableField('Expedite Time:', widget.supplier.data.expediteTime, (value) {
-                        if (widget.onDataChanged != null) {
-                          final updatedData = widget.supplier.data.copyWith(expediteTime: value);
-                          widget.onDataChanged!(widget.supplier.id, updatedData);
-                        }
-                      }),
+                      _buildEditableField(
+                        'Expedite Time:', 
+                        _expediteTimeController, 
+                        _expediteTimeFocusNode,
+                        _updateExpediteTime,
+                      ),
                     ],
                   ),
                 ),
@@ -150,30 +209,7 @@ class _SupplierWidgetState extends State<SupplierWidget> with UnifiedCanvasDrag 
     );
   }
 
-  Widget _buildDataRow(String label, String value) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.black,
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.black,
-            fontSize: 11,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildEditableField(String label, String value, Function(String) onChanged) {
+  Widget _buildEditableField(String label, TextEditingController controller, FocusNode focusNode, Function(String) onChanged) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -189,7 +225,8 @@ class _SupplierWidgetState extends State<SupplierWidget> with UnifiedCanvasDrag 
           width: 40,
           height: 20,
           child: TextField(
-            controller: TextEditingController(text: value),
+            controller: controller,
+            focusNode: focusNode,
             style: const TextStyle(
               color: Colors.black,
               fontSize: 11,
@@ -200,7 +237,18 @@ class _SupplierWidgetState extends State<SupplierWidget> with UnifiedCanvasDrag 
               contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
               border: OutlineInputBorder(),
             ),
-            onChanged: onChanged,
+            keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.next,
+            onSubmitted: onChanged, // Called when user presses Enter
+            onEditingComplete: () {
+              // Called when user tabs out or loses focus
+              onChanged(controller.text);
+            },
+            onTapOutside: (event) {
+              // Called when user taps outside the field
+              onChanged(controller.text);
+              FocusScope.of(context).unfocus();
+            },
           ),
         ),
       ],

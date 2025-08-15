@@ -116,7 +116,6 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
   @override
   void initState() {
     super.initState();
-    currentPartNumber = widget.partNumber; // Initialize current part number
     _initializeUtilities();
     _initializeDatabase(); // This is async but we don't await it here
   }
@@ -176,6 +175,10 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
     try {
       _showMessage('Initializing database...');
       db = await DatabaseProvider.getInstance();
+      
+      // Set the current part number from widget parameter
+      currentPartNumber = widget.partNumber;
+      
       _showMessage('Database initialized successfully');
       
       _showMessage('Loading canvas data...');
@@ -293,7 +296,7 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
         );
       }
       
-      print('Debug: Canvas state saved - ${customerManager.customers.length} customers, ${supplierManager.suppliers.length} suppliers, ${productionControlManager.productionControls.length} production controls, ${kanbanPosts.length} kanban posts');
+      print('Debug: Canvas state saved - ${customerDataBoxPositions.length} customers, ${supplierDataBoxPositions.length} suppliers, ${productionControlDataBoxPositions.length} production controls');
     } catch (e) {
       print('Debug: Error saving canvas state: $e');
     }
@@ -357,7 +360,7 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
     try {
       final canvasState = await db.loadCanvasState(
         valueStreamId: widget.valueStreamId,
-        partNumber: currentPartNumber ?? widget.partNumber,
+        partNumber: widget.partNumber,
       );
       
       canvasIcons = [];
@@ -397,7 +400,7 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
     try {
       final canvasState = await db.loadCanvasState(
         valueStreamId: widget.valueStreamId,
-        partNumber: currentPartNumber ?? widget.partNumber,
+        partNumber: widget.partNumber,
       );
       
       materialConnectors = [];
@@ -423,7 +426,7 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
     try {
       final canvasState = await db.loadCanvasState(
         valueStreamId: widget.valueStreamId,
-        partNumber: currentPartNumber ?? widget.partNumber,
+        partNumber: widget.partNumber,
       );
       
       kanbanLoops = [];
@@ -449,7 +452,7 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
     try {
       final canvasState = await db.loadCanvasState(
         valueStreamId: widget.valueStreamId,
-        partNumber: currentPartNumber ?? widget.partNumber,
+        partNumber: widget.partNumber,
       );
       
       withdrawalLoops = [];
@@ -475,7 +478,7 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
     try {
       final canvasState = await db.loadCanvasState(
         valueStreamId: widget.valueStreamId,
-        partNumber: currentPartNumber ?? widget.partNumber,
+        partNumber: widget.partNumber,
       );
       
       kanbanPosts = [];
@@ -501,7 +504,7 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
     try {
       final canvasState = await db.loadCanvasState(
         valueStreamId: widget.valueStreamId,
-        partNumber: currentPartNumber ?? widget.partNumber,
+        partNumber: widget.partNumber,
       );
 
       // Clear existing legacy data boxes
@@ -540,9 +543,9 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
       
       // Also load using new managers for any objects managed by them
       await Future.wait([
-        customerManager.loadFromDatabase(widget.valueStreamId, currentPartNumber ?? widget.partNumber),
-        supplierManager.loadFromDatabase(widget.valueStreamId, currentPartNumber ?? widget.partNumber),
-        productionControlManager.loadFromDatabase(widget.valueStreamId, currentPartNumber ?? widget.partNumber),
+        customerManager.loadFromDatabase(widget.valueStreamId, widget.partNumber),
+        supplierManager.loadFromDatabase(widget.valueStreamId, widget.partNumber),
+        productionControlManager.loadFromDatabase(widget.valueStreamId, widget.partNumber),
       ]);
     } catch (e) {
       print('Debug: Error loading data boxes: $e');
@@ -864,7 +867,7 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
                 onTap: (supplierId) => _selectSupplier(supplier),
                 onPositionChanged: (supplierId, globalOffset) => _updateSupplierPosition(supplier, globalOffset),
                 onDelete: (supplierId) => _deleteSupplier(supplier),
-                onDataChanged: (supplierId, updatedData) => _updateSupplierData(supplier, updatedData),
+                onDataChanged: (supplierId, newData) => _updateSupplierData(supplierId, newData),
               )),
               
               // Production Control widgets
@@ -904,7 +907,7 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
                 kanbanPost: kanbanPost,
                 isSelected: selectedKanbanPost == kanbanPost.id,
                 onTap: (postId) => _selectKanbanPost(kanbanPost),
-                onPositionChanged: (postId, globalOffset) => _updateKanbanPostPosition(kanbanPost, globalOffset),
+                onUpdate: (updated) => _updateKanbanPost(updated),
               )),
               
               // Floating icon toolbar for adding canvas elements
@@ -1125,27 +1128,27 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
     print('Corrected for AppBar: $correctedOffset');
     
     setState(() {
-      customerManager.updatePosition(customer.id, correctedOffset, widget.valueStreamId, currentPartNumber ?? widget.partNumber);
+      customerManager.updatePosition(customer.id, correctedOffset, widget.valueStreamId, widget.partNumber);
     });
-    // Note: customerManager.updatePosition() saves automatically
+    _debouncedSaveCanvasState();
   }
   
   void _deleteCustomer(Customer customer) {
-    customerManager.deleteCustomer(customer.id, widget.valueStreamId, currentPartNumber ?? widget.partNumber);
-    // Note: customerManager.deleteCustomer() saves automatically
+    customerManager.deleteCustomer(customer.id, widget.valueStreamId, widget.partNumber);
+    _saveCanvasState();
   }
   
   void _createCustomerDataBox() async {
     final customer = await customerManager.createCustomer(
       valueStreamId: widget.valueStreamId,
-      partNumber: currentPartNumber ?? widget.partNumber,
+      partNumber: widget.partNumber,
       position: const Offset(100, 300),
     );
     setState(() {
       selectedCustomer = customer;
       _clearOtherSelections();
     });
-    // Note: customerManager.createCustomer() saves automatically
+    _saveCanvasState();
     _showMessage('Customer created. You can drag it to position and configure its data.');
   }
   
@@ -1167,31 +1170,24 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
     print('Corrected for AppBar: $correctedOffset');
     
     setState(() {
-      supplierManager.updatePosition(supplier.id, correctedOffset, widget.valueStreamId, currentPartNumber ?? widget.partNumber);
+      supplierManager.updatePosition(supplier.id, correctedOffset, widget.valueStreamId, widget.partNumber);
     });
   }
-  
-  void _updateSupplierData(Supplier supplier, SupplierData updatedData) {
-    print('--- Updating Supplier Data ---');
-    print('Supplier ID: ${supplier.id}');
-    print('Lead Time: ${updatedData.leadTime}, Expedite Time: ${updatedData.expediteTime}');
-    
-    setState(() {
-      supplierManager.updateData(supplier.id, updatedData);
-    });
-    
-    // Auto-save to database
-    supplierManager.saveToDatabase(widget.valueStreamId, currentPartNumber ?? widget.partNumber);
+
+  /// Update supplier data when fields are changed
+  void _updateSupplierData(String supplierId, SupplierData newData) {
+    supplierManager.updateData(supplierId, newData, widget.valueStreamId, widget.partNumber);
+    _debouncedSaveCanvasState();
   }
   
   void _deleteSupplier(Supplier supplier) {
-    supplierManager.deleteSupplier(supplier.id, widget.valueStreamId, currentPartNumber ?? widget.partNumber);
+    supplierManager.deleteSupplier(supplier.id, widget.valueStreamId, widget.partNumber);
   }
   
   void _createSupplierDataBox() async {
     final supplier = await supplierManager.createSupplier(
       valueStreamId: widget.valueStreamId,
-      partNumber: currentPartNumber ?? widget.partNumber,
+      partNumber: widget.partNumber,
       position: const Offset(300, 300),
     );
     setState(() {
@@ -1219,18 +1215,18 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
     print('Corrected for AppBar: $correctedOffset');
     
     setState(() {
-      productionControlManager.updatePosition(productionControl.id, correctedOffset, widget.valueStreamId, currentPartNumber ?? widget.partNumber);
+      productionControlManager.updatePosition(productionControl.id, correctedOffset, widget.valueStreamId, widget.partNumber);
     });
   }
   
   void _deleteProductionControl(ProductionControl productionControl) {
-    productionControlManager.deleteProductionControl(productionControl.id, widget.valueStreamId, currentPartNumber ?? widget.partNumber);
+    productionControlManager.deleteProductionControl(productionControl.id, widget.valueStreamId, widget.partNumber);
   }
   
   void _createProductionControlDataBox() async {
     final productionControl = await productionControlManager.createProductionControl(
       valueStreamId: widget.valueStreamId,
-      partNumber: currentPartNumber ?? widget.partNumber,
+      partNumber: widget.partNumber,
       position: const Offset(500, 300),
     );
     setState(() {
@@ -1265,19 +1261,11 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
     });
   }
   
-  void _updateKanbanPostPosition(KanbanPost kanbanPost, Offset globalOffset) {
-    print('--- Updating Kanban Post Position ---');
-    print('Received globalOffset: $globalOffset');
-    
-    // Manual coordinate correction: account for AppBar height
-    const appBarHeight = 56.0; // Standard Material AppBar height
-    final correctedOffset = Offset(globalOffset.dx, globalOffset.dy - appBarHeight);
-    print('Corrected for AppBar: $correctedOffset');
-    
+  void _updateKanbanPost(KanbanPost kanbanPost) {
     setState(() {
       final index = kanbanPosts.indexWhere((p) => p.id == kanbanPost.id);
       if (index != -1) {
-        kanbanPosts[index] = kanbanPost.copyWith(position: correctedOffset);
+        kanbanPosts[index] = kanbanPost;
       }
     });
     _saveCanvasState();

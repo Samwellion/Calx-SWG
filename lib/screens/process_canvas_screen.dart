@@ -2427,20 +2427,11 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
     });
   }
 
-  void _updateKanbanPostPosition(KanbanPost kanbanPost, Offset globalOffset) {
-    print('--- Updating Kanban Post Position ---');
-    print('Received globalOffset: $globalOffset');
-    
-    // Manual coordinate correction: account for AppBar height
-    const appBarHeight = 56.0; // Standard Material AppBar height
-    final correctedOffset = Offset(globalOffset.dx, globalOffset.dy - appBarHeight);
-    print('Corrected for AppBar: $correctedOffset');
-    
+  void _updateKanbanPost(KanbanPost updatedKanbanPost) {
     setState(() {
-      final index = kanbanPosts.indexWhere((post) => post.id == kanbanPost.id);
+      final index = kanbanPosts.indexWhere((post) => post.id == updatedKanbanPost.id);
       if (index != -1) {
         final oldKanbanPost = kanbanPosts[index];
-        final updatedKanbanPost = kanbanPost.copyWith(position: correctedOffset);
         kanbanPosts[index] = updatedKanbanPost;
         
         // Update connected kanban loops when kanban post moves
@@ -4323,7 +4314,7 @@ class _ProcessCanvasScreenState extends State<ProcessCanvasScreen>
                                     kanbanPost: kanbanPost,
                                     isSelected: selectedKanbanPost == kanbanPost.id,
                                     onTap: _selectKanbanPost,
-                                    onPositionChanged: (postId, globalOffset) => _updateKanbanPostPosition(kanbanPost, globalOffset),
+                                    onUpdate: _updateKanbanPost,
                                   );
                                 }),
                                 

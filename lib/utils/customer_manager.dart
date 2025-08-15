@@ -211,31 +211,27 @@ class CustomerManager {
   /// Save customers to database
   Future<void> saveToDatabase(int valueStreamId, String partNumber) async {
     try {
-      print('Debug: CustomerManager saving ${_customers.length} customers to database - valueStreamId: $valueStreamId, partNumber: $partNumber');
       final db = await DatabaseProvider.getInstance();
       
       // Clear existing customer entities for this value stream and part
       await db.customStatement(
         'DELETE FROM canvas_states WHERE value_stream_id = ? AND part_number = ? AND icon_type = ?',
-        [valueStreamId, partNumber, 'customerDataBox']
+        [valueStreamId, partNumber, 'customer']
       );
       
       // Save all current customers
       for (final customer in _customers.values) {
-        print('Debug: CustomerManager saving customer: ${customer.id} at position: ${customer.position}');
         await db.saveCanvasState(
           valueStreamId: valueStreamId,
           partNumber: partNumber,
-          iconType: 'customerDataBox',
+          iconType: 'customer',
           iconId: customer.id,
           positionX: customer.position.dx,
           positionY: customer.position.dy,
           userData: customer.toJson(),
         );
       }
-      print('Debug: CustomerManager save completed');
     } catch (e) {
-      print('Debug: CustomerManager save error: $e');
       _showMessage?.call('Warning: Could not save customer data');
     }
   }
@@ -243,7 +239,6 @@ class CustomerManager {
   /// Load customers from database
   Future<void> loadFromDatabase(int valueStreamId, String partNumber) async {
     try {
-      print('Debug: CustomerManager loading from database - valueStreamId: $valueStreamId, partNumber: $partNumber');
       final db = await DatabaseProvider.getInstance();
       
       final canvasStates = await db.customSelect(
@@ -251,20 +246,17 @@ class CustomerManager {
         variables: [
           drift.Variable.withInt(valueStreamId),
           drift.Variable.withString(partNumber), 
-          drift.Variable.withString('customerDataBox')
+          drift.Variable.withString('customer')
         ]
       ).get();
-      
-      print('Debug: CustomerManager found ${canvasStates.length} customer records in database');
       
       _customers.clear();
       _selectedCustomerId = null;
       
       for (final state in canvasStates) {
         try {
-          print('Debug: CustomerManager processing customer: ${state.data}');
           final customer = Customer.fromJson(
-            state.data['user_data'] as String,
+            state.data['userData'] as String,
             id: state.data['icon_id'] as String,
             position: Offset(
               state.data['position_x'] as double,
@@ -272,17 +264,13 @@ class CustomerManager {
             ),
           );
           _customers[customer.id] = customer;
-          print('Debug: CustomerManager loaded customer: ${customer.id}');
         } catch (e) {
-          print('Debug: CustomerManager error parsing customer: $e');
           // Skip invalid customer data
         }
       }
       
-      print('Debug: CustomerManager final count: ${_customers.length} customers loaded');
       _notifyStateChanged();
     } catch (e) {
-      print('Debug: CustomerManager load error: $e');
       _showMessage?.call('Warning: Could not load customer data');
     }
   }

@@ -6,14 +6,14 @@ class KanbanPostWidget extends StatelessWidget with UnifiedCanvasDrag {
   final KanbanPost kanbanPost;
   final bool isSelected;
   final Function(String)? onTap;
-  final Function(String, Offset) onPositionChanged;
+  final Function(KanbanPost)? onUpdate;
 
   const KanbanPostWidget({
     super.key,
     required this.kanbanPost,
     this.isSelected = false,
     this.onTap,
-    required this.onPositionChanged,
+    this.onUpdate,
   });
 
   @override
@@ -27,7 +27,13 @@ class KanbanPostWidget extends StatelessWidget with UnifiedCanvasDrag {
         isGhost: isGhost,
       ),
       onDragEnd: (postData, globalOffset) {
-        onPositionChanged(kanbanPost.id, globalOffset);
+        if (onUpdate != null) {
+          // Manual coordinate correction: account for AppBar height
+          const appBarHeight = 56.0; // Standard Material AppBar height
+          final correctedOffset = Offset(globalOffset.dx, globalOffset.dy - appBarHeight);
+          final updatedPost = postData.copyWith(position: correctedOffset);
+          onUpdate!(updatedPost);
+        }
       },
       onTap: () => onTap?.call(kanbanPost.id),
     );
@@ -41,6 +47,10 @@ class KanbanPostWidget extends StatelessWidget with UnifiedCanvasDrag {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isSelected ? Colors.blue : Colors.grey,
+          width: isSelected ? 2 : 1,
+        ),
         boxShadow: isDragging || isSelected
             ? [
                 BoxShadow(
