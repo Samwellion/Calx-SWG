@@ -511,31 +511,6 @@ class _ElementsInputScreenState extends State<ElementsInputScreen> {
       onPressed: () {
         _showSetupDialog();
       },
-
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Element Input'),
-          backgroundColor: Colors.white,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.help_outline),
-              tooltip: 'Show Help',
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (context) => const ElementSetupHelpPopup(),
-                );
-              },
-            ),
-          ],
-        ),
-        drawer: _buildCustomDrawer(),
-        backgroundColor: Colors.yellow[100],
-        floatingActionButton: FloatingActionButton(
-          heroTag: "setup",
-          onPressed: () {
-            _showSetupDialog();
-
       backgroundColor: Colors.yellow[300],
       child: const Icon(Icons.settings),
     );

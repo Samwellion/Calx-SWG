@@ -20,6 +20,10 @@ enum CanvasIconType {
   materialPush, // Material push connector
   kanbanLoop, // TODO: Implement kanban loop connector
   withdrawalLoop, // TODO: Implement withdrawal loop connector
+  electronicInformation, // Electronic information flow
+  manualInformation, // Manual information flow
+  push, // Push flow
+  pull, // Pull flow
   
   // Material Types
   buffer, // TODO: Implement buffer icon
@@ -140,6 +144,30 @@ class CanvasIconTemplate {
       label: 'Info Arrow',
       iconData: Icons.arrow_forward,
       color: Colors.blue,
+    ),
+    CanvasIconTemplate(
+      type: CanvasIconType.electronicInformation,
+      label: 'Electronic Info',
+      iconData: Icons.computer,
+      color: Colors.blue,
+    ),
+    CanvasIconTemplate(
+      type: CanvasIconType.manualInformation,
+      label: 'Manual Info',
+      iconData: Icons.edit,
+      color: Colors.blue,
+    ),
+    CanvasIconTemplate(
+      type: CanvasIconType.push,
+      label: 'Push',
+      iconData: Icons.arrow_forward,
+      color: Colors.red,
+    ),
+    CanvasIconTemplate(
+      type: CanvasIconType.pull,
+      label: 'Pull',
+      iconData: Icons.arrow_back,
+      color: Colors.green,
     ),
     CanvasIconTemplate(
       type: CanvasIconType.materialArrow,

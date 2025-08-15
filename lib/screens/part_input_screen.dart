@@ -53,8 +53,6 @@ class _PartInputScreenState extends State<PartInputScreen> {
   void initState() {
     super.initState();
     _checkAndShowHelp();
-    DatabaseProvider.getInstance().then((database) {
-
     _initializeScreen();
   }
   Future<void> _initializeScreen() async {

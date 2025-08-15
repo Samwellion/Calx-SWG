@@ -44,10 +44,7 @@ class _ProcessInputScreenState extends State<ProcessInputScreen> {
     @override
   void initState() {
     super.initState();
-
     _checkAndShowHelp();
-    DatabaseProvider.getInstance().then((database) {
-
     _initializeScreen();
   }
 
