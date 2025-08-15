@@ -7,6 +7,8 @@ import '../widgets/element_list_card.dart';
 import '../screens/home_screen.dart';
 import '../screens/organization_setup_screen.dart';
 import '../screens/plant_setup_screen.dart';
+import '../widgets/element_setup_help_popup.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../logic/app_database.dart';
 import '../database_provider.dart';
@@ -30,6 +32,7 @@ class ElementsInputScreen extends StatefulWidget {
 }
 
 class _ElementsInputScreenState extends State<ElementsInputScreen> {
+  static const _kElementSetupHelpShownKey = 'elementSetupHelpShown';
   late AppDatabase db;
   List<String> partNumbers = [];
   String? selectedPartNumber;
@@ -245,6 +248,7 @@ class _ElementsInputScreenState extends State<ElementsInputScreen> {
   @override
   void initState() {
     super.initState();
+    _checkAndShowHelp();
     // Do not prefill setup name with process name; leave it empty for user input
     DatabaseProvider.getInstance().then((database) {
       db = database;
@@ -280,6 +284,20 @@ class _ElementsInputScreenState extends State<ElementsInputScreen> {
         _showSetupDialog();
       });
       dialogShown = true;
+    }
+  }
+
+  Future<void> _checkAndShowHelp() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasShownHelp = prefs.getBool(_kElementSetupHelpShownKey) ?? false;
+    
+    if (!hasShownHelp && mounted) {
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const ElementSetupHelpPopup(),
+      );
+      await prefs.setBool(_kElementSetupHelpShownKey, true);
     }
   }
 
@@ -498,6 +516,18 @@ class _ElementsInputScreenState extends State<ElementsInputScreen> {
         appBar: AppBar(
           title: const Text('Element Input'),
           backgroundColor: Colors.white,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.help_outline),
+              tooltip: 'Show Help',
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => const ElementSetupHelpPopup(),
+                );
+              },
+            ),
+          ],
         ),
         drawer: _buildCustomDrawer(),
         backgroundColor: Colors.yellow[100],

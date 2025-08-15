@@ -8,6 +8,8 @@ import '../widgets/plant_details_panel.dart';
 import '../widgets/plant_list.dart';
 import '../screens/home_screen.dart';
 import '../screens/organization_setup_screen.dart';
+import '../widgets/plant_value_stream_help_popup.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // Global map to hold plant name -> value streams (one-to-many)
 Map<String, List<String>> plantValueStreams = {};
@@ -25,6 +27,7 @@ class PlantSetupScreen extends StatefulWidget {
 }
 
 class _PlantSetupScreenState extends State<PlantSetupScreen> {
+  static const _kPlantSetupHelpShownKey = 'plantSetupHelpShown';
   Future<void>? _initialLoad;
   bool _isLoading = false;
   late PlantRepository _repository;
@@ -35,6 +38,7 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
   void initState() {
     super.initState();
     _selectedPlantIdx = widget.initialPlantIndex; // Use the passed-in index
+    _checkAndShowHelp();
     _initialLoad = _loadInitialData();
 
     // Add listeners to track changes
@@ -69,6 +73,20 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
     setState(() {
       _hasUnsavedChanges = false;
     });
+  }
+
+  Future<void> _checkAndShowHelp() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasShownHelp = prefs.getBool(_kPlantSetupHelpShownKey) ?? false;
+    
+    if (!hasShownHelp && mounted) {
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const PlantValueStreamHelpPopup(),
+      );
+      await prefs.setBool(_kPlantSetupHelpShownKey, true);
+    }
   }
 
   Future<bool> _onWillPop() async {
@@ -400,6 +418,18 @@ class _PlantSetupScreenState extends State<PlantSetupScreen> {
             appBar: AppBar(
               title: const Text('Plant Setup'),
               backgroundColor: Colors.white,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.help_outline),
+                  tooltip: 'Show Help',
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => const PlantValueStreamHelpPopup(),
+                    );
+                  },
+                ),
+              ],
             ),
             drawer: _buildCustomDrawer(),
             backgroundColor: Colors.yellow[100],

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/detailed_selection_display_card.dart';
 import '../control_buttons.dart';
 import '../logic/simple_stopwatch.dart';
@@ -8,6 +9,7 @@ import 'package:drift/drift.dart' as drift;
 import '../widgets/app_drawer.dart';
 import '../widgets/app_footer.dart';
 import '../time_observation_table.dart';
+import '../widgets/time_observation_help_popup.dart';
 import '../logic/app_database.dart';
 
 // Ensure that organization_data.dart defines a class OrganizationData with a static member companyName.
@@ -86,6 +88,7 @@ class TimeObservationForm extends StatefulWidget {
 }
 
 class _TimeObservationFormState extends State<TimeObservationForm> {
+  static const _kTimeObsHelpShownKey = 'timeObservationHelpShown';
   final TextEditingController _observerNameController = TextEditingController();
   final GlobalKey<TimeObservationTableState> _tableKey =
       GlobalKey<TimeObservationTableState>();
@@ -112,6 +115,7 @@ class _TimeObservationFormState extends State<TimeObservationForm> {
   void initState() {
     super.initState();
     _selectedPartNumber = widget.initialPartNumber;
+    _checkAndShowHelp();
     _timer = Timer.periodic(const Duration(milliseconds: 30), (_) {
       setState(() {
         _elapsed = _simpleStopwatch.elapsed;
@@ -220,6 +224,20 @@ class _TimeObservationFormState extends State<TimeObservationForm> {
   void dispose() {
     _timer?.cancel();
     super.dispose();
+  }
+
+  Future<void> _checkAndShowHelp() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasShownHelp = prefs.getBool(_kTimeObsHelpShownKey) ?? false;
+    
+    if (!hasShownHelp && mounted) {
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const TimeObservationHelpPopup(),
+      );
+      await prefs.setBool(_kTimeObsHelpShownKey, true);
+    }
   }
 
   void _start() {
@@ -453,6 +471,18 @@ class _TimeObservationFormState extends State<TimeObservationForm> {
         appBar: AppBar(
           title: const Text('Time Observation'),
           backgroundColor: Colors.white,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.help_outline),
+              tooltip: 'Show Help',
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => const TimeObservationHelpPopup(),
+                );
+              },
+            ),
+          ],
         ),
         drawer: const AppDrawer(),
         backgroundColor: Colors.yellow[100],

@@ -7,6 +7,7 @@ import '../models/organization_data.dart' as org_data;
 import '../database_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/app_drawer.dart';
+import '../widgets/org_setup_help_popup.dart';
 
 class OrganizationSetupHeader extends StatelessWidget {
   const OrganizationSetupHeader({super.key});
@@ -415,6 +416,7 @@ class OrganizationSetupScreen extends StatefulWidget {
 class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
   static const _kCompanyKey = 'selectedCompany';
   static const _kPlantKey = 'selectedPlant';
+  static const _kOrgSetupHelpShownKey = 'orgSetupHelpShown';
   final TextEditingController _companyNameController = TextEditingController();
   final FocusNode _companyNameFocusNode = FocusNode();
   final TextEditingController _plantController = TextEditingController();
@@ -432,8 +434,23 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FocusScope.of(context).requestFocus(_companyNameFocusNode);
+      _checkAndShowHelp();
     });
     _restoreSelections().then((_) => _loadFromDatabase());
+  }
+
+  Future<void> _checkAndShowHelp() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasShownHelp = prefs.getBool(_kOrgSetupHelpShownKey) ?? false;
+    
+    if (!hasShownHelp && mounted) {
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const OrgSetupHelpPopup(),
+      );
+      await prefs.setBool(_kOrgSetupHelpShownKey, true);
+    }
   }
 
   Future<void> _restoreSelections() async {
@@ -667,6 +684,18 @@ class _OrganizationSetupScreenState extends State<OrganizationSetupScreen> {
       appBar: AppBar(
         title: const Text('Organization Setup'),
         backgroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            tooltip: 'Show Help',
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => const OrgSetupHelpPopup(),
+              );
+            },
+          ),
+        ],
       ),
       drawer: const AppDrawer(),
       backgroundColor: Colors.yellow[100],
