@@ -5,7 +5,7 @@ import 'part_input_screen.dart';
 import 'process_input_screen.dart';
 import 'detailed_process_input_screen.dart';
 import 'process_capacity.dart';
-import 'process_canvas_screen.dart';
+import 'process_canvas_screen_refactored.dart';
 import '../screens/organization_setup_screen.dart';
 import '../logic/app_database.dart';
 import 'plant_setup_screen.dart';
@@ -1280,9 +1280,9 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         if (mounted) {
           await Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => ProcessCanvasScreen(
+              builder: (_) => ProcessCanvasScreenRefactored(
                 valueStreamId: selectedValueStreamId!,
-                valueStreamName: selectedValueStream!,
+                partNumber: selectedPart.partNumber,
               ),
             ),
           );

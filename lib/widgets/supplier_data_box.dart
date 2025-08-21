@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/canvas_drag_handler.dart';
 
 class SupplierDataBox extends StatefulWidget {
   final String supplierId;
@@ -26,12 +27,9 @@ class SupplierDataBox extends StatefulWidget {
   State<SupplierDataBox> createState() => _SupplierDataBoxState();
 }
 
-class _SupplierDataBoxState extends State<SupplierDataBox> {
-  bool _isDragging = false;
+class _SupplierDataBoxState extends State<SupplierDataBox> with CanvasDragHandler {
   final TextEditingController _leadTimeController = TextEditingController();
   final TextEditingController _expediteTimeController = TextEditingController();
-  Offset? _startPosition;
-  Offset? _initialTouchPosition;
 
   @override
   void initState() {
@@ -101,29 +99,12 @@ class _SupplierDataBoxState extends State<SupplierDataBox> {
     return Positioned(
       left: widget.position.dx,
       top: widget.position.dy,
-      child: GestureDetector(
+      child: createDraggableWrapper(
+        currentPosition: widget.position,
+        onPositionChanged: (newPosition) {
+          widget.onPositionChanged(widget.supplierId, newPosition);
+        },
         onTap: () => widget.onTap?.call(widget.supplierId),
-        onPanStart: (details) {
-          setState(() {
-            _isDragging = true;
-            _startPosition = widget.position;
-            _initialTouchPosition = details.globalPosition;
-          });
-        },
-        onPanUpdate: (details) {
-          if (_startPosition != null && _initialTouchPosition != null) {
-            final delta = details.globalPosition - _initialTouchPosition!;
-            final newPosition = _startPosition! + delta;
-            widget.onPositionChanged(widget.supplierId, newPosition);
-          }
-        },
-        onPanEnd: (details) {
-          setState(() {
-            _isDragging = false;
-            _startPosition = null;
-            _initialTouchPosition = null;
-          });
-        },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           width: 180,
@@ -134,7 +115,7 @@ class _SupplierDataBoxState extends State<SupplierDataBox> {
               color: widget.isSelected ? Colors.blue : Colors.black,
               width: widget.isSelected ? 3 : 2,
             ),
-            boxShadow: _isDragging || widget.isSelected
+            boxShadow: isDragging || widget.isSelected
                 ? [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.2),

@@ -475,31 +475,30 @@ class ArrowPainter extends CustomPainter {
   }
 
   void _drawArrowHead(Canvas canvas, Paint paint) {
-    // Standardized small closed arrowhead matching withdrawal loop style
-    const arrowSize = 8.0;
-    final direction = endPoint - startPoint;
-    if (direction.distance == 0) return;
-    
-    final normalizedDirection = direction / direction.distance;
-    final perpendicular = Offset(-normalizedDirection.dy, normalizedDirection.dx);
-    
-    final arrowTip = endPoint;
-    final arrowBase = endPoint - normalizedDirection * arrowSize;
-    final arrowLeft = arrowBase + perpendicular * arrowSize / 2;
-    final arrowRight = arrowBase - perpendicular * arrowSize / 2;
-    
+    const arrowLength = 15.0;
+    const arrowAngle = 25 * math.pi / 180; // 25 degrees in radians
+
+    final angle = math.atan2(endPoint.dy - startPoint.dy, endPoint.dx - startPoint.dx);
+
+    // Arrow head points
+    final arrowPoint1 = Offset(
+      endPoint.dx - arrowLength * math.cos(angle - arrowAngle),
+      endPoint.dy - arrowLength * math.sin(angle - arrowAngle),
+    );
+
+    final arrowPoint2 = Offset(
+      endPoint.dx - arrowLength * math.cos(angle + arrowAngle),
+      endPoint.dy - arrowLength * math.sin(angle + arrowAngle),
+    );
+
+    // Draw arrow head
     final arrowPath = Path()
-      ..moveTo(arrowTip.dx, arrowTip.dy)
-      ..lineTo(arrowLeft.dx, arrowLeft.dy)
-      ..lineTo(arrowRight.dx, arrowRight.dy)
-      ..close();
-    
-    // Draw filled arrowhead with same color as line
-    final arrowPaint = Paint()
-      ..color = paint.color
-      ..style = PaintingStyle.fill;
-    
-    canvas.drawPath(arrowPath, arrowPaint);
+      ..moveTo(endPoint.dx, endPoint.dy)
+      ..lineTo(arrowPoint1.dx, arrowPoint1.dy)
+      ..moveTo(endPoint.dx, endPoint.dy)
+      ..lineTo(arrowPoint2.dx, arrowPoint2.dy);
+
+    canvas.drawPath(arrowPath, paint);
   }
 
   void _drawLabel(Canvas canvas) {

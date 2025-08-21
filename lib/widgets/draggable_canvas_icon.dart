@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/canvas_icon.dart';
+import '../utils/canvas_drag_handler.dart';
 
 class DraggableCanvasIcon extends StatefulWidget {
   final CanvasIcon canvasIcon;
@@ -21,55 +22,33 @@ class DraggableCanvasIcon extends StatefulWidget {
   State<DraggableCanvasIcon> createState() => _DraggableCanvasIconState();
 }
 
-class _DraggableCanvasIconState extends State<DraggableCanvasIcon> {
-  bool _isDragging = false;
-  Offset? _startPosition;
-  Offset? _initialTouchPosition;
+class _DraggableCanvasIconState extends State<DraggableCanvasIcon> with CanvasDragHandler {
 
   @override
   Widget build(BuildContext context) {
     return Positioned(
       left: widget.canvasIcon.position.dx,
       top: widget.canvasIcon.position.dy,
-      child: GestureDetector(
-        onTap: () {
-          widget.onTap?.call(widget.canvasIcon);
+      child: createDraggableWrapper(
+        currentPosition: widget.canvasIcon.position,
+        onPositionChanged: (newPosition) {
+          widget.onPositionChanged(widget.canvasIcon, newPosition);
         },
-        onPanStart: (details) {
-          setState(() {
-            _isDragging = true;
-            _startPosition = widget.canvasIcon.position;
-            _initialTouchPosition = details.globalPosition;
-          });
-        },
-        onPanUpdate: (details) {
-          if (_startPosition != null && _initialTouchPosition != null) {
-            final delta = details.globalPosition - _initialTouchPosition!;
-            final newPosition = _startPosition! + delta;
-            widget.onPositionChanged(widget.canvasIcon, newPosition);
-          }
-        },
-        onPanEnd: (details) {
-          setState(() {
-            _isDragging = false;
-            _startPosition = null;
-            _initialTouchPosition = null;
-          });
-        },
+        onTap: () => widget.onTap?.call(widget.canvasIcon),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           width: widget.canvasIcon.size.width,
           height: widget.canvasIcon.size.height,
           decoration: BoxDecoration(
-            color: widget.canvasIcon.color.withOpacity(_isDragging ? 0.8 : 0.2),
+            color: widget.canvasIcon.color.withOpacity(isDragging ? 0.8 : 0.2),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: widget.isSelected
                   ? Colors.blue
-                  : widget.canvasIcon.color.withOpacity(_isDragging ? 1.0 : 0.5),
+                  : widget.canvasIcon.color.withOpacity(isDragging ? 1.0 : 0.5),
               width: widget.isSelected ? 2 : 1,
             ),
-            boxShadow: _isDragging || widget.isSelected
+            boxShadow: isDragging || widget.isSelected
                 ? [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.2),

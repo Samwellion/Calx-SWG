@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../logic/app_database.dart';
 import '../database_provider.dart';
+import '../utils/canvas_drag_handler.dart';
 
 class CustomerDataBox extends StatefulWidget {
   final String customerId;
@@ -26,12 +27,9 @@ class CustomerDataBox extends StatefulWidget {
   State<CustomerDataBox> createState() => _CustomerDataBoxState();
 }
 
-class _CustomerDataBoxState extends State<CustomerDataBox> {
-  bool _isDragging = false;
+class _CustomerDataBoxState extends State<CustomerDataBox> with CanvasDragHandler {
   ValueStream? _valueStreamData;
   bool _isLoading = true;
-  Offset? _startPosition;
-  Offset? _initialTouchPosition;
 
   @override
   void initState() {
@@ -73,29 +71,12 @@ class _CustomerDataBoxState extends State<CustomerDataBox> {
     return Positioned(
       left: widget.position.dx,
       top: widget.position.dy,
-      child: GestureDetector(
+      child: createDraggableWrapper(
+        currentPosition: widget.position,
+        onPositionChanged: (newPosition) {
+          widget.onPositionChanged(widget.customerId, newPosition);
+        },
         onTap: () => widget.onTap?.call(widget.customerId),
-        onPanStart: (details) {
-          setState(() {
-            _isDragging = true;
-            _startPosition = widget.position;
-            _initialTouchPosition = details.globalPosition;
-          });
-        },
-        onPanUpdate: (details) {
-          if (_startPosition != null && _initialTouchPosition != null) {
-            final delta = details.globalPosition - _initialTouchPosition!;
-            final newPosition = _startPosition! + delta;
-            widget.onPositionChanged(widget.customerId, newPosition);
-          }
-        },
-        onPanEnd: (details) {
-          setState(() {
-            _isDragging = false;
-            _startPosition = null;
-            _initialTouchPosition = null;
-          });
-        },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           width: 180,
@@ -106,7 +87,7 @@ class _CustomerDataBoxState extends State<CustomerDataBox> {
               color: widget.isSelected ? Colors.blue : Colors.black,
               width: widget.isSelected ? 3 : 2,
             ),
-            boxShadow: _isDragging || widget.isSelected
+            boxShadow: isDragging || widget.isSelected
                 ? [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.2),

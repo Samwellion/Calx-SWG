@@ -1,3 +1,5 @@
+// ignore_for_file: unused_local_variable
+
 import 'lib/models/canvas_icon.dart';
 import 'lib/models/material_connector.dart';
 
@@ -15,11 +17,9 @@ void main() {
   
   // Test getting icon data
   final iconData = MaterialConnectorHelper.getIconData(supermarketTemplate.type);
-  print('IconData: $iconData');
   
   // Test getting color
   final color = MaterialConnectorHelper.getColor(supermarketTemplate.type);
-  print('Color: $color');
   
   if (isMaterialConnector) {
   } else {
