@@ -10,4 +10,4 @@ void main() {
   ));
 }
 // The main.dart file initializes the Flutter application and sets the HomeScreen as the home widget.
-// This is the entry point of the app, where the MaterialApp widget is created and configured.
+// This is the entry point of the app, where the MaterialApp is created and configured.

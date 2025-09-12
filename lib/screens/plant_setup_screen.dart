@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,8 +11,6 @@ import '../database_provider.dart';
 import '../logic/plant_repository.dart';
 import '../widgets/plant_details_panel.dart';
 import '../widgets/plant_list.dart';
-import '../screens/home_screen.dart';
-import '../screens/organization_setup_screen.dart';
 import '../widgets/plant_value_stream_help_popup.dart';
 
 // Global map to hold plant name -> value streams (one-to-many)

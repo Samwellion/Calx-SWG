@@ -65,21 +65,16 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
   bool isLoading = true;
   String? currentPartNumber;
 
-  // Canvas data
+  // Canvas data - using manager-based system
   List<ProcessObject> processes = [];
-  List<CanvasIcon> canvasIcons = [];
-  List<CanvasConnector> connectors = [];
+  List<CanvasIcon> canvasIcons = []; // Still needed for regular canvas icons
+  List<CanvasConnector> connectors = []; // Still needed for regular connectors
   List<MaterialConnector> materialConnectors = [];
   List<KanbanLoop> kanbanLoops = [];
   List<WithdrawalLoop> withdrawalLoops = [];
   List<KanbanPost> kanbanPosts = [];
 
-  // Data box positions
-  Map<String, Offset> customerDataBoxPositions = {};
-  Map<String, Offset> supplierDataBoxPositions = {};
-  Map<String, Offset> productionControlDataBoxPositions = {};
-  Map<String, Offset> truckDataBoxPositions = {};
-  Map<String, String> supplierDataBoxUserData = {};
+  // Legacy data structures removed - using manager classes instead
 
   // Timer for debounced saves
   Timer? _saveTimer;
@@ -87,18 +82,13 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
   // Selection state
   ProcessObject? selectedProcess;
   CanvasIcon? selectedCanvasIcon;
-  Customer? selectedCustomer;
-  Supplier? selectedSupplier;
-  ProductionControl? selectedProductionControl;
-  String? selectedConnector;
+  String? selectedConnector; // Added back for connectors
   String? selectedMaterialConnector;
   String? selectedKanbanLoop;
   String? selectedWithdrawalLoop;
   String? selectedKanbanPost;
-  String? selectedCustomerDataBox;
-  String? selectedSupplierDataBox;
-  String? selectedProductionControlDataBox;
-  String? selectedTruckDataBox;
+  
+  // Manager-based selection state - the manager classes track selection internally
 
   // Connection state
   ConnectionMode connectionMode = ConnectionMode.none;
@@ -216,61 +206,20 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
     if (currentPartNumber == null) return;
 
     try {
-      // Clear existing state for this value stream and part
-      await db.clearCanvasState(
-        valueStreamId: widget.valueStreamId,
-        partNumber: currentPartNumber!,
+      // Using manager-based saving for all managed objects
+      await Future.wait([
+        // Save all managed objects
+        customerManager.saveToDatabase(widget.valueStreamId, currentPartNumber!),
+        supplierManager.saveToDatabase(widget.valueStreamId, currentPartNumber!),
+        productionControlManager.saveToDatabase(widget.valueStreamId, currentPartNumber!),
+      ]);
+      
+      // Clear existing state for canvas icons and other non-managed objects
+      await db.customStatement(
+        'DELETE FROM canvas_states WHERE value_stream_id = ? AND part_number = ? AND icon_type NOT IN (?, ?, ?)',
+        [widget.valueStreamId, currentPartNumber!, 'customer', 'supplier', 'productionControl']
       );
-
-      // Save customer data boxes
-      for (final entry in customerDataBoxPositions.entries) {
-        await db.saveCanvasState(
-          valueStreamId: widget.valueStreamId,
-          partNumber: currentPartNumber!,
-          iconType: 'customerDataBox',
-          iconId: entry.key,
-          positionX: entry.value.dx,
-          positionY: entry.value.dy,
-        );
-      }
-
-      // Save supplier data boxes
-      for (final entry in supplierDataBoxPositions.entries) {
-        await db.saveCanvasState(
-          valueStreamId: widget.valueStreamId,
-          partNumber: currentPartNumber!,
-          iconType: 'supplierDataBox',
-          iconId: entry.key,
-          positionX: entry.value.dx,
-          positionY: entry.value.dy,
-          userData: supplierDataBoxUserData[entry.key],
-        );
-      }
-
-      // Save production control data boxes
-      for (final entry in productionControlDataBoxPositions.entries) {
-        await db.saveCanvasState(
-          valueStreamId: widget.valueStreamId,
-          partNumber: currentPartNumber!,
-          iconType: 'productionControlDataBox',
-          iconId: entry.key,
-          positionX: entry.value.dx,
-          positionY: entry.value.dy,
-        );
-      }
-
-      // Save truck data boxes
-      for (final entry in truckDataBoxPositions.entries) {
-        await db.saveCanvasState(
-          valueStreamId: widget.valueStreamId,
-          partNumber: currentPartNumber!,
-          iconType: 'truckDataBox',
-          iconId: entry.key,
-          positionX: entry.value.dx,
-          positionY: entry.value.dy,
-        );
-      }
-
+      
       // Save regular canvas icons
       for (final icon in canvasIcons) {
         await db.saveCanvasState(
@@ -296,7 +245,7 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
         );
       }
       
-      print('Debug: Canvas state saved - ${customerDataBoxPositions.length} customers, ${supplierDataBoxPositions.length} suppliers, ${productionControlDataBoxPositions.length} production controls');
+      print('Debug: Canvas state saved - Customers: ${customerManager.customers.length}, Suppliers: ${supplierManager.suppliers.length}, Production Controls: ${productionControlManager.productionControls.length}');
     } catch (e) {
       print('Debug: Error saving canvas state: $e');
     }
@@ -312,13 +261,24 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
       await Future.wait([
         _loadProcesses(),
         _loadCanvasIcons(),
-        _loadConnectors(),
         _loadMaterialConnectors(),
         _loadKanbanLoops(),
         _loadWithdrawalLoops(),
         _loadKanbanPosts(),
         _loadDataBoxes(),
       ]);
+      
+      // Debug counts to verify data is loaded properly
+      print('Debug: FINAL LOADING COUNTS:');
+      print('Debug: Processes: ${processes.length}');
+      print('Debug: Canvas Icons: ${canvasIcons.length}');
+      print('Debug: Material Connectors: ${materialConnectors.length}');
+      print('Debug: Kanban Loops: ${kanbanLoops.length}');
+      print('Debug: Withdrawal Loops: ${withdrawalLoops.length}');
+      print('Debug: Kanban Posts: ${kanbanPosts.length}');
+      print('Debug: Customers: ${customerManager.customers.length}');
+      print('Debug: Suppliers: ${supplierManager.suppliers.length}');
+      print('Debug: Production Controls: ${productionControlManager.productionControls.length}');
       
       setState(() => isLoading = false);
       _showMessage('Canvas loaded successfully');
@@ -390,11 +350,8 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
     }
   }
 
-  Future<void> _loadConnectors() async {
-    // Note: Regular connectors are not yet stored in database
-    // This will be implemented when connector persistence is added
-    connectors = [];
-  }
+  // Note: _loadConnectors is intentionally not called as connectors 
+  // are not yet stored in database. We'll implement this in the future.
 
   Future<void> _loadMaterialConnectors() async {
     try {
@@ -502,59 +459,20 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
 
   Future<void> _loadDataBoxes() async {
     try {
-      final canvasState = await db.loadCanvasState(
-        valueStreamId: widget.valueStreamId,
-        partNumber: widget.partNumber,
-      );
-
-      // Clear existing legacy data boxes
-      customerDataBoxPositions.clear();
-      supplierDataBoxPositions.clear();
-      productionControlDataBoxPositions.clear();
-      truckDataBoxPositions.clear();
-      supplierDataBoxUserData.clear();
-
-      // Restore legacy data boxes from canvas state
-      for (final state in canvasState) {
-        final position = Offset(state.positionX, state.positionY);
-        
-        switch (state.iconType) {
-          case 'customerDataBox':
-            customerDataBoxPositions[state.iconId] = position;
-            break;
-          case 'supplierDataBox':
-            supplierDataBoxPositions[state.iconId] = position;
-            if (state.userData != null) {
-              supplierDataBoxUserData[state.iconId] = state.userData!;
-            }
-            break;
-          case 'productionControlDataBox':
-            productionControlDataBoxPositions[state.iconId] = position;
-            break;
-          case 'truckDataBox':
-            truckDataBoxPositions[state.iconId] = position;
-            break;
-        }
-      }
+      print('Debug: Loading data boxes using manager system');
       
-      print('Debug: Loaded ${customerDataBoxPositions.length} customer data boxes');
-      print('Debug: Loaded ${supplierDataBoxPositions.length} supplier data boxes');
-      print('Debug: Loaded ${productionControlDataBoxPositions.length} production control data boxes');
-      
-      // Also load using new managers for any objects managed by them
+      // Load all managed objects using managers
       await Future.wait([
         customerManager.loadFromDatabase(widget.valueStreamId, widget.partNumber),
         supplierManager.loadFromDatabase(widget.valueStreamId, widget.partNumber),
         productionControlManager.loadFromDatabase(widget.valueStreamId, widget.partNumber),
       ]);
+      
+      print('Debug: Loaded ${customerManager.customers.length} customers');
+      print('Debug: Loaded ${supplierManager.suppliers.length} suppliers');
+      print('Debug: Loaded ${productionControlManager.productionControls.length} production controls');
     } catch (e) {
       print('Debug: Error loading data boxes: $e');
-      // Initialize empty maps on error
-      customerDataBoxPositions = {};
-      supplierDataBoxPositions = {};
-      productionControlDataBoxPositions = {};
-      truckDataBoxPositions = {};
-      supplierDataBoxUserData = {};
     }
   }
 
@@ -731,68 +649,64 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
   }
 
   void _clearOtherSelections() {
+    // Clear regular selections
     selectedCanvasIcon = null;
-    selectedCustomer = null;
-    selectedSupplier = null;
-    selectedProductionControl = null;
-    selectedConnector = null;
     selectedMaterialConnector = null;
     selectedKanbanLoop = null;
     selectedWithdrawalLoop = null;
     selectedKanbanPost = null;
-    selectedCustomerDataBox = null;
-    selectedSupplierDataBox = null;
-    selectedProductionControlDataBox = null;
-    selectedTruckDataBox = null;
+    
+    // Clear manager-based selections
+    customerManager.deselectAll();
+    supplierManager.deselectAll();
+    productionControlManager.deselectAll();
   }
 
   void _clearSelectionsExceptCustomer() {
+    // Clear regular selections
+    selectedProcess = null;
     selectedCanvasIcon = null;
-    selectedSupplier = null;
-    selectedProductionControl = null;
-    selectedConnector = null;
     selectedMaterialConnector = null;
     selectedKanbanLoop = null;
     selectedWithdrawalLoop = null;
     selectedKanbanPost = null;
-    selectedCustomerDataBox = null;
-    selectedSupplierDataBox = null;
-    selectedProductionControlDataBox = null;
-    selectedTruckDataBox = null;
+    
+    // Clear other manager-based selections
+    supplierManager.deselectAll();
+    productionControlManager.deselectAll();
   }
 
   void _clearSelectionsExceptSupplier() {
+    // Clear regular selections
+    selectedProcess = null;
     selectedCanvasIcon = null;
-    selectedCustomer = null;
-    selectedProductionControl = null;
-    selectedConnector = null;
     selectedMaterialConnector = null;
     selectedKanbanLoop = null;
     selectedWithdrawalLoop = null;
     selectedKanbanPost = null;
-    selectedCustomerDataBox = null;
-    selectedSupplierDataBox = null;
-    selectedProductionControlDataBox = null;
-    selectedTruckDataBox = null;
+    
+    // Clear other manager-based selections
+    customerManager.deselectAll();
+    productionControlManager.deselectAll();
   }
 
   void _clearSelectionsExceptProductionControl() {
+    // Clear regular selections
+    selectedProcess = null;
     selectedCanvasIcon = null;
-    selectedCustomer = null;
-    selectedSupplier = null;
-    selectedConnector = null;
     selectedMaterialConnector = null;
     selectedKanbanLoop = null;
     selectedWithdrawalLoop = null;
     selectedKanbanPost = null;
-    selectedCustomerDataBox = null;
-    selectedSupplierDataBox = null;
-    selectedProductionControlDataBox = null;
-    selectedTruckDataBox = null;
+    
+    // Clear other manager-based selections
+    customerManager.deselectAll();
+    supplierManager.deselectAll();
   }
 
   void _deselectAll() {
     setState(() {
+      // Clear all selections
       selectedProcess = null;
       _clearOtherSelections();
       materialConnectorState.reset();
@@ -851,29 +765,29 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
                 onDelete: (selectedIcon) => _deleteCanvasIcon(selectedIcon),
               )),
               
-              // Customer widgets
+              // Customer widgets - using manager for selection state
               ...customerManager.customers.map((customer) => CustomerWidget(
                 key: ValueKey(customer.id),
-                customer: customer.copyWith(isSelected: selectedCustomer?.id == customer.id),
+                customer: customer, // Selection state is already in the customer object
                 onTap: (customerId) => _selectCustomer(customer),
                 onPositionChanged: (customerId, globalOffset) => _updateCustomerPosition(customer, globalOffset),
                 onDelete: (customerId) => _deleteCustomer(customer),
               )),
               
-              // Supplier widgets
+              // Supplier widgets - using manager for selection state
               ...supplierManager.suppliers.map((supplier) => SupplierWidget(
                 key: ValueKey(supplier.id),
-                supplier: supplier.copyWith(isSelected: selectedSupplier?.id == supplier.id),
+                supplier: supplier, // Selection state is already in the supplier object
                 onTap: (supplierId) => _selectSupplier(supplier),
                 onPositionChanged: (supplierId, globalOffset) => _updateSupplierPosition(supplier, globalOffset),
                 onDelete: (supplierId) => _deleteSupplier(supplier),
                 onDataChanged: (supplierId, newData) => _updateSupplierData(supplierId, newData),
               )),
               
-              // Production Control widgets
+              // Production Control widgets - using manager for selection state
               ...productionControlManager.productionControls.map((productionControl) => ProductionControlWidget(
                 key: ValueKey(productionControl.id),
-                productionControl: productionControl.copyWith(isSelected: selectedProductionControl?.id == productionControl.id),
+                productionControl: productionControl, // Selection state is already in the production control object
                 onTap: (productionControlId) => _selectProductionControl(productionControl),
                 onPositionChanged: (productionControlId, globalOffset) => _updateProductionControlPosition(productionControl, globalOffset),
                 onDelete: (productionControlId) => _deleteProductionControl(productionControl),
@@ -1114,7 +1028,7 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
   void _selectCustomer(Customer customer) {
     setState(() {
       _clearSelectionsExceptCustomer();
-      selectedCustomer = customer;
+      customerManager.selectCustomer(customer.id);
     });
   }
   
@@ -1139,14 +1053,14 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
   }
   
   void _createCustomerDataBox() async {
-    final customer = await customerManager.createCustomer(
+    await customerManager.createCustomer(
       valueStreamId: widget.valueStreamId,
       partNumber: widget.partNumber,
       position: const Offset(100, 300),
     );
     setState(() {
-      selectedCustomer = customer;
       _clearOtherSelections();
+      // Customer is already selected in the manager
     });
     _saveCanvasState();
     _showMessage('Customer created. You can drag it to position and configure its data.');
@@ -1156,7 +1070,7 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
   void _selectSupplier(Supplier supplier) {
     setState(() {
       _clearSelectionsExceptSupplier();
-      selectedSupplier = supplier;
+      supplierManager.selectSupplier(supplier.id);
     });
   }
   
@@ -1172,6 +1086,7 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
     setState(() {
       supplierManager.updatePosition(supplier.id, correctedOffset, widget.valueStreamId, widget.partNumber);
     });
+    _debouncedSaveCanvasState(); // Add this to ensure saving
   }
 
   /// Update supplier data when fields are changed
@@ -1182,18 +1097,20 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
   
   void _deleteSupplier(Supplier supplier) {
     supplierManager.deleteSupplier(supplier.id, widget.valueStreamId, widget.partNumber);
+    _debouncedSaveCanvasState(); // Add this to ensure saving
   }
   
   void _createSupplierDataBox() async {
-    final supplier = await supplierManager.createSupplier(
+    await supplierManager.createSupplier(
       valueStreamId: widget.valueStreamId,
       partNumber: widget.partNumber,
       position: const Offset(300, 300),
     );
     setState(() {
       _clearSelectionsExceptSupplier();
-      selectedSupplier = supplier;
+      // Supplier is already selected in the manager
     });
+    _debouncedSaveCanvasState(); // Add this to ensure saving
     _showMessage('Supplier created. You can drag it to position and configure its data.');
   }
   
@@ -1201,7 +1118,7 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
   void _selectProductionControl(ProductionControl productionControl) {
     setState(() {
       _clearSelectionsExceptProductionControl();
-      selectedProductionControl = productionControl;
+      productionControlManager.selectProductionControl(productionControl.id);
     });
   }
   
@@ -1217,22 +1134,25 @@ class _ProcessCanvasScreenRefactoredState extends State<ProcessCanvasScreenRefac
     setState(() {
       productionControlManager.updatePosition(productionControl.id, correctedOffset, widget.valueStreamId, widget.partNumber);
     });
+    _debouncedSaveCanvasState(); // Add this to ensure saving
   }
   
   void _deleteProductionControl(ProductionControl productionControl) {
     productionControlManager.deleteProductionControl(productionControl.id, widget.valueStreamId, widget.partNumber);
+    _debouncedSaveCanvasState(); // Add this to ensure saving
   }
   
   void _createProductionControlDataBox() async {
-    final productionControl = await productionControlManager.createProductionControl(
+    await productionControlManager.createProductionControl(
       valueStreamId: widget.valueStreamId,
       partNumber: widget.partNumber,
       position: const Offset(500, 300),
     );
     setState(() {
       _clearSelectionsExceptProductionControl();
-      selectedProductionControl = productionControl;
+      // Production Control is already selected in the manager
     });
+    _debouncedSaveCanvasState(); // Add this to ensure saving
     _showMessage('Production Control created. You can drag it to position and configure its data.');
   }
   
