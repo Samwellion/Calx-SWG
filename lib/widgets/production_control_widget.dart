@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/production_control.dart';
 import '../utils/unified_canvas_drag.dart';
+import '../utils/deletable_canvas_object.dart';
 
 /// Optimized Production Control Widget for VSM canvas
 class ProductionControlWidget extends StatefulWidget {
@@ -21,7 +22,7 @@ class ProductionControlWidget extends StatefulWidget {
   State<ProductionControlWidget> createState() => _ProductionControlWidgetState();
 }
 
-class _ProductionControlWidgetState extends State<ProductionControlWidget> with UnifiedCanvasDrag {
+class _ProductionControlWidgetState extends State<ProductionControlWidget> with UnifiedCanvasDrag, DeletableCanvasObject {
   static const Size _productionControlSize = Size(200, 100);
 
   @override
@@ -100,27 +101,11 @@ class _ProductionControlWidgetState extends State<ProductionControlWidget> with 
             ),
           ),
           
-          // Delete button when selected
-          if (widget.productionControl.isSelected && widget.onDelete != null)
-            Positioned(
-              top: -2,
-              right: -2,
-              child: GestureDetector(
-                onTap: () => widget.onDelete?.call(widget.productionControl.id),
-                child: Container(
-                  width: 20,
-                  height: 20,
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.close,
-                    color: Colors.white,
-                    size: 14,
-                  ),
-                ),
-              ),
+          // Delete button using common mixin
+          if (widget.onDelete != null)
+            buildDeleteButton(
+              isSelected: widget.productionControl.isSelected,
+              onDelete: () => widget.onDelete!(widget.productionControl.id),
             ),
         ],
       ),

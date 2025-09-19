@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/customer.dart';
 import '../utils/unified_canvas_drag.dart';
+import '../utils/deletable_canvas_object.dart';
 
 /// Optimized Customer Widget for VSM canvas
 class CustomerWidget extends StatefulWidget {
@@ -21,7 +22,7 @@ class CustomerWidget extends StatefulWidget {
   State<CustomerWidget> createState() => _CustomerWidgetState();
 }
 
-class _CustomerWidgetState extends State<CustomerWidget> with UnifiedCanvasDrag {
+class _CustomerWidgetState extends State<CustomerWidget> with UnifiedCanvasDrag, DeletableCanvasObject {
   static const Size _customerSize = Size(180, 150);
 
   @override
@@ -109,27 +110,11 @@ class _CustomerWidgetState extends State<CustomerWidget> with UnifiedCanvasDrag 
             ),
           ),
           
-          // Delete button when selected
-          if (widget.customer.isSelected && widget.onDelete != null)
-            Positioned(
-              top: -2,
-              right: -2,
-              child: GestureDetector(
-                onTap: () => widget.onDelete?.call(widget.customer.id),
-                child: Container(
-                  width: 20,
-                  height: 20,
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.close,
-                    color: Colors.white,
-                    size: 14,
-                  ),
-                ),
-              ),
+          // Delete button using common mixin
+          if (widget.onDelete != null)
+            buildDeleteButton(
+              isSelected: widget.customer.isSelected,
+              onDelete: () => widget.onDelete!(widget.customer.id),
             ),
         ],
       ),

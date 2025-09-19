@@ -9,12 +9,14 @@ import 'uncontrolled_icon.dart';
 import 'supermarket_icon.dart';
 import 'connection_handle_widget.dart';
 import '../utils/canvas_drag_handler.dart';
+import '../utils/deletable_canvas_object.dart';
 
 class MaterialConnectorWidget extends StatefulWidget {
   final MaterialConnector materialConnector;
   final List<ProcessObject> processes;
   final Function(MaterialConnector)? onUpdate;
   final Function(String)? onTap;
+  final Function(String)? onDelete; // Add delete callback
   final Function(ConnectionHandle)? onHandleSelected; // New callback for handle selection
   final bool isSelected;
   final bool showConnectionHandles; // New property to show/hide handles
@@ -26,6 +28,7 @@ class MaterialConnectorWidget extends StatefulWidget {
     required this.processes,
     this.onUpdate,
     this.onTap,
+    this.onDelete, // Add delete callback
     this.onHandleSelected,
     this.isSelected = false,
     this.showConnectionHandles = false,
@@ -36,7 +39,8 @@ class MaterialConnectorWidget extends StatefulWidget {
   State<MaterialConnectorWidget> createState() => _MaterialConnectorWidgetState();
 }
 
-class _MaterialConnectorWidgetState extends State<MaterialConnectorWidget> with CanvasDragHandler {
+class _MaterialConnectorWidgetState extends State<MaterialConnectorWidget> 
+    with CanvasDragHandler, DeletableCanvasObject {
   late TextEditingController _piecesController;
   bool _isUserEditing = false; // Track if user is actively typing
   ProcessObject? _supplierProcess;
@@ -291,6 +295,17 @@ class _MaterialConnectorWidgetState extends State<MaterialConnectorWidget> with 
             ),
           ),
         ),
+        
+        // Delete button using common mixin
+        if (widget.onDelete != null)
+          Positioned(
+            left: widget.materialConnector.position.dx + widget.materialConnector.size.width / 2 - 12,
+            top: widget.materialConnector.position.dy - widget.materialConnector.size.height / 2 - 8,
+            child: buildDeleteButton(
+              isSelected: widget.isSelected,
+              onDelete: () => widget.onDelete!(widget.materialConnector.id),
+            ),
+          ),
         
         // Connection handles overlay (only for supermarket when selected)
         if (widget.materialConnector.type == CanvasIconType.kanbanMarket && widget.showConnectionHandles)

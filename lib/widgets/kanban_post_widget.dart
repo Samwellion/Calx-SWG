@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import '../models/kanban_post.dart';
 import '../utils/unified_canvas_drag.dart';
+import '../utils/deletable_canvas_object.dart';
 
-class KanbanPostWidget extends StatelessWidget with UnifiedCanvasDrag {
+class KanbanPostWidget extends StatelessWidget with UnifiedCanvasDrag, DeletableCanvasObject {
   final KanbanPost kanbanPost;
   final bool isSelected;
   final Function(String)? onTap;
   final Function(KanbanPost)? onUpdate;
+  final Function(String)? onDelete;
 
   const KanbanPostWidget({
     super.key,
@@ -14,6 +16,7 @@ class KanbanPostWidget extends StatelessWidget with UnifiedCanvasDrag {
     this.isSelected = false,
     this.onTap,
     this.onUpdate,
+    this.onDelete,
   });
 
   @override
@@ -67,14 +70,25 @@ class KanbanPostWidget extends StatelessWidget with UnifiedCanvasDrag {
                 ),
               ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(2.0), // Minimal padding
-        child: CustomPaint(
-          painter: KanbanPostIconPainter(
-            color: isSelected ? Colors.blue : Colors.black,
+      child: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(2.0), // Minimal padding
+            child: CustomPaint(
+              painter: KanbanPostIconPainter(
+                color: isSelected ? Colors.blue : Colors.black,
+              ),
+              size: const Size(50, 45), // Icon only - no text field
+            ),
           ),
-          size: const Size(50, 45), // Icon only - no text field
-        ),
+          
+          // Delete button using common mixin
+          if (onDelete != null)
+            buildDeleteButton(
+              isSelected: isSelected,
+              onDelete: () => onDelete!(kanbanPost.id),
+            ),
+        ],
       ),
     );
   }

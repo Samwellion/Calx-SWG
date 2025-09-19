@@ -70,7 +70,11 @@ class ConnectorCreationHandler {
   
   /// Handle item selection during connection process
   void handleItemSelection(String itemId, String itemType, Offset itemPosition, Size itemSize) {
+    print('ConnectorCreationHandler: handleItemSelection called with itemType: $itemType, itemId: $itemId');
+    print('ConnectorCreationHandler: _isConnectableItem($itemType) = ${_isConnectableItem(itemType)}');
+    
     if (!_isConnectableItem(itemType)) {
+      print('ConnectorCreationHandler: Item type $itemType is not connectable');
       onShowMessage?.call('This item type cannot be connected with standard connectors');
       return;
     }
@@ -121,7 +125,9 @@ class ConnectorCreationHandler {
       'kanbanLoop',
       'withdrawalLoop',
     };
-    return !excludedTypes.contains(itemType);
+    final result = !excludedTypes.contains(itemType);
+    print('ConnectorCreationHandler: _isConnectableItem($itemType) returning $result');
+    return result;
   }
   
   /// Handle supplier item selection

@@ -39,6 +39,7 @@ class ProductionControlManager {
       id: productionControlId,
       position: position,
       data: data,
+      isSelected: true, // Mark as selected when created
       valueStreamId: valueStreamId,
     );
     
@@ -58,6 +59,7 @@ class ProductionControlManager {
   Future<void> updatePosition(String productionControlId, Offset newPosition, int valueStreamId, String partNumber) async {
     final productionControl = _productionControls[productionControlId];
     if (productionControl != null) {
+      // Preserve the current selection state when updating position
       _productionControls[productionControlId] = productionControl.copyWith(position: newPosition);
       _onStateChanged?.call();
       
@@ -80,7 +82,13 @@ class ProductionControlManager {
 
   /// Select a production control
   void selectProductionControl(String productionControlId) {
-    if (_productionControls.containsKey(productionControlId)) {
+    // First deselect current selection
+    deselectAll();
+    
+    // Select new production control
+    final productionControl = _productionControls[productionControlId];
+    if (productionControl != null) {
+      _productionControls[productionControlId] = productionControl.copyWith(isSelected: true);
       _selectedProductionControlId = productionControlId;
       _onStateChanged?.call();
     }
@@ -88,8 +96,14 @@ class ProductionControlManager {
 
   /// Deselect all production controls
   void deselectAll() {
-    _selectedProductionControlId = null;
-    _onStateChanged?.call();
+    if (_selectedProductionControlId != null) {
+      final productionControl = _productionControls[_selectedProductionControlId!];
+      if (productionControl != null) {
+        _productionControls[_selectedProductionControlId!] = productionControl.copyWith(isSelected: false);
+      }
+      _selectedProductionControlId = null;
+      _onStateChanged?.call();
+    }
   }
 
   /// Delete a production control

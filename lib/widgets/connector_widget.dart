@@ -15,6 +15,7 @@ class ConnectorWidget extends StatelessWidget {
   final Map<String, Offset> productionControlDataBoxPositions;
   final Map<String, Offset> truckDataBoxPositions;
   final Function(String)? onTap;
+  final Function(String)? onDelete;
   final bool isSelected;
 
   const ConnectorWidget({
@@ -28,6 +29,7 @@ class ConnectorWidget extends StatelessWidget {
     required this.productionControlDataBoxPositions,
     required this.truckDataBoxPositions,
     this.onTap,
+    this.onDelete,
     this.isSelected = false,
   });
 
@@ -54,23 +56,62 @@ class ConnectorWidget extends StatelessWidget {
       top: top,
       width: width,
       height: height,
-      child: GestureDetector(
-        onTap: () => onTap?.call(connector.id),
-        child: CustomPaint(
-          painter: ArrowPainter(
-            startPoint: Offset(startPoint.dx - left, startPoint.dy - top),
-            endPoint: Offset(endPoint.dx - left, endPoint.dy - top),
-            color: isSelected ? Colors.blue : connector.color,
-            strokeWidth: isSelected ? connector.strokeWidth + 1 : connector.strokeWidth,
-            label: connector.label,
-            connectorType: connector.type,
+      child: Stack(
+        children: [
+          // Main connector arrow
+          GestureDetector(
+            onTap: () => onTap?.call(connector.id),
+            child: CustomPaint(
+              painter: ArrowPainter(
+                startPoint: Offset(startPoint.dx - left, startPoint.dy - top),
+                endPoint: Offset(endPoint.dx - left, endPoint.dy - top),
+                color: isSelected ? Colors.blue : connector.color,
+                strokeWidth: isSelected ? connector.strokeWidth + 1 : connector.strokeWidth,
+                label: connector.label,
+                connectorType: connector.type,
+              ),
+              child: Container(
+                width: width,
+                height: height,
+                color: Colors.transparent,
+              ),
+            ),
           ),
-          child: Container(
-            width: width,
-            height: height,
-            color: Colors.transparent,
-          ),
-        ),
+          
+          // Delete button when selected
+          if (isSelected && onDelete != null)
+            Positioned(
+              right: 0,
+              top: 0,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      spreadRadius: 1,
+                      blurRadius: 2,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.close,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 24,
+                    minHeight: 24,
+                  ),
+                  onPressed: () => onDelete?.call(connector.id),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -469,9 +510,49 @@ class ArrowPainter extends CustomPainter {
   }
 
   void _drawElectronicZigzagLine(Canvas canvas, Paint paint) {
-    // TODO: Implement electronic information arrow with VSM-standard zigzag pattern
-    // For now, draw a simple line
-    canvas.drawLine(startPoint, endPoint, paint);
+    // Simplified electronic arrow: travel halfway, angle back 120°, travel 15px, then continue to target
+    _drawSimplifiedElectronicArrow(canvas, paint);
+  }
+  
+  /// Draw simplified electronic arrow with specific angled pattern
+  void _drawSimplifiedElectronicArrow(Canvas canvas, Paint paint) {
+    // Calculate the direction vector and distance
+    final dx = endPoint.dx - startPoint.dx;
+    final dy = endPoint.dy - startPoint.dy;
+    final totalDistance = math.sqrt(dx * dx + dy * dy);
+    
+    if (totalDistance == 0) return;
+    
+    // Unit vectors for the original direction
+    final unitX = dx / totalDistance;
+    final unitY = dy / totalDistance;
+    
+    // Point 1: Half way to target
+    final halfDistance = totalDistance / 2;
+    final midPoint = Offset(
+      startPoint.dx + unitX * halfDistance,
+      startPoint.dy + unitY * halfDistance,
+    );
+    
+    // Calculate angle back direction (120 degrees from original direction)
+    final originalAngle = math.atan2(dy, dx);
+    final backAngle = originalAngle + (120 * math.pi / 180); // 120 degrees in radians
+    
+    // Point 2: 15 pixels back at 120 degree angle
+    const backDistance = 15.0;
+    final backPoint = Offset(
+      midPoint.dx + math.cos(backAngle) * backDistance,
+      midPoint.dy + math.sin(backAngle) * backDistance,
+    );
+    
+    // Draw the path
+    final path = Path();
+    path.moveTo(startPoint.dx, startPoint.dy);
+    path.lineTo(midPoint.dx, midPoint.dy);      // Line to halfway point
+    path.lineTo(backPoint.dx, backPoint.dy);    // Angle back 120 degrees for 15px
+    path.lineTo(endPoint.dx, endPoint.dy);      // Continue to target
+    
+    canvas.drawPath(path, paint);
   }
 
   void _drawArrowHead(Canvas canvas, Paint paint) {

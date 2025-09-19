@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/supplier.dart';
 import '../utils/unified_canvas_drag.dart';
+import '../utils/deletable_canvas_object.dart';
 
 /// Optimized Supplier Widget for VSM canvas
 class SupplierWidget extends StatefulWidget {
@@ -23,7 +24,7 @@ class SupplierWidget extends StatefulWidget {
   State<SupplierWidget> createState() => _SupplierWidgetState();
 }
 
-class _SupplierWidgetState extends State<SupplierWidget> with UnifiedCanvasDrag {
+class _SupplierWidgetState extends State<SupplierWidget> with UnifiedCanvasDrag, DeletableCanvasObject {
   static const Size _supplierSize = Size(180, 150);
   late TextEditingController _leadTimeController;
   late TextEditingController _expediteTimeController;
@@ -182,27 +183,11 @@ class _SupplierWidgetState extends State<SupplierWidget> with UnifiedCanvasDrag 
             ),
           ),
           
-          // Delete button when selected
-          if (widget.supplier.isSelected && widget.onDelete != null)
-            Positioned(
-              top: -2,
-              right: -2,
-              child: GestureDetector(
-                onTap: () => widget.onDelete?.call(widget.supplier.id),
-                child: Container(
-                  width: 20,
-                  height: 20,
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.close,
-                    color: Colors.white,
-                    size: 14,
-                  ),
-                ),
-              ),
+          // Delete button using common mixin
+          if (widget.onDelete != null)
+            buildDeleteButton(
+              isSelected: widget.supplier.isSelected,
+              onDelete: () => widget.onDelete!(widget.supplier.id),
             ),
         ],
       ),

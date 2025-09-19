@@ -247,13 +247,11 @@ class SupplierManager {
     try {
       final db = await DatabaseProvider.getInstance();
       
-      final canvasStates = await db.customSelect(
-        'SELECT * FROM canvas_states WHERE value_stream_id = ? AND part_number = ? AND icon_type = ?',
-        variables: [
-          drift.Variable.withInt(valueStreamId),
-          drift.Variable.withString(partNumber), 
-          drift.Variable.withString('supplier')
-        ]
+      final canvasStates = await (db.select(db.canvasStates)
+        ..where((cs) => 
+          cs.valueStreamId.equals(valueStreamId) &
+          cs.partNumber.equals(partNumber) &
+          cs.iconType.equals('supplier'))
       ).get();
       
       _suppliers.clear();
@@ -262,11 +260,11 @@ class SupplierManager {
       for (final state in canvasStates) {
         try {
           final supplier = Supplier.fromJson(
-            state.data['userData'] as String,
-            id: state.data['icon_id'] as String,
+            state.userData!,
+            id: state.iconId,
             position: Offset(
-              state.data['position_x'] as double,
-              state.data['position_y'] as double,
+              state.positionX,
+              state.positionY,
             ),
           );
           _suppliers[supplier.id] = supplier;

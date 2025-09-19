@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/kanban_loop.dart';
 import '../utils/canvas_drag_handler.dart';
+import '../utils/deletable_canvas_object.dart';
 
 class KanbanLoopWidget extends StatefulWidget {
   final KanbanLoop kanbanLoop;
   final bool isSelected;
   final Function(String)? onTap;
   final Function(KanbanLoop)? onUpdate; // New callback for updating kanban loop
+  final Function(String)? onDelete; // Add delete callback
 
   const KanbanLoopWidget({
     super.key,
@@ -15,13 +17,15 @@ class KanbanLoopWidget extends StatefulWidget {
     this.isSelected = false,
     this.onTap,
     this.onUpdate,
+    this.onDelete, // Add delete callback
   });
 
   @override
   State<KanbanLoopWidget> createState() => _KanbanLoopWidgetState();
 }
 
-class _KanbanLoopWidgetState extends State<KanbanLoopWidget> with CanvasDragHandler {
+class _KanbanLoopWidgetState extends State<KanbanLoopWidget> 
+    with CanvasDragHandler, DeletableCanvasObject {
   late TextEditingController _hoursController;
   late FocusNode _hoursFocusNode;
   bool _isUserEditing = false;
@@ -231,6 +235,17 @@ class _KanbanLoopWidgetState extends State<KanbanLoopWidget> with CanvasDragHand
             ),
           ),
         ),
+        
+        // Delete button using common mixin
+        if (widget.onDelete != null)
+          Positioned(
+            left: widget.kanbanLoop.kanbanIconPosition.dx + 10,
+            top: widget.kanbanLoop.kanbanIconPosition.dy - 25,
+            child: buildDeleteButton(
+              isSelected: widget.isSelected,
+              onDelete: () => widget.onDelete!(widget.kanbanLoop.id),
+            ),
+          ),
       ],
     );
   }
